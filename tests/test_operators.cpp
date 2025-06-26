@@ -63,24 +63,34 @@ TEST_F(ComputoTest, AdditionOperator) {
     EXPECT_EQ(computo::execute(script4, input_data), 6);
 }
 
-// Test error conditions
-TEST_F(ComputoTest, AdditionErrors) {
-    // Test wrong number of arguments
-    json script1 = json::array({"+"});
-    EXPECT_THROW(computo::execute(script1, input_data), computo::InvalidArgumentException);
-    
-    json script2 = json::array({"+", 1});
-    EXPECT_THROW(computo::execute(script2, input_data), computo::InvalidArgumentException);
-    
-    json script3 = json::array({"+", 1, 2, 3});
-    EXPECT_THROW(computo::execute(script3, input_data), computo::InvalidArgumentException);
-    
-    // Test non-numeric arguments
-    json script4 = json::array({"+", "hello", 2});
-    EXPECT_THROW(computo::execute(script4, input_data), computo::InvalidArgumentException);
-    
-    json script5 = json::array({"+", 1, true});
-    EXPECT_THROW(computo::execute(script5, input_data), computo::InvalidArgumentException);
+// Test addition with no arguments
+TEST_F(ComputoTest, AdditionNoArguments) {
+    json script = json::array({"+"});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+// Test addition with one argument
+TEST_F(ComputoTest, AdditionOneArgument) {
+    json script = json::array({"+", 1});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+// Test addition with too many arguments
+TEST_F(ComputoTest, AdditionTooManyArguments) {
+    json script = json::array({"+", 1, 2, 3});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+// Test addition with string argument
+TEST_F(ComputoTest, AdditionStringArgument) {
+    json script = json::array({"+", "hello", 2});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+// Test addition with boolean argument
+TEST_F(ComputoTest, AdditionBooleanArgument) {
+    json script = json::array({"+", 1, true});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
 }
 
 // Test invalid operator
@@ -98,4 +108,46 @@ TEST_F(ComputoTest, NonOperatorArrays) {
     // Empty array should be treated as literal
     json script2 = json::array();
     EXPECT_EQ(computo::execute(script2, input_data), script2);
+}
+
+// Test exception hierarchy - InvalidArgumentException inherits from ComputoException
+TEST_F(ComputoTest, InvalidArgumentExceptionHierarchy) {
+    json script = json::array({"+", "hello", 2});
+    try {
+        computo::execute(script, input_data);
+        FAIL() << "Expected InvalidArgumentException to be thrown";
+    } catch (const computo::ComputoException& e) {
+        // This should catch InvalidArgumentException since it inherits from ComputoException
+        SUCCEED();
+    } catch (...) {
+        FAIL() << "InvalidArgumentException should inherit from ComputoException";
+    }
+}
+
+// Test exception hierarchy - InvalidOperatorException inherits from ComputoException
+TEST_F(ComputoTest, InvalidOperatorExceptionHierarchy) {
+    json script = json::array({"unknown_operator", 1, 2});
+    try {
+        computo::execute(script, input_data);
+        FAIL() << "Expected InvalidOperatorException to be thrown";
+    } catch (const computo::ComputoException& e) {
+        // This should catch InvalidOperatorException since it inherits from ComputoException
+        SUCCEED();
+    } catch (...) {
+        FAIL() << "InvalidOperatorException should inherit from ComputoException";
+    }
+}
+
+// Test exception hierarchy - All exceptions inherit from std::exception
+TEST_F(ComputoTest, StdExceptionHierarchy) {
+    json script = json::array({"+", 1, true});
+    try {
+        computo::execute(script, input_data);
+        FAIL() << "Expected InvalidArgumentException to be thrown";
+    } catch (const std::exception& e) {
+        // This should catch any of our exceptions since they all inherit from std::exception
+        SUCCEED();
+    } catch (...) {
+        FAIL() << "All Computo exceptions should inherit from std::exception";
+    }
 }
