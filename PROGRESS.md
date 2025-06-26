@@ -544,3 +544,92 @@ All infrastructure is in place for these operators.
 - Exception handling remains unified
 - Performance characteristics unchanged
 - CLI enhancement maintains simplicity
+
+## Phase 5: Iteration (COMPLETED)
+
+**Date**: June 26, 2025
+
+### What Works
+
+1. **Map Operator**
+   - Array iteration with lambda transformation: `["map", array, lambda]`
+   - Full lambda support with proper variable binding
+   - Works with all JSON types: numbers, strings, objects, booleans, null
+   - Complex nested expressions in lambda bodies
+   - Identity mapping: `["map", [1,2,3], ["lambda", ["x"], ["$", "/x"]]]` → `[1,2,3]`
+   - String processing: `["map", ["hello","world"], ["lambda", ["s"], ["$", "/s"]]]` → `["hello","world"]`
+   - Object transformation with complex logic
+
+2. **Filter Operator**
+   - Array filtering with lambda conditions: `["filter", array, lambda]`
+   - Truthiness evaluation follows same rules as `if` operator
+   - String filtering: empty strings are falsy, non-empty are truthy
+   - Boolean, numeric, null, array, object filtering all work correctly
+   - Complex condition expressions in lambda bodies
+
+3. **Lambda Expressions**
+   - Format: `["lambda", ["var_name"], body_expr]`
+   - Single parameter support (as per requirements)
+   - Proper variable scoping with context isolation
+   - Variable access via `$` operator: `["$", "/var_name"]`
+   - Immutable context copying preserves outer scope
+
+4. **Complex Integration Examples**
+   - Object transformation: map over array of objects to create new structure
+   - Nested iterations: map containing filter operations
+   - Variable combinations: lambda using `let` variables from outer scope
+   - Conditional mapping: lambda bodies with `if` statements
+
+### What Didn't Work (Initially)
+
+**Critical Bug Found and Fixed**: Arrays containing strings were incorrectly treated as operator calls.
+
+**Problem**: The `evaluate` function had flawed logic for distinguishing between:
+- Operator calls: `["operator_name", arg1, arg2]`
+- Literal arrays: `["hello", "world"]`
+
+**Root Cause**: Any array starting with a string was treated as an operator call, causing:
+```
+["hello", "world"] → "Invalid operator: hello"
+```
+
+**Solution**: Enhanced the `evaluate` function with smarter heuristics:
+1. Check if the first string element is a known operator
+2. If not a known operator, check if all elements are strings (likely literal array)
+3. If all strings → treat as literal array
+4. If mixed types → throw `InvalidOperatorException` (likely intended operator call)
+
+This preserves backward compatibility while enabling string arrays in data.
+
+### Testing Highlights
+
+- **79 total tests, all passing**
+- String lambda processing: `["map", ["hello","world"], ...]` works correctly
+- Object processing: complex nested object transformation
+- Error edge cases: proper exception handling for malformed lambdas
+- Integration testing: map/filter with all other operators
+
+### Architecture Insights
+
+**Lambda Variable Scoping**: Implemented immutable context copying that:
+- Preserves outer scope variables
+- Adds lambda variables to new scope
+- Prevents variable leakage between iterations
+- Maintains thread safety (no shared mutable state)
+
+**Type System Robustness**: The string array bug revealed the importance of careful type dispatch in dynamic languages. The fix makes Computo more robust for real-world JSON data containing arrays of strings.
+
+### Performance Notes
+
+- Lambda evaluation creates new contexts for each iteration (immutable approach)
+- No memoization or optimization yet, but architecture supports future enhancements
+- Recursive evaluation depth limited by stack (no tail call optimization)
+
+### Next Steps
+
+Phase 5 completes the core iteration functionality. The system now supports:
+- All basic operators (+, $, let, get, if, obj, arr, $input)
+- Template processing (permuto.apply)  
+- Iteration and filtering (map, filter with lambdas)
+
+Ready for Phase 6 (Finalization) or additional feature requests.

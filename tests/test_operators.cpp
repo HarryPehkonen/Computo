@@ -750,3 +750,284 @@ TEST_F(ComputoTest, PermutoApplyMissingKeyError) {
     
     EXPECT_THROW(computo::execute(script, input_data, opts), computo::InvalidArgumentException);
 }
+
+// === Phase 5 Tests: Iteration ===
+
+// Test map operator basic functionality
+TEST_F(ComputoTest, MapOperatorBasic) {
+    // ["map", [1, 2, 3], ["lambda", ["x"], ["+", ["$", "/x"], 1]]]
+    json script = json::array({
+        "map",
+        json::array({1, 2, 3}),
+        json::array({"lambda", json::array({"x"}), json::array({"+", json::array({"$", "/x"}), 1})})
+    });
+    json expected = json::array({2, 3, 4});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test map operator with string transformation
+TEST_F(ComputoTest, MapOperatorStringTransform) {
+    // ["map", ["hello", "world"], ["lambda", ["s"], ["$", "/s"]]]
+    json script = json::array({
+        "map",
+        json::array({"hello", "world"}),
+        json::array({"lambda", json::array({"s"}), json::array({"$", "/s"})})
+    });
+    json expected = json::array({"hello", "world"});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test map operator with complex lambda
+TEST_F(ComputoTest, MapOperatorComplexLambda) {
+    json array_data = json::array({
+        json{{"id", 1}, {"value", 10}},
+        json{{"id", 2}, {"value", 20}},
+        json{{"id", 3}, {"value", 30}}
+    });
+    
+    // ["map", array, ["lambda", ["item"], ["obj", ["id", ["get", ["$", "/item"], "/id"]], ["doubled", ["+", ["get", ["$", "/item"], "/value"], ["get", ["$", "/item"], "/value"]]]]]]
+    json script = json::array({
+        "map",
+        array_data,
+        json::array({
+            "lambda",
+            json::array({"item"}),
+            json::array({
+                "obj",
+                json::array({"id", json::array({"get", json::array({"$", "/item"}), "/id"})}),
+                json::array({"doubled", json::array({"+", json::array({"get", json::array({"$", "/item"}), "/value"}), json::array({"get", json::array({"$", "/item"}), "/value"})})})
+            })
+        })
+    });
+    
+    json expected = json::array({
+        json{{"id", 1}, {"doubled", 20}},
+        json{{"id", 2}, {"doubled", 40}},
+        json{{"id", 3}, {"doubled", 60}}
+    });
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test map operator with empty array
+TEST_F(ComputoTest, MapOperatorEmpty) {
+    json script = json::array({
+        "map",
+        json::array(),
+        json::array({"lambda", json::array({"x"}), json::array({"+", json::array({"$", "/x"}), 1})})
+    });
+    json expected = json::array();
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test filter operator basic functionality
+TEST_F(ComputoTest, FilterOperatorBasic) {
+    // ["filter", [1, 2, 3, 4, 5], ["lambda", ["x"], [">", ["$", "/x"], 3]]]
+    // Since we don't have > operator, let's use a different approach
+    json script = json::array({
+        "filter",
+        json::array({1, 2, 3, 4, 5}),
+        json::array({"lambda", json::array({"x"}), json::array({"$", "/x"})}) // Filter out 0 (falsy)
+    });
+    // All numbers are truthy, so all should pass
+    json expected = json::array({1, 2, 3, 4, 5});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test filter operator with boolean condition
+TEST_F(ComputoTest, FilterOperatorBoolean) {
+    // ["filter", [true, false, true, false], ["lambda", ["x"], ["$", "/x"]]]
+    json script = json::array({
+        "filter",
+        json::array({true, false, true, false}),
+        json::array({"lambda", json::array({"x"}), json::array({"$", "/x"})})
+    });
+    json expected = json::array({true, true});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test filter operator with string condition - TEMPORARILY DISABLED
+// Issue: strings being treated as operators - needs investigation
+TEST_F(ComputoTest, FilterOperatorString) {
+    // ["filter", ["hello", "", "world", ""], ["lambda", ["s"], ["$", "/s"]]]
+    json script = json::array({
+        "filter",
+        json::array({"hello", "", "world", ""}),
+        json::array({"lambda", json::array({"s"}), json::array({"$", "/s"})})
+    });
+    json expected = json::array({"hello", "world"});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test filter operator with object condition
+TEST_F(ComputoTest, FilterOperatorObject) {
+    json array_data = json::array({
+        json{{"active", true}, {"name", "Alice"}},
+        json{{"active", false}, {"name", "Bob"}},
+        json{{"active", true}, {"name", "Charlie"}}
+    });
+    
+    // ["filter", array, ["lambda", ["user"], ["get", ["$", "/user"], "/active"]]]
+    json script = json::array({
+        "filter",
+        array_data,
+        json::array({
+            "lambda",
+            json::array({"user"}),
+            json::array({"get", json::array({"$", "/user"}), "/active"})
+        })
+    });
+    
+    json expected = json::array({
+        json{{"active", true}, {"name", "Alice"}},
+        json{{"active", true}, {"name", "Charlie"}}
+    });
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test filter operator with empty array
+TEST_F(ComputoTest, FilterOperatorEmpty) {
+    json script = json::array({
+        "filter",
+        json::array(),
+        json::array({"lambda", json::array({"x"}), json::array({"$", "/x"})})
+    });
+    json expected = json::array();
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test nested map and filter
+TEST_F(ComputoTest, NestedMapFilter) {
+    // ["map", ["filter", [1, 2, 3, 4, 5], ["lambda", ["x"], ["$", "/x"]]], ["lambda", ["x"], ["+", ["$", "/x"], 10]]]
+    json script = json::array({
+        "map",
+        json::array({
+            "filter",
+            json::array({1, 2, 3, 4, 5}),
+            json::array({"lambda", json::array({"x"}), json::array({"$", "/x"})}) // All pass (all truthy)
+        }),
+        json::array({"lambda", json::array({"x"}), json::array({"+", json::array({"$", "/x"}), 10})})
+    });
+    json expected = json::array({11, 12, 13, 14, 15});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test map with let variables
+TEST_F(ComputoTest, MapWithLet) {
+    // ["let", [["multiplier", 3]], ["map", [1, 2, 3], ["lambda", ["x"], ["+", ["$", "/x"], ["$", "/multiplier"]]]]]
+    json script = json::array({
+        "let",
+        json::array({json::array({"multiplier", 3})}),
+        json::array({
+            "map",
+            json::array({1, 2, 3}),
+            json::array({
+                "lambda",
+                json::array({"x"}),
+                json::array({"+", json::array({"$", "/x"}), json::array({"$", "/multiplier"})})
+            })
+        })
+    });
+    json expected = json::array({4, 5, 6});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test map with conditional in lambda
+TEST_F(ComputoTest, MapWithConditional) {
+    // ["map", [1, 2, 3], ["lambda", ["x"], ["if", ["$", "/x"], ["+", ["$", "/x"], 10], 0]]]
+    json script = json::array({
+        "map",
+        json::array({1, 2, 3}),
+        json::array({
+            "lambda",
+            json::array({"x"}),
+            json::array({
+                "if",
+                json::array({"$", "/x"}),
+                json::array({"+", json::array({"$", "/x"}), 10}),
+                0
+            })
+        })
+    });
+    json expected = json::array({11, 12, 13});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// === Error Tests for Phase 5 ===
+
+// Test map operator errors
+TEST_F(ComputoTest, MapOperatorWrongArgCount) {
+    json script1 = json::array({"map", json::array({1, 2, 3})});
+    EXPECT_THROW(computo::execute(script1, input_data), computo::InvalidArgumentException);
+    
+    json script2 = json::array({"map", json::array({1, 2, 3}), json::array({"lambda", json::array({"x"}), json::array({"$", "/x"})}), "extra"});
+    EXPECT_THROW(computo::execute(script2, input_data), computo::InvalidArgumentException);
+}
+
+TEST_F(ComputoTest, MapOperatorNonArray) {
+    json script = json::array({
+        "map",
+        "not_an_array",
+        json::array({"lambda", json::array({"x"}), json::array({"$", "/x"})})
+    });
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+// Test filter operator errors
+TEST_F(ComputoTest, FilterOperatorWrongArgCount) {
+    json script1 = json::array({"filter", json::array({1, 2, 3})});
+    EXPECT_THROW(computo::execute(script1, input_data), computo::InvalidArgumentException);
+}
+
+TEST_F(ComputoTest, FilterOperatorNonArray) {
+    json script = json::array({
+        "filter",
+        42,
+        json::array({"lambda", json::array({"x"}), json::array({"$", "/x"})})
+    });
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+// Test lambda errors
+TEST_F(ComputoTest, LambdaInvalidFormat) {
+    // Wrong number of arguments
+    json script1 = json::array({
+        "map",
+        json::array({1, 2}),
+        json::array({"lambda", json::array({"x"})}) // Missing body
+    });
+    EXPECT_THROW(computo::execute(script1, input_data), computo::InvalidArgumentException);
+    
+    // Not starting with "lambda"
+    json script2 = json::array({
+        "map",
+        json::array({1, 2}),
+        json::array({"not_lambda", json::array({"x"}), json::array({"$", "/x"})})
+    });
+    EXPECT_THROW(computo::execute(script2, input_data), computo::InvalidArgumentException);
+}
+
+TEST_F(ComputoTest, LambdaInvalidParameters) {
+    // Non-array parameters
+    json script1 = json::array({
+        "map",
+        json::array({1, 2}),
+        json::array({"lambda", "not_array", json::array({"$", "/x"})})
+    });
+    EXPECT_THROW(computo::execute(script1, input_data), computo::InvalidArgumentException);
+    
+    // Wrong number of parameters
+    json script2 = json::array({
+        "map",
+        json::array({1, 2}),
+        json::array({"lambda", json::array({"x", "y"}), json::array({"$", "/x"})}) // Too many params
+    });
+    EXPECT_THROW(computo::execute(script2, input_data), computo::InvalidArgumentException);
+    
+    // Non-string parameter
+    json script3 = json::array({
+        "map",
+        json::array({1, 2}),
+        json::array({"lambda", json::array({123}), json::array({"$", "/x"})})
+    });
+    EXPECT_THROW(computo::execute(script3, input_data), computo::InvalidArgumentException);
+}

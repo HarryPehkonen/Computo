@@ -1,10 +1,41 @@
 #include <computo/computo.hpp>
 #include <permuto/permuto.hpp>
+#include <iostream>
 
 namespace computo {
 
 // Operator registry
 static std::map<std::string, OperatorFunc> operators;
+
+// Helper function for evaluating lambda expressions
+static nlohmann::json evaluate_lambda(const nlohmann::json& lambda_expr, const nlohmann::json& item_value, ExecutionContext& ctx) {
+    // Lambda format: ["lambda", ["var_name"], <body_expr>]
+    if (!lambda_expr.is_array() || lambda_expr.size() != 3) {
+        throw InvalidArgumentException("lambda must be [\"lambda\", [\"var_name\"], body_expr]");
+    }
+    
+    if (!lambda_expr[0].is_string() || lambda_expr[0].get<std::string>() != "lambda") {
+        throw InvalidArgumentException("lambda expression must start with \"lambda\"");
+    }
+    
+    if (!lambda_expr[1].is_array() || lambda_expr[1].size() != 1) {
+        throw InvalidArgumentException("lambda must have exactly one parameter: [\"var_name\"]");
+    }
+    
+    if (!lambda_expr[1][0].is_string()) {
+        throw InvalidArgumentException("lambda parameter must be a string");
+    }
+    
+    std::string var_name = lambda_expr[1][0].get<std::string>();
+    
+    // Create new context with the lambda variable
+    std::map<std::string, nlohmann::json> lambda_vars;
+    lambda_vars[var_name] = item_value;
+    ExecutionContext lambda_ctx = ctx.with_variables(lambda_vars);
+    
+    // Evaluate the lambda body
+    return evaluate(lambda_expr[2], lambda_ctx);
+}
 
 // Initialize operators
 static void initialize_operators() {
@@ -192,6 +223,81 @@ static void initialize_operators() {
         }
     };
     
+    // Map operator for array iteration
+    operators["map"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("map operator requires exactly 2 arguments");
+        }
+        
+        auto array = evaluate(args[0], ctx);
+        
+        if (!array.is_array()) {
+            throw InvalidArgumentException("map operator requires an array as first argument");
+        }
+        
+        // Second argument should be a lambda expression (not evaluated)
+        const auto& lambda_expr = args[1];
+        
+        nlohmann::json result = nlohmann::json::array();
+        
+        // Apply lambda to each element
+        for (const auto& item : array) {
+            nlohmann::json transformed = evaluate_lambda(lambda_expr, item, ctx);
+            result.push_back(transformed);
+        }
+        
+        return result;
+    };
+    
+    // Filter operator for array filtering
+    operators["filter"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("filter operator requires exactly 2 arguments");
+        }
+        
+        auto array = evaluate(args[0], ctx);
+        
+        if (!array.is_array()) {
+            throw InvalidArgumentException("filter operator requires an array as first argument");
+        }
+        
+        // Second argument should be a lambda expression (not evaluated)
+        const auto& lambda_expr = args[1];
+        
+        nlohmann::json result = nlohmann::json::array();
+        
+        // Apply lambda to each element and include if result is truthy
+        for (const auto& item : array) {
+            nlohmann::json condition_result = evaluate_lambda(lambda_expr, item, ctx);
+            
+            // Use the same truthiness logic as the if operator
+            bool is_true = false;
+            if (condition_result.is_boolean()) {
+                is_true = condition_result.get<bool>();
+            } else if (condition_result.is_number()) {
+                if (condition_result.is_number_integer()) {
+                    is_true = condition_result.get<int64_t>() != 0;
+                } else {
+                    is_true = condition_result.get<double>() != 0.0;
+                }
+            } else if (condition_result.is_string()) {
+                is_true = !condition_result.get<std::string>().empty();
+            } else if (condition_result.is_null()) {
+                is_true = false;
+            } else if (condition_result.is_array()) {
+                is_true = !condition_result.empty();
+            } else if (condition_result.is_object()) {
+                is_true = !condition_result.empty();
+            }
+            
+            if (is_true) {
+                result.push_back(item);
+            }
+        }
+        
+        return result;
+    };
+    
     initialized = true;
 }
 
@@ -203,7 +309,7 @@ nlohmann::json evaluate(const nlohmann::json& expr, ExecutionContext& ctx) {
         return expr;
     }
     
-    // Check if first element is a string (operator)
+    // Check if first element is a string (potential operator)
     if (!expr[0].is_string()) {
         // Not an operator call, treat as literal array
         return expr;
@@ -216,11 +322,28 @@ nlohmann::json evaluate(const nlohmann::json& expr, ExecutionContext& ctx) {
         return ctx.input;
     }
     
-    // Look up operator in registry
+    // Check if this is actually a valid operator
     auto it = operators.find(op);
     if (it == operators.end()) {
+        // Special case: if this looks like a literal array of similar types, 
+        // treat it as literal rather than throwing an exception
+        if (expr.size() > 1) {
+            bool all_strings = true;
+            for (size_t i = 1; i < expr.size(); ++i) {
+                if (!expr[i].is_string()) {
+                    all_strings = false;
+                    break;
+                }
+            }
+            // If all elements are strings, treat as literal array
+            if (all_strings) {
+                return expr;
+            }
+        }
+        // Otherwise, this looks like an operator call with unknown operator
         throw InvalidOperatorException(op);
     }
+    
     
     // Extract arguments (everything except the first element)
     nlohmann::json args = nlohmann::json::array();
