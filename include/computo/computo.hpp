@@ -5,6 +5,7 @@
 #include <string>
 #include <map>
 #include <functional>
+#include <permuto/permuto.hpp>
 
 namespace computo {
 
@@ -39,8 +40,36 @@ public:
 struct ExecutionContext {
     const nlohmann::json& input;
     std::map<std::string, nlohmann::json> variables;
+    permuto::Options permuto_options;
     
     explicit ExecutionContext(const nlohmann::json& input_data) : input(input_data) {}
+    explicit ExecutionContext(const nlohmann::json& input_data, const permuto::Options& options) 
+        : input(input_data), permuto_options(options) {}
+    
+    // Create a new context with additional variables for let scoping
+    ExecutionContext with_variables(const std::map<std::string, nlohmann::json>& new_vars) const {
+        ExecutionContext new_ctx(input, permuto_options);
+        new_ctx.variables = variables; // Copy existing variables
+        // Add/override with new variables
+        for (const auto& pair : new_vars) {
+            new_ctx.variables[pair.first] = pair.second;
+        }
+        return new_ctx;
+    }
+    
+    // Lookup a variable by path (e.g., "/var_name")
+    nlohmann::json get_variable(const std::string& path) const {
+        if (path.empty() || path[0] != '/') {
+            throw InvalidArgumentException("Variable path must start with '/'");
+        }
+        
+        std::string var_name = path.substr(1); // Remove leading '/'
+        auto it = variables.find(var_name);
+        if (it == variables.end()) {
+            throw InvalidArgumentException("Variable not found: " + path);
+        }
+        return it->second;
+    }
 };
 
 // Type alias for operator functions
@@ -49,7 +78,8 @@ using OperatorFunc = std::function<nlohmann::json(const nlohmann::json& args, Ex
 // Core evaluation function
 nlohmann::json evaluate(const nlohmann::json& expr, ExecutionContext& ctx);
 
-// Main API function
+// Main API functions
 nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input);
+nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input, const permuto::Options& permuto_options);
 
 } // namespace computo

@@ -136,3 +136,411 @@ cd build && ctest --verbose
 - **nlohmann/json**: Working perfectly via find_package
 - **Permuto**: Successfully linked via find_library, ready for Phase 4
 - **Google Test**: Working well for comprehensive test suite
+
+## Phase 2: State and Data Access (COMPLETED)
+
+**Date Range**: June 26, 2025
+
+### What Works
+
+1. **Enhanced ExecutionContext**
+   - `with_variables()` method for creating scoped contexts works perfectly
+   - Variable shadowing works correctly (inner scope overrides outer scope)
+   - `get_variable()` method with path validation (requires "/" prefix)
+   - Efficient variable lookup with clear error messages
+
+2. **Let Operator**
+   - Multiple variable bindings in single `let` operation: `["let", [["x", 5], ["y", 10]], body]`
+   - Expression evaluation in bindings: `["let", [["x", ["+", 2, 3]]], body]`
+   - Proper scoping: variables only available within the let body
+   - Variable shadowing: inner `let` can override outer variables
+   - Comprehensive validation of binding syntax
+
+3. **Dollar Operator ($)**
+   - Variable access with JSON Pointer syntax: `["$", "/var_name"]`
+   - Proper path validation (must start with "/")
+   - Clear error messages for non-existent variables
+   - Works seamlessly with `let` operator
+
+4. **Get Operator**
+   - JSON Pointer access to objects: `["get", obj, "/key"]`
+   - Nested object access: `["get", obj, "/user/profile/name"]`
+   - Array element access: `["get", arr, "/1"]`
+   - Works with `$input` operator: `["get", ["$input"], "/path"]`
+   - Proper error handling for invalid pointers
+
+5. **Complex Combinations**
+   - `let` + `$` + `get` work together seamlessly
+   - Variables can hold complex JSON structures
+   - Nested `let` operations with proper scoping
+   - All operators compose naturally
+
+6. **Test Coverage**
+   - 34 comprehensive tests (up from 13)
+   - 21 new tests covering all Phase 2 functionality
+   - Individual error tests for precise failure diagnosis
+   - Complex combination tests verify integration
+
+### What Didn't Work (Issues Resolved)
+
+1. **Initial Test Design Error**
+   - **Issue**: Tried to pass variable reference to `get` operator's JSON pointer argument
+   - **Problem**: `["get", obj, ["$", "/varname"]]` - the pointer must be a literal string
+   - **Solution**: JSON pointers must be literal strings, not computed values
+   - **Lesson**: Some operators have static vs. dynamic argument requirements
+
+### Key Design Decisions
+
+1. **Variable Scoping Strategy**
+   - Chose immutable context copying over mutable stack-based scoping
+   - `with_variables()` creates new context rather than modifying existing
+   - This prevents side effects and makes debugging easier
+
+2. **Variable Path Syntax**
+   - Required "/" prefix for consistency with JSON Pointer syntax
+   - Single-level variables only (no nested paths like "/outer/inner")
+   - Clear distinction between variable paths and JSON pointers
+
+3. **Error Message Philosophy**
+   - Specific error messages for each validation failure
+   - Include operator name and expected format in messages
+   - JSON exception details passed through for pointer errors
+
+4. **Let Operator Binding Evaluation**
+   - Bindings evaluated in original context (not with previously bound variables)
+   - This prevents order dependencies between bindings in same `let`
+   - Example: `["let", [["x", 5], ["y", ["$", "/x"]]], body]` will fail (x not available during y evaluation)
+
+### Performance Observations
+
+- Variable lookup is O(1) with `std::map`
+- Context copying for scoping has minimal overhead
+- JSON Pointer operations are efficient with nlohmann/json
+- No performance degradation with nested `let` operations
+
+### Surprises/Gotchas
+
+1. **JSON Pointer Integration**
+   - nlohmann/json's `json_pointer` class handles all edge cases perfectly
+   - Automatic escaping of special characters works as expected
+   - Exception handling provides clear error messages
+
+2. **Variable Binding Order**
+   - Variables in a single `let` cannot reference each other
+   - This is actually a feature (prevents complex ordering dependencies)
+   - Forces clear, readable code structure
+
+3. **Context Copying Performance**
+   - Expected context copying to be expensive but it's very fast
+   - nlohmann/json copy semantics are well-optimized
+   - Immutable approach provides better debugging experience
+
+### Usage Examples
+
+```json
+// Basic variable binding
+["let", [["x", 5]], ["$", "/x"]]
+
+// Multiple variables with arithmetic
+["let", [["x", 10], ["y", 5]], ["+", ["$", "/x"], ["$", "/y"]]]
+
+// JSON Pointer access on input
+["get", ["$input"], "/user/profile/name"]
+
+// Complex combination
+["let", [["userData", ["$input"]]], ["get", ["$", "/userData"], "/settings/theme"]]
+```
+
+### Next Steps (Phase 5)
+
+Ready to implement:
+- `map` operator for array iteration with lambda support
+- `filter` operator for array filtering with lambda support
+
+All infrastructure is in place for these operators.
+
+## Phase 3: Logic and Construction (COMPLETED)
+
+**Date Range**: June 26, 2025
+
+### What Works
+
+1. **If Operator**
+   - Comprehensive truthiness evaluation for all JSON types:
+     - Booleans: `true`/`false` as expected
+     - Numbers: 0 is false, everything else is true (works for integers and floats)
+     - Strings: empty string is false, non-empty is true
+     - null: always false
+     - Arrays: empty array is false, non-empty is true
+     - Objects: empty object is false, non-empty is true
+   - Lazy evaluation: only evaluates the branch that's taken
+   - Works with complex expressions in condition and branches
+   - Nested `if` statements work perfectly
+
+2. **Obj Operator**
+   - Object construction with [key, value] pairs: `["obj", ["name", "John"], ["age", 30]]`
+   - Keys must be literal strings (not evaluated expressions)
+   - Values are evaluated expressions
+   - Empty object creation: `["obj"]` → `{}`
+   - Supports complex nested expressions as values
+   - Integrates seamlessly with other operators
+
+3. **Arr Operator**
+   - Array construction with evaluated elements: `["arr", 1, "hello", ["$", "/var"]]`
+   - All elements are evaluated before adding to array
+   - Empty array creation: `["arr"]` → `[]`
+   - Supports complex nested expressions as elements
+   - Perfect composition with other operators
+
+4. **Complex Combinations**
+   - All Phase 1, 2, and 3 operators compose naturally
+   - Real-world examples working:
+     - Conditional user processing with object construction
+     - Dynamic array building with variables and arithmetic
+     - Nested conditionals with data extraction
+
+5. **Test Coverage**
+   - 52 comprehensive tests (18 new Phase 3 tests)
+   - Complete truthiness testing for all JSON types
+   - Nested operator combinations
+   - Error condition coverage
+   - CLI integration verification
+
+### What Didn't Work (Issues Resolved)
+
+**No significant issues encountered.** All operators worked as designed on first implementation.
+
+### Key Design Decisions
+
+1. **Truthiness Philosophy**
+   - Chose Python/JavaScript-like truthiness rules
+   - Empty collections (arrays, objects, strings) are false
+   - Zero numeric values are false
+   - null is false
+   - Everything else is true
+
+2. **Object Key Handling**
+   - Object keys must be literal strings, not evaluated expressions
+   - This prevents runtime key conflicts and ensures predictable behavior
+   - Values are always evaluated, providing full expression support
+
+3. **Lazy Evaluation in If**
+   - Only the taken branch is evaluated
+   - This enables safe conditional access and performance optimization
+   - Prevents side effects in unused branches
+
+4. **Array/Object Construction**
+   - All elements/values are evaluated before construction
+   - This ensures consistent behavior and simplifies debugging
+   - Empty collections are supported with zero arguments
+
+### Performance Observations
+
+- If operator has minimal overhead due to lazy evaluation
+- Object/array construction is efficient with nlohmann/json
+- No performance regression with complex nested expressions
+- Truthiness evaluation is fast with type checking
+
+### Surprises/Gotchas
+
+1. **Truthiness Implementation**
+   - nlohmann/json's type checking made implementation very clean
+   - All edge cases (0.0, empty containers) handled naturally
+   - No unexpected behavior during testing
+
+2. **Object Key Restriction**
+   - Requiring literal string keys initially seemed limiting
+   - In practice, this provides clarity and prevents runtime errors
+   - Dynamic keys can be achieved through other means if needed
+
+3. **Operator Composition**
+   - All three operators work together seamlessly from day one
+   - No unexpected interaction issues
+   - Complex real-world examples work intuitively
+
+### Usage Examples
+
+```json
+// Conditional logic with truthiness
+["if", ["get", ["$input"], "/user/active"], 
+     ["obj", ["status", "welcome"]], 
+     ["obj", ["status", "denied"]]]
+
+// Object construction
+["obj", 
+ ["user", ["get", ["$input"], "/user/name"]], 
+ ["timestamp", 1234567890],
+ ["data", ["arr", 1, 2, 3]]]
+
+// Array construction with expressions
+["let", [["base", 10]], 
+ ["arr", 
+  ["$", "/base"], 
+  ["+", ["$", "/base"], 5],
+  ["obj", ["doubled", ["+", ["$", "/base"], ["$", "/base"]]]]]]
+
+// Complex real-world example
+["let", [["user", ["get", ["$input"], "/user"]]], 
+ ["if", ["get", ["$", "/user"], "/active"],
+      ["obj", ["name", ["get", ["$", "/user"], "/name"]], 
+              ["status", "active"]],
+      ["obj", ["error", "user not active"]]]]
+```
+
+### Testing Highlights
+
+- **Truthiness Coverage**: All JSON types tested for truthiness behavior
+- **Error Validation**: Comprehensive argument validation for all operators
+- **Integration Testing**: Complex multi-phase operator combinations
+- **CLI Verification**: Real-world examples tested via command-line interface
+
+### Architecture Impact
+
+- No changes needed to existing architecture
+- All operators follow established patterns
+- Exception handling remains consistent
+- Performance characteristics maintained
+
+## Phase 4: The Permuto Bridge (COMPLETED)
+
+**Date Range**: June 26, 2025
+
+### What Works
+
+1. **Permuto.apply Operator**
+   - Full integration with Permuto templating library
+   - Template processing: `["permuto.apply", template, context]`
+   - Both template and context are evaluated before processing
+   - Seamless error handling with Permuto exceptions wrapped in InvalidArgumentException
+   - Perfect composition with all existing Computo operators
+
+2. **Permuto Options Support**
+   - Enhanced ExecutionContext to carry Permuto options through evaluation
+   - Overloaded `execute()` function accepting permuto::Options
+   - Options properly preserved during variable scoping (let operations)
+   - Support for all Permuto features: interpolation, missing key behavior, custom markers
+
+3. **CLI Integration**
+   - Added `--interpolation` flag for enabling string interpolation
+   - Clean command-line interface: `computo [--interpolation] script.json input.json`
+   - Proper error handling and usage messages
+
+4. **Template Processing Features**
+   - JSON Pointer substitution: `${/path/to/value}` 
+   - String interpolation: `"Hello ${/name}!"` (when enabled)
+   - Missing key behaviors: ignore (default), error, remove
+   - Complex nested template processing
+   - Type preservation for all JSON data types
+
+5. **Integration Examples Working**
+   - Conditional template selection based on Computo logic
+   - Dynamic context building using obj/arr operators
+   - Variable-driven template processing with let bindings
+   - Real-world user profile processing scenarios
+
+6. **Test Coverage**
+   - 61 comprehensive tests (9 new Phase 4 tests)
+   - Basic templating functionality
+   - Complex template processing
+   - Error condition handling
+   - Integration with all previous phases
+   - CLI functionality verification
+
+### What Didn't Work (Issues Resolved)
+
+**No significant issues encountered.** The Permuto integration worked flawlessly on first implementation.
+
+### Key Design Decisions
+
+1. **Options Propagation Strategy**
+   - Enhanced ExecutionContext to carry Permuto options
+   - Options preserved through all scoping operations
+   - Overloaded API maintains backward compatibility
+
+2. **Error Handling Integration**
+   - Permuto exceptions wrapped in Computo InvalidArgumentException
+   - Maintains consistent error handling across the system
+   - Clear error messages preserve original Permuto diagnostics
+
+3. **CLI Enhancement Philosophy**
+   - Minimal viable options exposure (only --interpolation)
+   - Could be extended for other Permuto options if needed
+   - Maintains simplicity while providing key functionality
+
+4. **Evaluation Order**
+   - Both template and context evaluated before calling Permuto
+   - This enables dynamic template/context generation using Computo logic
+   - Consistent with other Computo operators
+
+### Performance Observations
+
+- Permuto integration adds minimal overhead
+- Template processing is efficient
+- No performance regression in existing operations
+- Options copying during scoping is negligible
+
+### Surprises/Gotchas
+
+1. **Seamless Integration**
+   - Permuto's API design made integration extremely straightforward
+   - Exception handling worked perfectly out of the box
+   - No namespace conflicts or compilation issues
+
+2. **Options Propagation**
+   - ExecutionContext enhancement was cleaner than expected
+   - with_variables() method update was trivial
+   - No breaking changes to existing code
+
+3. **CLI Enhancement**
+   - Simple flag-based approach works well for primary use case
+   - String interpolation is the most commonly needed option
+   - Easy to extend for additional options if needed
+
+### Usage Examples
+
+```json
+// Basic template processing
+["permuto.apply", 
+ {"greeting": "${/name}", "id": "${/user_id}"}, 
+ {"name": "Alice", "user_id": 123}]
+
+// With string interpolation (CLI: --interpolation)
+["permuto.apply",
+ {"message": "Hello ${/name}! You have ${/count} items."},
+ {"name": "Bob", "count": 5}]
+
+// Dynamic context building
+["permuto.apply",
+ {"user": "${/user/name}", "active": "${/user/active}"},
+ ["obj", ["user", ["get", ["$input"], "/user"]]]]
+
+// Conditional template selection
+["if", ["get", ["$input"], "/user/premium"],
+     ["permuto.apply", {"template": "premium"}, ["$input"]],
+     ["permuto.apply", {"template": "basic"}, ["$input"]]]
+
+// Complex integration with all phases
+["let", [["user_data", ["get", ["$input"], "/user"]]],
+ ["if", ["get", ["$", "/user_data"], "/active"],
+      ["permuto.apply", 
+       {"status": "Welcome ${/name}!", "profile": "${/profile}"},
+       ["obj", ["name", ["get", ["$", "/user_data"], "/name"]],
+               ["profile", ["$", "/user_data"]]]],
+      ["permuto.apply", {"error": "Account inactive"}, {}]]]
+```
+
+### Testing Highlights
+
+- **Template Processing**: All Permuto features working correctly
+- **Error Integration**: Proper exception wrapping and propagation
+- **Options Handling**: Interpolation and missing key behaviors tested
+- **CLI Functionality**: Command-line flag processing verified
+- **Complex Integration**: Real-world scenarios combining all phases
+
+### Architecture Impact
+
+- Clean integration without architectural changes
+- Options propagation follows existing patterns
+- Exception handling remains unified
+- Performance characteristics unchanged
+- CLI enhancement maintains simplicity
