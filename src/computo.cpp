@@ -482,6 +482,201 @@ static void initialize_operators() {
         return left != right;
     };
     
+    // Epsilon-based floating point equality
+    operators["approx"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 3) {
+            throw InvalidArgumentException("approx operator requires exactly 3 arguments: [left, right, epsilon]");
+        }
+        
+        auto left = evaluate(args[0], ctx);
+        auto right = evaluate(args[1], ctx);
+        auto epsilon = evaluate(args[2], ctx);
+        
+        if (!left.is_number() || !right.is_number() || !epsilon.is_number()) {
+            throw InvalidArgumentException("approx operator requires numeric arguments");
+        }
+        
+        double left_val = left.get<double>();
+        double right_val = right.get<double>();
+        double epsilon_val = epsilon.get<double>();
+        
+        if (epsilon_val < 0.0) {
+            throw InvalidArgumentException("epsilon must be non-negative");
+        }
+        
+        return std::abs(left_val - right_val) <= epsilon_val;
+    };
+    
+    // Array utility operators
+    operators["find"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("find operator requires exactly 2 arguments");
+        }
+        
+        auto array = evaluate(args[0], ctx);
+        
+        if (!array.is_array()) {
+            throw InvalidArgumentException("find operator requires an array as first argument");
+        }
+        
+        const auto& lambda_expr = args[1];
+        
+        // Find first element that matches condition
+        for (const auto& item : array) {
+            nlohmann::json condition_result = evaluate_lambda(lambda_expr, item, ctx);
+            
+            // Use same truthiness logic as filter
+            bool is_true = false;
+            if (condition_result.is_boolean()) {
+                is_true = condition_result.get<bool>();
+            } else if (condition_result.is_number()) {
+                if (condition_result.is_number_integer()) {
+                    is_true = condition_result.get<int64_t>() != 0;
+                } else {
+                    is_true = condition_result.get<double>() != 0.0;
+                }
+            } else if (condition_result.is_string()) {
+                is_true = !condition_result.get<std::string>().empty();
+            } else if (condition_result.is_null()) {
+                is_true = false;
+            } else if (condition_result.is_array()) {
+                is_true = !condition_result.empty();
+            } else if (condition_result.is_object()) {
+                is_true = !condition_result.empty();
+            }
+            
+            if (is_true) {
+                return item;
+            }
+        }
+        
+        // Return null if not found
+        return nlohmann::json(nullptr);
+    };
+    
+    operators["some"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("some operator requires exactly 2 arguments");
+        }
+        
+        auto array = evaluate(args[0], ctx);
+        
+        if (!array.is_array()) {
+            throw InvalidArgumentException("some operator requires an array as first argument");
+        }
+        
+        const auto& lambda_expr = args[1];
+        
+        // Return true if any element matches condition
+        for (const auto& item : array) {
+            nlohmann::json condition_result = evaluate_lambda(lambda_expr, item, ctx);
+            
+            // Use same truthiness logic as filter
+            bool is_true = false;
+            if (condition_result.is_boolean()) {
+                is_true = condition_result.get<bool>();
+            } else if (condition_result.is_number()) {
+                if (condition_result.is_number_integer()) {
+                    is_true = condition_result.get<int64_t>() != 0;
+                } else {
+                    is_true = condition_result.get<double>() != 0.0;
+                }
+            } else if (condition_result.is_string()) {
+                is_true = !condition_result.get<std::string>().empty();
+            } else if (condition_result.is_null()) {
+                is_true = false;
+            } else if (condition_result.is_array()) {
+                is_true = !condition_result.empty();
+            } else if (condition_result.is_object()) {
+                is_true = !condition_result.empty();
+            }
+            
+            if (is_true) {
+                return true;
+            }
+        }
+        
+        return false;
+    };
+    
+    operators["every"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("every operator requires exactly 2 arguments");
+        }
+        
+        auto array = evaluate(args[0], ctx);
+        
+        if (!array.is_array()) {
+            throw InvalidArgumentException("every operator requires an array as first argument");
+        }
+        
+        const auto& lambda_expr = args[1];
+        
+        // Return true if all elements match condition
+        for (const auto& item : array) {
+            nlohmann::json condition_result = evaluate_lambda(lambda_expr, item, ctx);
+            
+            // Use same truthiness logic as filter
+            bool is_true = false;
+            if (condition_result.is_boolean()) {
+                is_true = condition_result.get<bool>();
+            } else if (condition_result.is_number()) {
+                if (condition_result.is_number_integer()) {
+                    is_true = condition_result.get<int64_t>() != 0;
+                } else {
+                    is_true = condition_result.get<double>() != 0.0;
+                }
+            } else if (condition_result.is_string()) {
+                is_true = !condition_result.get<std::string>().empty();
+            } else if (condition_result.is_null()) {
+                is_true = false;
+            } else if (condition_result.is_array()) {
+                is_true = !condition_result.empty();
+            } else if (condition_result.is_object()) {
+                is_true = !condition_result.empty();
+            }
+            
+            if (!is_true) {
+                return false;
+            }
+        }
+        
+        return true;
+    };
+    
+    operators["flatMap"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("flatMap operator requires exactly 2 arguments");
+        }
+        
+        auto array = evaluate(args[0], ctx);
+        
+        if (!array.is_array()) {
+            throw InvalidArgumentException("flatMap operator requires an array as first argument");
+        }
+        
+        const auto& lambda_expr = args[1];
+        
+        nlohmann::json result = nlohmann::json::array();
+        
+        // Apply lambda to each element and flatten result
+        for (const auto& item : array) {
+            nlohmann::json transformed = evaluate_lambda(lambda_expr, item, ctx);
+            
+            if (transformed.is_array()) {
+                // Flatten array result
+                for (const auto& nested_item : transformed) {
+                    result.push_back(nested_item);
+                }
+            } else {
+                // Single item
+                result.push_back(transformed);
+            }
+        }
+        
+        return result;
+    };
+    
     initialized = true;
 }
 

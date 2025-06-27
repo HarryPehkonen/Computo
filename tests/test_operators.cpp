@@ -1036,3 +1036,280 @@ TEST_F(ComputoTest, LambdaInvalidParameters) {
     });
     EXPECT_THROW(computo::execute(script3, input_data), computo::InvalidArgumentException);
 }
+
+// === Phase 6 Tests: Additional Array Utilities and Comparison Operators ===
+
+// Test find operator - finds first matching element
+TEST_F(ComputoTest, FindOperatorBasic) {
+    // ["find", {"array": [1, 2, 3, 4, 5]}, ["lambda", ["x"], [">", ["$", "/x"], 3]]]
+    json script = json::array({
+        "find",
+        json{{"array", json::array({1, 2, 3, 4, 5})}},
+        json::array({"lambda", json::array({"x"}), json::array({">", json::array({"$", "/x"}), 3})})
+    });
+    json expected = 4; // First element > 3
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test find operator - returns null when no match
+TEST_F(ComputoTest, FindOperatorNoMatch) {
+    // ["find", {"array": [1, 2, 3]}, ["lambda", ["x"], [">", ["$", "/x"], 10]]]
+    json script = json::array({
+        "find",
+        json{{"array", json::array({1, 2, 3})}},
+        json::array({"lambda", json::array({"x"}), json::array({">", json::array({"$", "/x"}), 10})})
+    });
+    json expected = nullptr; // No element > 10
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test find operator on empty array
+TEST_F(ComputoTest, FindOperatorEmpty) {
+    json script = json::array({
+        "find",
+        json{{"array", json::array()}},
+        json::array({"lambda", json::array({"x"}), json::array({"$", "/x"})})
+    });
+    json expected = nullptr;
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test some operator - returns true when any match
+TEST_F(ComputoTest, SomeOperatorTrue) {
+    // ["some", {"array": [1, 2, 3, 4, 5]}, ["lambda", ["x"], [">", ["$", "/x"], 3]]]
+    json script = json::array({
+        "some",
+        json{{"array", json::array({1, 2, 3, 4, 5})}},
+        json::array({"lambda", json::array({"x"}), json::array({">", json::array({"$", "/x"}), 3})})
+    });
+    EXPECT_EQ(computo::execute(script, input_data), true);
+}
+
+// Test some operator - returns false when no match
+TEST_F(ComputoTest, SomeOperatorFalse) {
+    // ["some", {"array": [1, 2, 3]}, ["lambda", ["x"], [">", ["$", "/x"], 10]]]
+    json script = json::array({
+        "some",
+        json{{"array", json::array({1, 2, 3})}},
+        json::array({"lambda", json::array({"x"}), json::array({">", json::array({"$", "/x"}), 10})})
+    });
+    EXPECT_EQ(computo::execute(script, input_data), false);
+}
+
+// Test some operator on empty array
+TEST_F(ComputoTest, SomeOperatorEmpty) {
+    json script = json::array({
+        "some",
+        json{{"array", json::array()}},
+        json::array({"lambda", json::array({"x"}), json::array({"$", "/x"})})
+    });
+    EXPECT_EQ(computo::execute(script, input_data), false);
+}
+
+// Test every operator - returns true when all match
+TEST_F(ComputoTest, EveryOperatorTrue) {
+    // ["every", {"array": [1, 2, 3, 4, 5]}, ["lambda", ["x"], [">", ["$", "/x"], 0]]]
+    json script = json::array({
+        "every",
+        json{{"array", json::array({1, 2, 3, 4, 5})}},
+        json::array({"lambda", json::array({"x"}), json::array({">", json::array({"$", "/x"}), 0})})
+    });
+    EXPECT_EQ(computo::execute(script, input_data), true);
+}
+
+// Test every operator - returns false when not all match
+TEST_F(ComputoTest, EveryOperatorFalse) {
+    // ["every", {"array": [1, 2, 3, 4, 5]}, ["lambda", ["x"], [">", ["$", "/x"], 3]]]
+    json script = json::array({
+        "every",
+        json{{"array", json::array({1, 2, 3, 4, 5})}},
+        json::array({"lambda", json::array({"x"}), json::array({">", json::array({"$", "/x"}), 3})})
+    });
+    EXPECT_EQ(computo::execute(script, input_data), false);
+}
+
+// Test every operator on empty array (vacuous truth)
+TEST_F(ComputoTest, EveryOperatorEmpty) {
+    json script = json::array({
+        "every",
+        json{{"array", json::array()}},
+        json::array({"lambda", json::array({"x"}), json::array({">", json::array({"$", "/x"}), 10})})
+    });
+    EXPECT_EQ(computo::execute(script, input_data), true); // Vacuous truth
+}
+
+// Test flatMap operator - maps and flattens
+TEST_F(ComputoTest, FlatMapOperatorBasic) {
+    // ["flatMap", {"array": [1, 2, 3]}, ["lambda", ["x"], {"array": [["$", "/x"], ["*", ["$", "/x"], 2]]}]]
+    json script = json::array({
+        "flatMap",
+        json{{"array", json::array({1, 2, 3})}},
+        json::array({
+            "lambda", 
+            json::array({"x"}), 
+            json{{"array", json::array({
+                json::array({"$", "/x"}),
+                json::array({"*", json::array({"$", "/x"}), 2})
+            })}}
+        })
+    });
+    json expected = json::array({1, 2, 2, 4, 3, 6}); // [1,2] + [2,4] + [3,6] flattened
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test flatMap operator with non-array results (should include as-is)
+TEST_F(ComputoTest, FlatMapOperatorNonArray) {
+    // ["flatMap", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]]
+    json script = json::array({
+        "flatMap",
+        json{{"array", json::array({1, 2, 3})}},
+        json::array({"lambda", json::array({"x"}), json::array({"*", json::array({"$", "/x"}), 2})})
+    });
+    json expected = json::array({2, 4, 6}); // Non-array results included as-is
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test flatMap operator on empty array
+TEST_F(ComputoTest, FlatMapOperatorEmpty) {
+    json script = json::array({
+        "flatMap",
+        json{{"array", json::array()}},
+        json::array({"lambda", json::array({"x"}), json::array({"$", "/x"})})
+    });
+    json expected = json::array();
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test approx operator - epsilon-based floating point equality
+TEST_F(ComputoTest, ApproxOperatorTrue) {
+    // ["approx", 3.14159, 3.14160, 0.001]
+    json script = json::array({"approx", 3.14159, 3.14160, 0.001});
+    EXPECT_EQ(computo::execute(script, input_data), true);
+}
+
+// Test approx operator - values too far apart
+TEST_F(ComputoTest, ApproxOperatorFalse) {
+    // ["approx", 3.14159, 3.14160, 0.000001]
+    json script = json::array({"approx", 3.14159, 3.14160, 0.000001});
+    EXPECT_EQ(computo::execute(script, input_data), false);
+}
+
+// Test approx operator with integers
+TEST_F(ComputoTest, ApproxOperatorIntegers) {
+    // ["approx", 5, 5, 0.1]
+    json script = json::array({"approx", 5, 5, 0.1});
+    EXPECT_EQ(computo::execute(script, input_data), true);
+}
+
+// Test comparison operators
+TEST_F(ComputoTest, ComparisonOperators) {
+    // Test greater than
+    json script_gt = json::array({">", 5, 3});
+    EXPECT_EQ(computo::execute(script_gt, input_data), true);
+    
+    json script_gt_false = json::array({">", 3, 5});
+    EXPECT_EQ(computo::execute(script_gt_false, input_data), false);
+    
+    // Test less than
+    json script_lt = json::array({"<", 3, 5});
+    EXPECT_EQ(computo::execute(script_lt, input_data), true);
+    
+    // Test greater than or equal
+    json script_gte = json::array({">=", 5, 5});
+    EXPECT_EQ(computo::execute(script_gte, input_data), true);
+    
+    // Test less than or equal
+    json script_lte = json::array({"<=", 3, 5});
+    EXPECT_EQ(computo::execute(script_lte, input_data), true);
+    
+    // Test equality
+    json script_eq = json::array({"==", 5, 5});
+    EXPECT_EQ(computo::execute(script_eq, input_data), true);
+    
+    // Test inequality
+    json script_neq = json::array({"!=", 5, 3});
+    EXPECT_EQ(computo::execute(script_neq, input_data), true);
+}
+
+// Test math operators
+TEST_F(ComputoTest, MathOperators) {
+    // Test subtraction
+    json script_sub = json::array({"-", 10, 3});
+    EXPECT_EQ(computo::execute(script_sub, input_data), 7);
+    
+    // Test multiplication
+    json script_mul = json::array({"*", 4, 5});
+    EXPECT_EQ(computo::execute(script_mul, input_data), 20);
+    
+    // Test division
+    json script_div = json::array({"/", 15, 3});
+    EXPECT_EQ(computo::execute(script_div, input_data), 5.0);
+    
+    // Test division with floats
+    json script_div_float = json::array({"/", 7, 2});
+    EXPECT_EQ(computo::execute(script_div_float, input_data), 3.5);
+}
+
+// Test error conditions for new operators
+TEST_F(ComputoTest, FindOperatorWrongArgCount) {
+    json script = json::array({"find", json{{"array", json::array({1, 2, 3})}}});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+TEST_F(ComputoTest, SomeOperatorNonArray) {
+    json script = json::array({
+        "some",
+        "not_an_array",
+        json::array({"lambda", json::array({"x"}), json::array({"$", "/x"})})
+    });
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+TEST_F(ComputoTest, ApproxOperatorWrongArgCount) {
+    json script = json::array({"approx", 3.14, 3.15});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+TEST_F(ComputoTest, ApproxOperatorNonNumeric) {
+    json script = json::array({"approx", "not_a_number", 3.14, 0.01});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+TEST_F(ComputoTest, ApproxOperatorNegativeEpsilon) {
+    json script = json::array({"approx", 3.14, 3.15, -0.01});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+TEST_F(ComputoTest, DivisionByZero) {
+    json script = json::array({"/", 5, 0});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+// Test complex integration with new operators
+TEST_F(ComputoTest, Phase6Integration) {
+    // Complex example: find sum of squares of even numbers > 2
+    // ["reduce", 
+    //   ["filter", 
+    //     ["map", {"array": [1,2,3,4,5,6]}, ["lambda", ["x"], ["*", ["$", "/x"], ["$", "/x"]]]], 
+    //     ["lambda", ["sq"], [">=", ["$", "/sq"], 9]]],
+    //   ["lambda", ["acc", "item"], ["+", ["$", "/acc"], ["$", "/item"]]], 
+    //   0]
+    json script = json::array({
+        "reduce",
+        json::array({
+            "filter",
+            json::array({
+                "map",
+                json{{"array", json::array({1, 2, 3, 4, 5, 6})}},
+                json::array({"lambda", json::array({"x"}), json::array({"*", json::array({"$", "/x"}), json::array({"$", "/x"})})})
+            }),
+            json::array({"lambda", json::array({"sq"}), json::array({">=", json::array({"$", "/sq"}), 9})})
+        }),
+        json::array({"lambda", json::array({"acc", "item"}), json::array({"+", json::array({"$", "/acc"}), json::array({"$", "/item"})})}),
+        0
+    });
+    
+    // Squares: [1,4,9,16,25,36], filtered >=9: [9,16,25,36], sum: 86
+    json expected = 86;
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
