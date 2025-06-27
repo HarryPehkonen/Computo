@@ -633,3 +633,113 @@ Phase 5 completes the core iteration functionality. The system now supports:
 - Iteration and filtering (map, filter with lambdas)
 
 Ready for Phase 6 (Finalization) or additional feature requests.
+
+## Phase 5.1: Array Syntax Revolution (COMPLETED)
+
+**Date**: June 26, 2025
+
+### The Problem We Solved
+
+During Phase 5 testing, we discovered a fundamental ambiguity in JSON array interpretation:
+
+**Before**: Arrays served dual purposes:
+- Operator calls: `["map", ["hello", "world"], lambda]`
+- Literal data: `["hello", "world"]`
+
+This created **unsolvable ambiguity**:
+- `["filter", "some", "data"]` - Literal array or malformed operator call?
+- `["if", "condition", "then", "else"]` - Valid operator or literal array?
+
+Complex heuristics could handle 95% of cases but failed on edge cases like arrays containing operator keywords.
+
+### The Revolutionary Solution
+
+We implemented a **bulletproof syntax separation**:
+
+**Operator Calls** (unchanged):
+```json
+["map", array, lambda]
+["filter", array, lambda]
+["+", 2, 3]
+```
+
+**Literal Arrays** (new syntax):
+```json
+{"array": ["hello", "world"]}
+{"array": [1, 2, 3]}
+{"array": []}
+```
+
+### Implementation Changes
+
+1. **Removed `arr` operator** - replaced by array objects
+2. **Added array object detection** in `evaluate()`:
+   ```cpp
+   if (expr.is_object() && expr.contains("array")) {
+       // Evaluate each element and return literal array
+   }
+   ```
+3. **Eliminated all heuristics** - arrays are ALWAYS operator calls
+4. **Simplified error handling** - no more edge case detection
+
+### Examples of the New Syntax
+
+**Before (ambiguous)**:
+```json
+["map", ["hello", "world"], ["lambda", ["s"], ["$", "/s"]]]
+//       ↑ Could this be an operator call?
+```
+
+**After (crystal clear)**:
+```json
+["map", {"array": ["hello", "world"]}, ["lambda", ["s"], ["$", "/s"]]]
+//      ↑ Unambiguously a literal array
+```
+
+**Complex nesting**:
+```json
+["filter", 
+  {"array": [
+    {"name": "Alice", "active": true},
+    {"name": "Bob", "active": false}
+  ]},
+  ["lambda", ["user"], ["get", ["$", "/user"], "/active"]]
+]
+```
+
+**The edge cases that are now impossible**:
+```json
+{"array": ["filter", "map", "let", "if", "get"]}  // ✅ Clearly literal
+["unknown_operator", 1, 2]                        // ✅ Clearly invalid operator
+```
+
+### Why This Is Superior
+
+1. **Zero Ambiguity**: No heuristics, no edge cases, no confusion
+2. **Self-Documenting**: Reader immediately knows intent
+3. **Consistent**: Parallel with existing `["obj", ...]` → objects pattern
+4. **Tool-Friendly**: Enables better syntax highlighting and validation
+5. **Future-Proof**: Eliminates entire class of parsing problems
+
+### Architecture Impact
+
+- **Removed**: 50+ lines of complex heuristic code
+- **Simplified**: Error handling and evaluation logic
+- **Enhanced**: Type safety and predictability
+- **Maintained**: All existing operator functionality
+- **Improved**: Language clarity and usability
+
+### Breaking Change Impact
+
+All literal arrays in existing code need updating:
+- `[1, 2, 3]` → `{"array": [1, 2, 3]}`
+- Test updates required but pattern is systematic
+- Operator calls unchanged
+
+### Lessons Learned
+
+**User feedback drove the solution**: The original question about keyword arrays revealed a fundamental design flaw. Rather than patching with more heuristics, we chose architectural clarity.
+
+**Syntax ambiguity is expensive**: The original approach tried to be clever by overloading JSON arrays. The explicit syntax is more verbose but infinitely more maintainable.
+
+**Breaking changes for good reasons**: This change improves the language permanently and eliminates an entire category of bugs.

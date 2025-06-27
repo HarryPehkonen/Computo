@@ -12,10 +12,14 @@ Computo is a safe, sandboxed, JSON-native data transformation engine that provid
 ## Architecture
 
 ### Core Design
-- **Code is Data**: All Computo scripts are valid JSON arrays where `[operator, arg1, arg2, ...]`
+- **Code is Data**: All Computo scripts are valid JSON where:
+  - **Operator calls**: `[operator, arg1, arg2, ...]`
+  - **Literal arrays**: `{"array": [item1, item2, ...]}`
+  - **Objects**: Standard JSON objects
 - **Immutability**: Operations are pure functions that don't modify input data
 - **Sandboxed Execution**: No I/O operations or system access allowed
 - **Recursive Interpreter**: Central `evaluate` function traverses JSON script recursively
+- **Unambiguous Syntax**: Zero ambiguity between operator calls and literal data
 
 ### Key Components
 - **ExecutionContext**: Maintains state during evaluation (input reference, variable bindings)
@@ -26,9 +30,9 @@ Computo is a safe, sandboxed, JSON-native data transformation engine that provid
 
 1. **Phase 1**: Project skeleton, basic evaluate function, simple `+` operator
 2. **Phase 2**: ExecutionContext, `let`, `$`, and `get` operators  
-3. **Phase 3**: Logic (`if`) and data construction (`obj`, `arr`)
+3. **Phase 3**: Logic (`if`) and data construction (`obj`, array objects)
 4. **Phase 4**: Permuto integration (`permuto.apply` operator)
-5. **Phase 5**: Iteration operators (`map` with lambda support)
+5. **Phase 5**: Iteration operators (`map`, `filter` with lambda support) + Array Syntax Revolution
 6. **Phase 6**: Remaining operators, CLI tool, integration testing
 
 ## Required Operators
@@ -43,7 +47,7 @@ Computo is a safe, sandboxed, JSON-native data transformation engine that provid
 
 ### Data Construction
 - `["obj", ["key1", <val1>], ["key2", <val2>], ...]`: Object creation
-- `["arr", <item1>, <item2>, ...]`: Array creation
+- `{"array": [<item1>, <item2>, ...]}`: Array creation (object syntax)
 
 ### Data Manipulation
 - `["map", <array>, ["lambda", ["item_var"], <transform>]]`: Array transformation

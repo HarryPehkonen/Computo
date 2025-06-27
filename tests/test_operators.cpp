@@ -29,9 +29,10 @@ TEST_F(ComputoTest, LiteralValues) {
     // Test null
     EXPECT_EQ(computo::execute(json(nullptr), input_data), json(nullptr));
     
-    // Test arrays as literals
-    json arr = json::array({1, 2, 3});
-    EXPECT_EQ(computo::execute(arr, input_data), arr);
+    // Test arrays as literals using new syntax
+    json arr_literal = json{{"array", json::array({1, 2, 3})}};
+    json expected_arr = json::array({1, 2, 3});
+    EXPECT_EQ(computo::execute(arr_literal, input_data), expected_arr);
     
     // Test objects as literals
     json obj = json{{"key", "value"}};
@@ -99,15 +100,21 @@ TEST_F(ComputoTest, InvalidOperator) {
     EXPECT_THROW(computo::execute(script, input_data), computo::InvalidOperatorException);
 }
 
-// Test arrays with non-string first element
-TEST_F(ComputoTest, NonOperatorArrays) {
-    // Array starting with number should be treated as literal
-    json script1 = json::array({1, 2, 3});
-    EXPECT_EQ(computo::execute(script1, input_data), script1);
+// Test array objects vs operator calls
+TEST_F(ComputoTest, ArrayObjectsVsOperatorCalls) {
+    // Array object should create literal array
+    json array_obj = json{{"array", json::array({1, 2, 3})}};
+    json expected_array = json::array({1, 2, 3});
+    EXPECT_EQ(computo::execute(array_obj, input_data), expected_array);
     
-    // Empty array should be treated as literal
-    json script2 = json::array();
-    EXPECT_EQ(computo::execute(script2, input_data), script2);
+    // Empty array object
+    json empty_array_obj = json{{"array", json::array()}};
+    json expected_empty = json::array();
+    EXPECT_EQ(computo::execute(empty_array_obj, input_data), expected_empty);
+    
+    // Arrays starting with numbers should now throw errors (no longer literals)
+    json invalid_script = json::array({1, 2, 3});
+    EXPECT_THROW(computo::execute(invalid_script, input_data), computo::InvalidArgumentException);
 }
 
 // Test exception hierarchy - InvalidArgumentException inherits from ComputoException
@@ -239,10 +246,10 @@ TEST_F(ComputoTest, GetOperatorNested) {
 
 // Test get operator with array access
 TEST_F(ComputoTest, GetOperatorArray) {
-    // ["get", [10, 20, 30], "/1"]
+    // ["get", {"array": [10, 20, 30]}, "/1"]
     json script = json::array({
         "get",
-        json::array({10, 20, 30}),
+        json{{"array", json::array({10, 20, 30})}},
         "/1"
     });
     EXPECT_EQ(computo::execute(script, input_data), 20);
@@ -397,12 +404,12 @@ TEST_F(ComputoTest, IfOperatorNull) {
 
 // Test if operator with array conditions
 TEST_F(ComputoTest, IfOperatorArray) {
-    // ["if", [1, 2], "truthy", "falsy"] - non-empty array is true
-    json script1 = json::array({"if", json::array({1, 2}), "truthy", "falsy"});
+    // ["if", {"array": [1, 2]}, "truthy", "falsy"] - non-empty array is true
+    json script1 = json::array({"if", json{{"array", json::array({1, 2})}}, "truthy", "falsy"});
     EXPECT_EQ(computo::execute(script1, input_data), "truthy");
     
-    // ["if", [], "truthy", "falsy"] - empty array is false
-    json script2 = json::array({"if", json::array(), "truthy", "falsy"});
+    // ["if", {"array": []}, "truthy", "falsy"] - empty array is false
+    json script2 = json::array({"if", json{{"array", json::array()}}, "truthy", "falsy"});
     EXPECT_EQ(computo::execute(script2, input_data), "falsy");
 }
 
@@ -461,46 +468,45 @@ TEST_F(ComputoTest, ObjOperatorEmpty) {
     EXPECT_EQ(computo::execute(script, input_data), expected);
 }
 
-// Test arr operator basic functionality
-TEST_F(ComputoTest, ArrOperatorBasic) {
-    // ["arr", 1, "hello", true]
-    json script = json::array({"arr", 1, "hello", true});
+// Test array object basic functionality
+TEST_F(ComputoTest, ArrayObjectBasic) {
+    // {"array": [1, "hello", true]}
+    json script = json{{"array", json::array({1, "hello", true})}};
     json expected = json::array({1, "hello", true});
     EXPECT_EQ(computo::execute(script, input_data), expected);
 }
 
-// Test arr operator with expressions
-TEST_F(ComputoTest, ArrOperatorWithExpressions) {
-    // ["arr", ["+", 1, 2], ["$input"], ["obj", ["key", "value"]]]
-    json script = json::array({
-        "arr",
+// Test array object with expressions
+TEST_F(ComputoTest, ArrayObjectWithExpressions) {
+    // {"array": [["+", 1, 2], ["$input"], ["obj", ["key", "value"]]]}
+    json script = json{{"array", json::array({
         json::array({"+", 1, 2}),
         json::array({"$input"}),
         json::array({"obj", json::array({"key", "value"})})
-    });
+    })}};
     json expected = json::array({3, input_data, json{{"key", "value"}}});
     EXPECT_EQ(computo::execute(script, input_data), expected);
 }
 
-// Test arr operator empty array
-TEST_F(ComputoTest, ArrOperatorEmpty) {
-    // ["arr"] - no elements
-    json script = json::array({"arr"});
+// Test array object empty array  
+TEST_F(ComputoTest, ArrayObjectEmpty) {
+    // {"array": []} - no elements
+    json script = json{{"array", json::array()}};
     json expected = json::array();
     EXPECT_EQ(computo::execute(script, input_data), expected);
 }
 
-// Test complex combination: if + obj + arr
-TEST_F(ComputoTest, IfObjArrCombination) {
-    // ["if", true, ["obj", ["list", ["arr", 1, 2, 3]]], ["arr"]]
+// Test complex combination: if + obj + array
+TEST_F(ComputoTest, IfObjArrayCombination) {
+    // ["if", true, ["obj", ["list", {"array": [1, 2, 3]}]], {"array": []}]
     json script = json::array({
         "if", 
         true,
         json::array({
             "obj",
-            json::array({"list", json::array({"arr", 1, 2, 3})})
+            json::array({"list", json{{"array", json::array({1, 2, 3})}}})
         }),
-        json::array({"arr"})
+        json{{"array", json::array()}}
     });
     json expected = json{{"list", json::array({1, 2, 3})}};
     EXPECT_EQ(computo::execute(script, input_data), expected);
@@ -755,10 +761,10 @@ TEST_F(ComputoTest, PermutoApplyMissingKeyError) {
 
 // Test map operator basic functionality
 TEST_F(ComputoTest, MapOperatorBasic) {
-    // ["map", [1, 2, 3], ["lambda", ["x"], ["+", ["$", "/x"], 1]]]
+    // ["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["+", ["$", "/x"], 1]]]
     json script = json::array({
         "map",
-        json::array({1, 2, 3}),
+        json{{"array", json::array({1, 2, 3})}},
         json::array({"lambda", json::array({"x"}), json::array({"+", json::array({"$", "/x"}), 1})})
     });
     json expected = json::array({2, 3, 4});
@@ -767,10 +773,10 @@ TEST_F(ComputoTest, MapOperatorBasic) {
 
 // Test map operator with string transformation
 TEST_F(ComputoTest, MapOperatorStringTransform) {
-    // ["map", ["hello", "world"], ["lambda", ["s"], ["$", "/s"]]]
+    // ["map", {"array": ["hello", "world"]}, ["lambda", ["s"], ["$", "/s"]]]
     json script = json::array({
         "map",
-        json::array({"hello", "world"}),
+        json{{"array", json::array({"hello", "world"})}},
         json::array({"lambda", json::array({"s"}), json::array({"$", "/s"})})
     });
     json expected = json::array({"hello", "world"});
@@ -779,13 +785,13 @@ TEST_F(ComputoTest, MapOperatorStringTransform) {
 
 // Test map operator with complex lambda
 TEST_F(ComputoTest, MapOperatorComplexLambda) {
-    json array_data = json::array({
+    json array_data = json{{"array", json::array({
         json{{"id", 1}, {"value", 10}},
         json{{"id", 2}, {"value", 20}},
         json{{"id", 3}, {"value", 30}}
-    });
+    })}};
     
-    // ["map", array, ["lambda", ["item"], ["obj", ["id", ["get", ["$", "/item"], "/id"]], ["doubled", ["+", ["get", ["$", "/item"], "/value"], ["get", ["$", "/item"], "/value"]]]]]]
+    // ["map", {"array": [...]}, ["lambda", ["item"], ["obj", ["id", ["get", ["$", "/item"], "/id"]], ["doubled", ["+", ["get", ["$", "/item"], "/value"], ["get", ["$", "/item"], "/value"]]]]]]
     json script = json::array({
         "map",
         array_data,
@@ -821,11 +827,10 @@ TEST_F(ComputoTest, MapOperatorEmpty) {
 
 // Test filter operator basic functionality
 TEST_F(ComputoTest, FilterOperatorBasic) {
-    // ["filter", [1, 2, 3, 4, 5], ["lambda", ["x"], [">", ["$", "/x"], 3]]]
-    // Since we don't have > operator, let's use a different approach
+    // ["filter", {"array": [1, 2, 3, 4, 5]}, ["lambda", ["x"], ["$", "/x"]]]
     json script = json::array({
         "filter",
-        json::array({1, 2, 3, 4, 5}),
+        json{{"array", json::array({1, 2, 3, 4, 5})}},
         json::array({"lambda", json::array({"x"}), json::array({"$", "/x"})}) // Filter out 0 (falsy)
     });
     // All numbers are truthy, so all should pass
@@ -835,10 +840,10 @@ TEST_F(ComputoTest, FilterOperatorBasic) {
 
 // Test filter operator with boolean condition
 TEST_F(ComputoTest, FilterOperatorBoolean) {
-    // ["filter", [true, false, true, false], ["lambda", ["x"], ["$", "/x"]]]
+    // ["filter", {"array": [true, false, true, false]}, ["lambda", ["x"], ["$", "/x"]]]
     json script = json::array({
         "filter",
-        json::array({true, false, true, false}),
+        json{{"array", json::array({true, false, true, false})}},
         json::array({"lambda", json::array({"x"}), json::array({"$", "/x"})})
     });
     json expected = json::array({true, true});
@@ -848,10 +853,10 @@ TEST_F(ComputoTest, FilterOperatorBoolean) {
 // Test filter operator with string condition - TEMPORARILY DISABLED
 // Issue: strings being treated as operators - needs investigation
 TEST_F(ComputoTest, FilterOperatorString) {
-    // ["filter", ["hello", "", "world", ""], ["lambda", ["s"], ["$", "/s"]]]
+    // ["filter", {"array": ["hello", "", "world", ""]}, ["lambda", ["s"], ["$", "/s"]]]
     json script = json::array({
         "filter",
-        json::array({"hello", "", "world", ""}),
+        json{{"array", json::array({"hello", "", "world", ""})}},
         json::array({"lambda", json::array({"s"}), json::array({"$", "/s"})})
     });
     json expected = json::array({"hello", "world"});
@@ -860,13 +865,13 @@ TEST_F(ComputoTest, FilterOperatorString) {
 
 // Test filter operator with object condition
 TEST_F(ComputoTest, FilterOperatorObject) {
-    json array_data = json::array({
+    json array_data = json{{"array", json::array({
         json{{"active", true}, {"name", "Alice"}},
         json{{"active", false}, {"name", "Bob"}},
         json{{"active", true}, {"name", "Charlie"}}
-    });
+    })}};
     
-    // ["filter", array, ["lambda", ["user"], ["get", ["$", "/user"], "/active"]]]
+    // ["filter", {"array": [...]}, ["lambda", ["user"], ["get", ["$", "/user"], "/active"]]]
     json script = json::array({
         "filter",
         array_data,
@@ -897,12 +902,12 @@ TEST_F(ComputoTest, FilterOperatorEmpty) {
 
 // Test nested map and filter
 TEST_F(ComputoTest, NestedMapFilter) {
-    // ["map", ["filter", [1, 2, 3, 4, 5], ["lambda", ["x"], ["$", "/x"]]], ["lambda", ["x"], ["+", ["$", "/x"], 10]]]
+    // ["map", ["filter", {"array": [1, 2, 3, 4, 5]}, ["lambda", ["x"], ["$", "/x"]]], ["lambda", ["x"], ["+", ["$", "/x"], 10]]]
     json script = json::array({
         "map",
         json::array({
             "filter",
-            json::array({1, 2, 3, 4, 5}),
+            json{{"array", json::array({1, 2, 3, 4, 5})}},
             json::array({"lambda", json::array({"x"}), json::array({"$", "/x"})}) // All pass (all truthy)
         }),
         json::array({"lambda", json::array({"x"}), json::array({"+", json::array({"$", "/x"}), 10})})
@@ -913,13 +918,13 @@ TEST_F(ComputoTest, NestedMapFilter) {
 
 // Test map with let variables
 TEST_F(ComputoTest, MapWithLet) {
-    // ["let", [["multiplier", 3]], ["map", [1, 2, 3], ["lambda", ["x"], ["+", ["$", "/x"], ["$", "/multiplier"]]]]]
+    // ["let", [["multiplier", 3]], ["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["+", ["$", "/x"], ["$", "/multiplier"]]]]]
     json script = json::array({
         "let",
         json::array({json::array({"multiplier", 3})}),
         json::array({
             "map",
-            json::array({1, 2, 3}),
+            json{{"array", json::array({1, 2, 3})}},
             json::array({
                 "lambda",
                 json::array({"x"}),
@@ -933,10 +938,10 @@ TEST_F(ComputoTest, MapWithLet) {
 
 // Test map with conditional in lambda
 TEST_F(ComputoTest, MapWithConditional) {
-    // ["map", [1, 2, 3], ["lambda", ["x"], ["if", ["$", "/x"], ["+", ["$", "/x"], 10], 0]]]
+    // ["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["if", ["$", "/x"], ["+", ["$", "/x"], 10], 0]]]
     json script = json::array({
         "map",
-        json::array({1, 2, 3}),
+        json{{"array", json::array({1, 2, 3})}},
         json::array({
             "lambda",
             json::array({"x"}),

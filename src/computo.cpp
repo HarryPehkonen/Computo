@@ -194,18 +194,6 @@ static void initialize_operators() {
         return result;
     };
     
-    // Arr operator for array construction
-    operators["arr"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
-        nlohmann::json result = nlohmann::json::array();
-        
-        // Evaluate each argument and add to result array
-        for (const auto& element_expr : args) {
-            nlohmann::json element = evaluate(element_expr, ctx);
-            result.push_back(element);
-        }
-        
-        return result;
-    };
     
     // Permuto.apply operator for template processing
     operators["permuto.apply"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
@@ -304,15 +292,29 @@ static void initialize_operators() {
 nlohmann::json evaluate(const nlohmann::json& expr, ExecutionContext& ctx) {
     initialize_operators();
     
+    // Check for array object syntax: {"array": [...]}
+    if (expr.is_object() && expr.contains("array")) {
+        if (!expr["array"].is_array()) {
+            throw InvalidArgumentException("array object must contain an actual array");
+        }
+        // Evaluate each element in the array
+        nlohmann::json result = nlohmann::json::array();
+        for (const auto& element_expr : expr["array"]) {
+            nlohmann::json element = evaluate(element_expr, ctx);
+            result.push_back(element);
+        }
+        return result;
+    }
+    
     // Base case: if expr is not an array or is empty, it's a literal
     if (!expr.is_array() || expr.empty()) {
         return expr;
     }
     
-    // Check if first element is a string (potential operator)
+    // Arrays are now always operator calls - no ambiguity!
+    // Check if first element is a string (operator name)
     if (!expr[0].is_string()) {
-        // Not an operator call, treat as literal array
-        return expr;
+        throw InvalidArgumentException("Array must start with operator name (string)");
     }
     
     std::string op = expr[0].get<std::string>();
@@ -322,25 +324,9 @@ nlohmann::json evaluate(const nlohmann::json& expr, ExecutionContext& ctx) {
         return ctx.input;
     }
     
-    // Check if this is actually a valid operator
+    // Look up operator in registry
     auto it = operators.find(op);
     if (it == operators.end()) {
-        // Special case: if this looks like a literal array of similar types, 
-        // treat it as literal rather than throwing an exception
-        if (expr.size() > 1) {
-            bool all_strings = true;
-            for (size_t i = 1; i < expr.size(); ++i) {
-                if (!expr[i].is_string()) {
-                    all_strings = false;
-                    break;
-                }
-            }
-            // If all elements are strings, treat as literal array
-            if (all_strings) {
-                return expr;
-            }
-        }
-        // Otherwise, this looks like an operator call with unknown operator
         throw InvalidOperatorException(op);
     }
     
