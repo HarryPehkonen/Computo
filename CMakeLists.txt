@@ -56,3 +56,49 @@ target_link_libraries(computo_tests PRIVATE
 
 # Add test
 add_test(NAME ComputoTests COMMAND computo_tests)
+
+# Install targets
+install(TARGETS computo computo_cli
+    EXPORT ComputoTargets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+    INCLUDES DESTINATION include
+)
+
+# Install headers
+install(DIRECTORY include/ DESTINATION include)
+
+# Install export targets
+install(EXPORT ComputoTargets
+    FILE ComputoTargets.cmake
+    NAMESPACE Computo::
+    DESTINATION lib/cmake/Computo
+)
+
+# Create and install config files
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    "ComputoConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY AnyNewerVersion
+)
+
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/ComputoConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/ComputoConfig.cmake"
+    INSTALL_DESTINATION lib/cmake/Computo
+)
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/ComputoConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/ComputoConfigVersion.cmake"
+    DESTINATION lib/cmake/Computo
+)
+
+# Add install/strip target
+add_custom_target(install-strip
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target install
+    COMMAND ${CMAKE_STRIP} $<TARGET_FILE:computo_cli>
+    COMMENT "Installing and stripping binaries"
+)
