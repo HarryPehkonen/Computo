@@ -677,6 +677,19 @@ static void initialize_operators() {
         return result;
     };
     
+    operators["count"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 1) {
+            throw InvalidArgumentException("count expects exactly 1 argument");
+        }
+        
+        nlohmann::json array_val = evaluate(args[0], ctx);
+        if (!array_val.is_array()) {
+            throw InvalidArgumentException("count expects an array");
+        }
+        
+        return array_val.size();
+    };
+    
     initialized = true;
 }
 

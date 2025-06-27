@@ -1313,3 +1313,39 @@ TEST_F(ComputoTest, Phase6Integration) {
     json expected = 86;
     EXPECT_EQ(computo::execute(script, input_data), expected);
 }
+
+// Test count operator
+TEST_F(ComputoTest, CountOperator) {
+    // Test basic count
+    json script = json::array({"count", json{{"array", json::array({1, 2, 3, 4, 5})}}});
+    json expected = 5;
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+    
+    // Test count with empty array
+    json script_empty = json::array({"count", json{{"array", json::array()}}});
+    json expected_empty = 0;
+    EXPECT_EQ(computo::execute(script_empty, input_data), expected_empty);
+    
+    // Test count with array using let binding
+    json script_input = json::array({
+        "let", 
+        json::array({json::array({"myarray", json{{"array", json::array({10, 20, 30})}}})}),
+        json::array({"count", json::array({"$", "/myarray"})})
+    });
+    json expected_input = 3;
+    EXPECT_EQ(computo::execute(script_input, input_data), expected_input);
+}
+
+// Test count operator errors
+TEST_F(ComputoTest, CountOperatorErrors) {
+    // Test count with non-array
+    json script_invalid = json::array({"count", "not an array"});
+    EXPECT_THROW(computo::execute(script_invalid, input_data), computo::InvalidArgumentException);
+    
+    // Test count with wrong number of arguments
+    json script_no_args = json::array({"count"});
+    EXPECT_THROW(computo::execute(script_no_args, input_data), computo::InvalidArgumentException);
+    
+    json script_too_many = json::array({"count", json{{"array", json::array({1, 2, 3})}}, "extra"});
+    EXPECT_THROW(computo::execute(script_too_many, input_data), computo::InvalidArgumentException);
+}
