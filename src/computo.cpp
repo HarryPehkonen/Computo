@@ -286,6 +286,202 @@ static void initialize_operators() {
         return result;
     };
     
+    // Reduce operator for array aggregation
+    operators["reduce"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 3) {
+            throw InvalidArgumentException("reduce operator requires exactly 3 arguments");
+        }
+        
+        auto array = evaluate(args[0], ctx);
+        
+        if (!array.is_array()) {
+            throw InvalidArgumentException("reduce operator requires an array as first argument");
+        }
+        
+        // Second argument should be a lambda expression (not evaluated)
+        const auto& lambda_expr = args[1];
+        
+        // Third argument is the initial value (evaluated)
+        nlohmann::json accumulator = evaluate(args[2], ctx);
+        
+        // Apply lambda to each element with accumulator
+        for (const auto& item : array) {
+            // Create a lambda evaluation function that takes accumulator and item
+            // Lambda format: ["lambda", ["acc", "item"], body_expr]
+            if (!lambda_expr.is_array() || lambda_expr.size() != 3) {
+                throw InvalidArgumentException("reduce lambda must be [\"lambda\", [\"acc\", \"item\"], body_expr]");
+            }
+            
+            if (!lambda_expr[0].is_string() || lambda_expr[0].get<std::string>() != "lambda") {
+                throw InvalidArgumentException("reduce lambda expression must start with \"lambda\"");
+            }
+            
+            if (!lambda_expr[1].is_array() || lambda_expr[1].size() != 2) {
+                throw InvalidArgumentException("reduce lambda must have exactly two parameters: [\"acc\", \"item\"]");
+            }
+            
+            if (!lambda_expr[1][0].is_string() || !lambda_expr[1][1].is_string()) {
+                throw InvalidArgumentException("reduce lambda parameters must be strings");
+            }
+            
+            std::string acc_var = lambda_expr[1][0].get<std::string>();
+            std::string item_var = lambda_expr[1][1].get<std::string>();
+            
+            // Create new context with both accumulator and item variables
+            std::map<std::string, nlohmann::json> lambda_vars;
+            lambda_vars[acc_var] = accumulator;
+            lambda_vars[item_var] = item;
+            ExecutionContext lambda_ctx = ctx.with_variables(lambda_vars);
+            
+            // Evaluate the lambda body and update accumulator
+            accumulator = evaluate(lambda_expr[2], lambda_ctx);
+        }
+        
+        return accumulator;
+    };
+    
+    // Math operators
+    operators["-"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("- operator requires exactly 2 arguments");
+        }
+        
+        auto left = evaluate(args[0], ctx);
+        auto right = evaluate(args[1], ctx);
+        
+        if (!left.is_number() || !right.is_number()) {
+            throw InvalidArgumentException("- operator requires numeric arguments");
+        }
+        
+        if (left.is_number_integer() && right.is_number_integer()) {
+            return left.get<int64_t>() - right.get<int64_t>();
+        } else {
+            return left.get<double>() - right.get<double>();
+        }
+    };
+    
+    operators["*"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("* operator requires exactly 2 arguments");
+        }
+        
+        auto left = evaluate(args[0], ctx);
+        auto right = evaluate(args[1], ctx);
+        
+        if (!left.is_number() || !right.is_number()) {
+            throw InvalidArgumentException("* operator requires numeric arguments");
+        }
+        
+        if (left.is_number_integer() && right.is_number_integer()) {
+            return left.get<int64_t>() * right.get<int64_t>();
+        } else {
+            return left.get<double>() * right.get<double>();
+        }
+    };
+    
+    operators["/"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("/ operator requires exactly 2 arguments");
+        }
+        
+        auto left = evaluate(args[0], ctx);
+        auto right = evaluate(args[1], ctx);
+        
+        if (!left.is_number() || !right.is_number()) {
+            throw InvalidArgumentException("/ operator requires numeric arguments");
+        }
+        
+        double right_val = right.get<double>();
+        if (right_val == 0.0) {
+            throw InvalidArgumentException("Division by zero");
+        }
+        
+        return left.get<double>() / right_val;
+    };
+    
+    // Comparison operators
+    operators[">"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("> operator requires exactly 2 arguments");
+        }
+        
+        auto left = evaluate(args[0], ctx);
+        auto right = evaluate(args[1], ctx);
+        
+        if (!left.is_number() || !right.is_number()) {
+            throw InvalidArgumentException("> operator requires numeric arguments");
+        }
+        
+        return left.get<double>() > right.get<double>();
+    };
+    
+    operators["<"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("< operator requires exactly 2 arguments");
+        }
+        
+        auto left = evaluate(args[0], ctx);
+        auto right = evaluate(args[1], ctx);
+        
+        if (!left.is_number() || !right.is_number()) {
+            throw InvalidArgumentException("< operator requires numeric arguments");
+        }
+        
+        return left.get<double>() < right.get<double>();
+    };
+    
+    operators[">="] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException(">= operator requires exactly 2 arguments");
+        }
+        
+        auto left = evaluate(args[0], ctx);
+        auto right = evaluate(args[1], ctx);
+        
+        if (!left.is_number() || !right.is_number()) {
+            throw InvalidArgumentException(">= operator requires numeric arguments");
+        }
+        
+        return left.get<double>() >= right.get<double>();
+    };
+    
+    operators["<="] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("<= operator requires exactly 2 arguments");
+        }
+        
+        auto left = evaluate(args[0], ctx);
+        auto right = evaluate(args[1], ctx);
+        
+        if (!left.is_number() || !right.is_number()) {
+            throw InvalidArgumentException("<= operator requires numeric arguments");
+        }
+        
+        return left.get<double>() <= right.get<double>();
+    };
+    
+    operators["=="] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("== operator requires exactly 2 arguments");
+        }
+        
+        auto left = evaluate(args[0], ctx);
+        auto right = evaluate(args[1], ctx);
+        
+        return left == right;
+    };
+    
+    operators["!="] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("!= operator requires exactly 2 arguments");
+        }
+        
+        auto left = evaluate(args[0], ctx);
+        auto right = evaluate(args[1], ctx);
+        
+        return left != right;
+    };
+    
     initialized = true;
 }
 
