@@ -729,6 +729,46 @@ static void initialize_operators() {
         }
     };
     
+    // Car operator - returns first element of array
+    operators["car"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 1) {
+            throw InvalidArgumentException("car expects exactly 1 argument");
+        }
+        
+        nlohmann::json array_val = evaluate(args[0], ctx);
+        if (!array_val.is_array()) {
+            throw InvalidArgumentException("car expects an array");
+        }
+        
+        if (array_val.empty()) {
+            throw InvalidArgumentException("car cannot be applied to empty array");
+        }
+        
+        return array_val[0];
+    };
+    
+    // Cdr operator - returns all but first element of array
+    operators["cdr"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 1) {
+            throw InvalidArgumentException("cdr expects exactly 1 argument");
+        }
+        
+        nlohmann::json array_val = evaluate(args[0], ctx);
+        if (!array_val.is_array()) {
+            throw InvalidArgumentException("cdr expects an array");
+        }
+        
+        if (array_val.empty()) {
+            return nlohmann::json::array();  // Return empty array for empty input
+        }
+        
+        nlohmann::json result = nlohmann::json::array();
+        for (size_t i = 1; i < array_val.size(); ++i) {
+            result.push_back(array_val[i]);
+        }
+        return result;
+    };
+    
     initialized = true;
 }
 

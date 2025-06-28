@@ -19,7 +19,7 @@ A safe, sandboxed JSON transformation engine with Lisp-like syntax expressed in 
 cmake -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
 
-# Run tests (135 tests, 100% passing)
+# Run tests (153 tests, 100% passing)
 cd build && ctest --verbose
 ```
 
@@ -166,6 +166,31 @@ nlohmann::json result = computo::execute(multi_script, inputs);
 // Result: 10
 ```
 
+#### List Processing with car/cdr
+```json
+// Get first element
+["car", {"array": [1, 2, 3, 4]}]
+// Result: 1
+
+// Get remaining elements  
+["cdr", {"array": [1, 2, 3, 4]}]
+// Result: [2, 3, 4]
+
+// Composition: get second element
+["car", ["cdr", {"array": [1, 2, 3, 4]}]]
+// Result: 2
+
+// Process multiple inputs functionally
+["reduce", 
+  ["cdr", ["$inputs"]],                    // All patches (skip first input)
+  ["lambda", ["state", "patch"],
+    ["patch", ["$", "/state"], ["$", "/patch"]]
+  ],
+  ["car", ["$inputs"]]                     // Initial state (first input)
+]
+// Applies all patches to initial state
+```
+
 #### Permuto Integration
 ```json
 // Apply Permuto templates
@@ -214,6 +239,10 @@ nlohmann::json result = computo::execute(multi_script, inputs);
 - `["some", array, lambda]` - Test if any element matches
 - `["every", array, lambda]` - Test if all elements match
 - `["flatMap", array, lambda]` - Map and flatten results
+
+### List Processing (Functional)
+- `["car", array]` - Get first element of array
+- `["cdr", array]` - Get all but first element of array
 
 ### Lambda Syntax
 ```json
@@ -388,6 +417,32 @@ echo '["patch", ["get", ["$inputs"], "/0"], ["get", ["$inputs"], "/1"]]' > apply
 ]
 ```
 
+### Conversation Diff Processing (with car/cdr)
+```json
+// Process conversation updates using functional list operations
+["let", [
+    ["initial_state", ["car", ["$inputs"]]],           // First input: initial conversation
+    ["all_patches", ["cdr", ["$inputs"]]],             // Remaining inputs: patches
+    ["final_state", ["reduce",
+      ["$", "/all_patches"],
+      ["lambda", ["conversation", "patch"],
+        ["patch", ["$", "/conversation"], ["$", "/patch"]]
+      ],
+      ["$", "/initial_state"]
+    ]],
+    ["patch_count", ["count", ["$", "/all_patches"]]]
+  ],
+  ["obj",
+    ["conversation_id", ["get", ["$", "/final_state"], "/id"]],
+    ["message_count", ["count", ["get", ["$", "/final_state"], "/messages"]]],
+    ["patches_applied", ["$", "/patch_count"]],
+    ["final_conversation", ["$", "/final_state"]]
+  ]
+]
+// Input: initial_conversation.json patch1.json patch2.json patch3.json
+// Output: {"conversation_id": "conv_001", "message_count": 3, "patches_applied": 3, "final_conversation": {...}}
+```
+
 ## Error Handling
 
 Computo provides structured exceptions with debugging information:
@@ -420,6 +475,26 @@ Computo provides structured exceptions with debugging information:
 ["patch", {"a": 1}, {"array": [
   {"op": "invalid_operation", "path": "/a", "value": 2}
 ]}]
+```
+
+### List Processing Error Scenarios
+```json
+// These operations may throw InvalidArgumentException:
+
+// 1. car on empty array
+["car", {"array": []}]  // Throws: car cannot be applied to empty array
+
+// 2. car on non-array
+["car", "not_an_array"]  // Throws: car expects an array
+
+// 3. cdr on non-array
+["cdr", 42]  // Throws: cdr expects an array
+
+// 4. Wrong argument count
+["car", {"array": [1, 2]}, {"array": [3, 4]}]  // Throws: car expects exactly 1 argument
+
+// Note: cdr on empty array returns [] (empty array), does not throw
+["cdr", {"array": []}]  // Returns: []
 ```
 
 ## CLI Reference
@@ -506,12 +581,12 @@ computo/
 ├── cli/                    # Command-line tool
 ├── include/computo/        # Public headers
 ├── src/                    # Library implementation
-└── tests/                  # Test suite (135 tests, 100% passing)
+└── tests/                  # Test suite (153 tests, 100% passing)
 ```
 
 ## Development & Testing
 
-- **Test Coverage**: 130 comprehensive tests covering all operators and edge cases
+- **Test Coverage**: 153 comprehensive tests covering all operators and edge cases
 - **JSON Patch Compliance**: Full RFC 6902 implementation with round-trip testing
 - **Error Handling**: Comprehensive exception testing for all failure modes
 - **Multi-Input Support**: Extensive testing of multiple input scenarios
@@ -551,4 +626,27 @@ computo/
 
 // Or apply external patches
 ["patch", ["$input"], ["get", ["$inputs"], "/1"]]  // Apply patch from second input
+```
+
+### Using car/cdr for Cleaner Multiple Input Processing
+```json
+// Old way: Manual indexing
+["let", [
+    ["initial", ["get", ["$inputs"], "/0"]],
+    ["patch1", ["get", ["$inputs"], "/1"]],
+    ["patch2", ["get", ["$inputs"], "/2"]]
+  ],
+  ["patch", ["patch", ["$", "/initial"], ["$", "/patch1"]], ["$", "/patch2"]]
+]
+
+// New way: Functional with car/cdr
+["reduce", 
+  ["cdr", ["$inputs"]],                    // All patches (skip first input)
+  ["lambda", ["state", "patch"],
+    ["patch", ["$", "/state"], ["$", "/patch"]]
+  ],
+  ["car", ["$inputs"]]                     // Initial state (first input)
+]
+
+// Benefits: Works with any number of inputs, more readable, functional style
 ```

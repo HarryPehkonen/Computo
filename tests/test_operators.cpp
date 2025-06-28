@@ -1880,3 +1880,209 @@ TEST_F(ComputoTest, DiffPatchRoundTripComplex) {
     // The final result must be identical to the modified document.
     EXPECT_EQ(result, modified);
 }
+
+// Test car operator - basic functionality
+TEST_F(ComputoTest, CarOperatorBasic) {
+    // ["car", {"array": [1, 2, 3]}] -> 1
+    json script = json::array({
+        "car",
+        json{{"array", json::array({1, 2, 3})}}
+    });
+    EXPECT_EQ(computo::execute(script, input_data), 1);
+}
+
+// Test car operator - single element array
+TEST_F(ComputoTest, CarOperatorSingleElement) {
+    // ["car", {"array": ["hello"]}] -> "hello"
+    json script = json::array({
+        "car",
+        json{{"array", json::array({"hello"})}}
+    });
+    EXPECT_EQ(computo::execute(script, input_data), "hello");
+}
+
+// Test car operator - nested data
+TEST_F(ComputoTest, CarOperatorNested) {
+    // ["car", {"array": [{"name": "Alice"}, {"name": "Bob"}]}] -> {"name": "Alice"}
+    json script = json::array({
+        "car",
+        json{{"array", json::array({json{{"name", "Alice"}}, json{{"name", "Bob"}}})}}
+    });
+    json expected = json{{"name", "Alice"}};
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test car operator - empty array (should throw)
+TEST_F(ComputoTest, CarOperatorEmptyArray) {
+    json script = json::array({
+        "car",
+        json{{"array", json::array()}}
+    });
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+// Test car operator - non-array input (should throw)
+TEST_F(ComputoTest, CarOperatorNonArray) {
+    json script = json::array({
+        "car",
+        "not an array"
+    });
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+// Test car operator - wrong argument count (should throw)
+TEST_F(ComputoTest, CarOperatorWrongArgCount) {
+    json script = json::array({
+        "car",
+        json{{"array", json::array({1, 2, 3})}},
+        json{{"array", json::array({4, 5, 6})}}  // Extra argument
+    });
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+// Test car operator - no arguments (should throw)
+TEST_F(ComputoTest, CarOperatorNoArgs) {
+    json script = json::array({"car"});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+// Test cdr operator - basic functionality
+TEST_F(ComputoTest, CdrOperatorBasic) {
+    // ["cdr", {"array": [1, 2, 3]}] -> [2, 3]
+    json script = json::array({
+        "cdr",
+        json{{"array", json::array({1, 2, 3})}}
+    });
+    json expected = json::array({2, 3});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test cdr operator - single element array
+TEST_F(ComputoTest, CdrOperatorSingleElement) {
+    // ["cdr", {"array": ["hello"]}] -> []
+    json script = json::array({
+        "cdr",
+        json{{"array", json::array({"hello"})}}
+    });
+    json expected = json::array();
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test cdr operator - two element array
+TEST_F(ComputoTest, CdrOperatorTwoElements) {
+    // ["cdr", {"array": [1, 2]}] -> [2]
+    json script = json::array({
+        "cdr",
+        json{{"array", json::array({1, 2})}}
+    });
+    json expected = json::array({2});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test cdr operator - nested data
+TEST_F(ComputoTest, CdrOperatorNested) {
+    // ["cdr", {"array": [{"name": "Alice"}, {"name": "Bob"}, {"name": "Carol"}]}] -> [{"name": "Bob"}, {"name": "Carol"}]
+    json script = json::array({
+        "cdr",
+        json{{"array", json::array({
+            json{{"name", "Alice"}}, 
+            json{{"name", "Bob"}}, 
+            json{{"name", "Carol"}}
+        })}}
+    });
+    json expected = json::array({json{{"name", "Bob"}}, json{{"name", "Carol"}}});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test cdr operator - empty array (should return empty array)
+TEST_F(ComputoTest, CdrOperatorEmptyArray) {
+    json script = json::array({
+        "cdr",
+        json{{"array", json::array()}}
+    });
+    json expected = json::array();
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test cdr operator - non-array input (should throw)
+TEST_F(ComputoTest, CdrOperatorNonArray) {
+    json script = json::array({
+        "cdr",
+        "not an array"
+    });
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+// Test cdr operator - wrong argument count (should throw)
+TEST_F(ComputoTest, CdrOperatorWrongArgCount) {
+    json script = json::array({
+        "cdr",
+        json{{"array", json::array({1, 2, 3})}},
+        json{{"array", json::array({4, 5, 6})}}  // Extra argument
+    });
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+// Test cdr operator - no arguments (should throw)
+TEST_F(ComputoTest, CdrOperatorNoArgs) {
+    json script = json::array({"cdr"});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+// Test car and cdr composition
+TEST_F(ComputoTest, CarCdrComposition) {
+    // ["car", ["cdr", {"array": [1, 2, 3]}]] -> car([2, 3]) -> 2
+    json script = json::array({
+        "car",
+        json::array({
+            "cdr", 
+            json{{"array", json::array({1, 2, 3})}}
+        })
+    });
+    EXPECT_EQ(computo::execute(script, input_data), 2);
+}
+
+// Test cdr of cdr
+TEST_F(ComputoTest, CdrCdrComposition) {
+    // ["cdr", ["cdr", {"array": [1, 2, 3, 4]}]] -> cdr([2, 3, 4]) -> [3, 4]
+    json script = json::array({
+        "cdr",
+        json::array({
+            "cdr", 
+            json{{"array", json::array({1, 2, 3, 4})}}
+        })
+    });
+    json expected = json::array({3, 4});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test car and cdr with $inputs (for multiple inputs use case)
+TEST_F(ComputoTest, CarCdrWithInputs) {
+    // Create multiple inputs scenario
+    std::vector<json> multiple_inputs = {
+        json{{"id", "conv_001"}},  // Initial conversation
+        json::array({json{{"op", "add"}, {"path", "/messages/0"}, {"value", "Hello"}}}),  // First patch
+        json::array({json{{"op", "add"}, {"path", "/messages/1"}, {"value", "Hi there"}}})  // Second patch
+    };
+    
+    // ["car", ["$inputs"]] -> first input (initial conversation)
+    json script = json::array({
+        "car",
+        json::array({"$inputs"})
+    });
+    json result = computo::execute(script, multiple_inputs);
+    json expected_result = json{{"id", "conv_001"}};
+    EXPECT_EQ(result, expected_result);
+    
+    // ["cdr", ["$inputs"]] -> all but first input (patches)
+    json script2 = json::array({
+        "cdr", 
+        json::array({"$inputs"})
+    });
+    json result2 = computo::execute(script2, multiple_inputs);
+    json expected = json::array({
+        json::array({json{{"op", "add"}, {"path", "/messages/0"}, {"value", "Hello"}}}),
+        json::array({json{{"op", "add"}, {"path", "/messages/1"}, {"value", "Hi there"}}})
+    });
+    EXPECT_EQ(result2, expected);
+}
