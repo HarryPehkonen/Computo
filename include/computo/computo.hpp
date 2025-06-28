@@ -36,19 +36,42 @@ public:
         : ComputoException("Invalid argument: " + message) {}
 };
 
+class PatchFailedException : public ComputoException {
+public:
+    explicit PatchFailedException(const std::string& message) 
+        : ComputoException("Failed to apply JSON patch: " + message) {}
+};
+
 // Execution context for maintaining state during evaluation
 struct ExecutionContext {
-    const nlohmann::json& input;
+private:
+    static const nlohmann::json null_input;  // Static null input for empty inputs case
+    
+public:
+    const nlohmann::json& input;  // Kept for backward compatibility
+    const std::vector<nlohmann::json> inputs;  // New multiple inputs support
     std::map<std::string, nlohmann::json> variables;
     permuto::Options permuto_options;
     
-    explicit ExecutionContext(const nlohmann::json& input_data) : input(input_data) {}
+    // Constructor for single input (backward compatibility)
+    explicit ExecutionContext(const nlohmann::json& input_data) 
+        : input(input_data), inputs({input_data}) {}
+    
+    // Constructor for single input with options (backward compatibility)
     explicit ExecutionContext(const nlohmann::json& input_data, const permuto::Options& options) 
-        : input(input_data), permuto_options(options) {}
+        : input(input_data), inputs({input_data}), permuto_options(options) {}
+    
+    // Constructor for multiple inputs
+    explicit ExecutionContext(const std::vector<nlohmann::json>& input_data) 
+        : input(input_data.empty() ? null_input : input_data[0]), inputs(input_data) {}
+    
+    // Constructor for multiple inputs with options
+    explicit ExecutionContext(const std::vector<nlohmann::json>& input_data, const permuto::Options& options) 
+        : input(input_data.empty() ? null_input : input_data[0]), inputs(input_data), permuto_options(options) {}
     
     // Create a new context with additional variables for let scoping
     ExecutionContext with_variables(const std::map<std::string, nlohmann::json>& new_vars) const {
-        ExecutionContext new_ctx(input, permuto_options);
+        ExecutionContext new_ctx(inputs, permuto_options);
         new_ctx.variables = variables; // Copy existing variables
         // Add/override with new variables
         for (const auto& pair : new_vars) {
@@ -78,8 +101,12 @@ using OperatorFunc = std::function<nlohmann::json(const nlohmann::json& args, Ex
 // Core evaluation function
 nlohmann::json evaluate(const nlohmann::json& expr, ExecutionContext& ctx);
 
-// Main API functions
+// Main API functions - existing single input API
 nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input);
 nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input, const permuto::Options& permuto_options);
+
+// New multiple inputs API
+nlohmann::json execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs);
+nlohmann::json execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs, const permuto::Options& permuto_options);
 
 } // namespace computo

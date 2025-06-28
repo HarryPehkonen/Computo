@@ -4,6 +4,9 @@
 
 namespace computo {
 
+// Define static null input for ExecutionContext
+const nlohmann::json ExecutionContext::null_input = nlohmann::json(nullptr);
+
 // Operator registry
 static std::map<std::string, OperatorFunc> operators;
 
@@ -690,6 +693,42 @@ static void initialize_operators() {
         return array_val.size();
     };
     
+    // Diff operator for generating JSON patches
+    operators["diff"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("diff operator requires exactly 2 arguments");
+        }
+        
+        auto document_a = evaluate(args[0], ctx);
+        auto document_b = evaluate(args[1], ctx);
+        
+        try {
+            return nlohmann::json::diff(document_a, document_b);
+        } catch (const nlohmann::json::exception& e) {
+            throw InvalidArgumentException("Failed to generate JSON diff: " + std::string(e.what()));
+        }
+    };
+    
+    // Patch operator for applying JSON patches
+    operators["patch"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("patch operator requires exactly 2 arguments");
+        }
+        
+        auto document_to_patch = evaluate(args[0], ctx);
+        auto patch_array = evaluate(args[1], ctx);
+        
+        if (!patch_array.is_array()) {
+            throw InvalidArgumentException("patch operator requires an array as second argument");
+        }
+        
+        try {
+            return document_to_patch.patch(patch_array);
+        } catch (const nlohmann::json::exception& e) {
+            throw PatchFailedException(std::string(e.what()));
+        }
+    };
+    
     initialized = true;
 }
 
@@ -728,6 +767,15 @@ nlohmann::json evaluate(const nlohmann::json& expr, ExecutionContext& ctx) {
         return ctx.input;
     }
     
+    // Special case: $inputs operator
+    if (op == "$inputs") {
+        nlohmann::json result = nlohmann::json::array();
+        for (const auto& input_doc : ctx.inputs) {
+            result.push_back(input_doc);
+        }
+        return result;
+    }
+    
     // Look up operator in registry
     auto it = operators.find(op);
     if (it == operators.end()) {
@@ -752,6 +800,17 @@ nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input
 
 nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input, const permuto::Options& permuto_options) {
     ExecutionContext ctx(input, permuto_options);
+    return evaluate(script, ctx);
+}
+
+// New multiple inputs API
+nlohmann::json execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs) {
+    ExecutionContext ctx(inputs);
+    return evaluate(script, ctx);
+}
+
+nlohmann::json execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs, const permuto::Options& permuto_options) {
+    ExecutionContext ctx(inputs, permuto_options);
     return evaluate(script, ctx);
 }
 
