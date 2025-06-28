@@ -9,14 +9,16 @@ using json = nlohmann::json;
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " [--interpolation] [--diff] <script.json> [input1.json [input2.json ...]]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " [--interpolation] [--diff] [--pretty=N] <script.json> [input1.json [input2.json ...]]" << std::endl;
         std::cerr << "  --interpolation: Enable string interpolation in Permuto templates" << std::endl;
         std::cerr << "  --diff: Generate a JSON patch between the input and the transformation result" << std::endl;
+        std::cerr << "  --pretty=N: Pretty-print JSON with N spaces of indentation (default: compact)" << std::endl;
         return 1;
     }
     
     bool enable_interpolation = false;
     bool diff_mode = false;
+    int pretty_indent = -1;  // -1 means compact output
     int script_arg = 1;
     
     // Parse flags
@@ -27,6 +29,19 @@ int main(int argc, char* argv[]) {
             script_arg = i + 1;
         } else if (arg == "--diff") {
             diff_mode = true;
+            script_arg = i + 1;
+        } else if (const std::string pretty_prefix = "--pretty="; arg.find(pretty_prefix) == 0) {
+            std::string indent_str = arg.substr(pretty_prefix.length());
+            try {
+                pretty_indent = std::stoi(indent_str);
+                if (pretty_indent < 0) {
+                    std::cerr << "Error: --pretty indent must be >= 0" << std::endl;
+                    return 1;
+                }
+            } catch (const std::exception&) {
+                std::cerr << "Error: Invalid --pretty value: " << indent_str << std::endl;
+                return 1;
+            }
             script_arg = i + 1;
         } else {
             // Found non-flag argument, this is the script
@@ -99,10 +114,18 @@ int main(int argc, char* argv[]) {
         if (diff_mode) {
             // Generate diff between original input and result
             json patch = nlohmann::json::diff(inputs[0], result);
-            std::cout << patch.dump(2) << std::endl;
+            if (pretty_indent >= 0) {
+                std::cout << patch.dump(pretty_indent) << std::endl;
+            } else {
+                std::cout << patch.dump() << std::endl;
+            }
         } else {
             // Output transformation result
-            std::cout << result.dump(2) << std::endl;
+            if (pretty_indent >= 0) {
+                std::cout << result.dump(pretty_indent) << std::endl;
+            } else {
+                std::cout << result.dump() << std::endl;
+            }
         }
         
     } catch (const computo::ComputoException& e) {
