@@ -43,35 +43,50 @@ public:
 };
 
 // Execution context for maintaining state during evaluation
-struct ExecutionContext {
+// Uses smart pointers for memory safety and assignability (required for TCO)
+class ExecutionContext {
 private:
+    std::shared_ptr<const nlohmann::json> input_ptr;
+    std::shared_ptr<const std::vector<nlohmann::json>> inputs_ptr;
     static const nlohmann::json null_input;  // Static null input for empty inputs case
     
 public:
-    const nlohmann::json& input;  // Kept for backward compatibility
-    const std::vector<nlohmann::json> inputs;  // New multiple inputs support
     std::map<std::string, nlohmann::json> variables;
     permuto::Options permuto_options;
     
     // Constructor for single input (backward compatibility)
     explicit ExecutionContext(const nlohmann::json& input_data) 
-        : input(input_data), inputs({input_data}) {}
+        : input_ptr(std::make_shared<nlohmann::json>(input_data)),
+          inputs_ptr(std::make_shared<std::vector<nlohmann::json>>(std::vector<nlohmann::json>{input_data})) {}
     
     // Constructor for single input with options (backward compatibility)
     explicit ExecutionContext(const nlohmann::json& input_data, const permuto::Options& options) 
-        : input(input_data), inputs({input_data}), permuto_options(options) {}
+        : input_ptr(std::make_shared<nlohmann::json>(input_data)),
+          inputs_ptr(std::make_shared<std::vector<nlohmann::json>>(std::vector<nlohmann::json>{input_data})),
+          permuto_options(options) {}
     
     // Constructor for multiple inputs
     explicit ExecutionContext(const std::vector<nlohmann::json>& input_data) 
-        : input(input_data.empty() ? null_input : input_data[0]), inputs(input_data) {}
+        : input_ptr(input_data.empty() ? 
+                    std::make_shared<nlohmann::json>(null_input) : 
+                    std::make_shared<nlohmann::json>(input_data[0])),
+          inputs_ptr(std::make_shared<std::vector<nlohmann::json>>(input_data)) {}
     
     // Constructor for multiple inputs with options
     explicit ExecutionContext(const std::vector<nlohmann::json>& input_data, const permuto::Options& options) 
-        : input(input_data.empty() ? null_input : input_data[0]), inputs(input_data), permuto_options(options) {}
+        : input_ptr(input_data.empty() ? 
+                    std::make_shared<nlohmann::json>(null_input) : 
+                    std::make_shared<nlohmann::json>(input_data[0])),
+          inputs_ptr(std::make_shared<std::vector<nlohmann::json>>(input_data)),
+          permuto_options(options) {}
+    
+    // Accessors for backward compatibility
+    const nlohmann::json& input() const { return *input_ptr; }
+    const std::vector<nlohmann::json>& inputs() const { return *inputs_ptr; }
     
     // Create a new context with additional variables for let scoping
     ExecutionContext with_variables(const std::map<std::string, nlohmann::json>& new_vars) const {
-        ExecutionContext new_ctx(inputs, permuto_options);
+        ExecutionContext new_ctx(*inputs_ptr, permuto_options);
         new_ctx.variables = variables; // Copy existing variables
         // Add/override with new variables
         for (const auto& pair : new_vars) {
@@ -93,13 +108,19 @@ public:
         }
         return it->second;
     }
+    
+    // Now assignable for TCO!
+    ExecutionContext& operator=(const ExecutionContext&) = default;
+    ExecutionContext(const ExecutionContext&) = default;
+    ExecutionContext& operator=(ExecutionContext&&) = default;
+    ExecutionContext(ExecutionContext&&) = default;
 };
 
 // Type alias for operator functions
 using OperatorFunc = std::function<nlohmann::json(const nlohmann::json& args, ExecutionContext& ctx)>;
 
-// Core evaluation function
-nlohmann::json evaluate(const nlohmann::json& expr, ExecutionContext& ctx);
+// Core evaluation function (now uses pass-by-value for TCO)
+nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx);
 
 // Main API functions - existing single input API
 nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input);

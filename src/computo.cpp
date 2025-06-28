@@ -65,38 +65,7 @@ static void initialize_operators() {
         }
     };
     
-    // Let operator for variable binding
-    operators["let"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
-        if (args.size() != 2) {
-            throw InvalidArgumentException("let operator requires exactly 2 arguments");
-        }
-        
-        // First argument should be an array of [var_name, expr] pairs
-        if (!args[0].is_array()) {
-            throw InvalidArgumentException("let operator requires bindings as an array");
-        }
-        
-        std::map<std::string, nlohmann::json> new_vars;
-        
-        // Process each binding
-        for (const auto& binding : args[0]) {
-            if (!binding.is_array() || binding.size() != 2) {
-                throw InvalidArgumentException("let binding must be [var_name, expr] pair");
-            }
-            
-            if (!binding[0].is_string()) {
-                throw InvalidArgumentException("let variable name must be a string");
-            }
-            
-            std::string var_name = binding[0].get<std::string>();
-            nlohmann::json var_value = evaluate(binding[1], ctx);
-            new_vars[var_name] = var_value;
-        }
-        
-        // Create new context with variables and evaluate body
-        ExecutionContext new_ctx = ctx.with_variables(new_vars);
-        return evaluate(args[1], new_ctx);
-    };
+    // Note: let operator now handled as special form in evaluate() for TCO
     
     // Dollar operator for variable lookup
     operators["$"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
@@ -133,46 +102,7 @@ static void initialize_operators() {
         }
     };
     
-    // If operator for conditional logic
-    operators["if"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
-        if (args.size() != 3) {
-            throw InvalidArgumentException("if operator requires exactly 3 arguments");
-        }
-        
-        auto condition = evaluate(args[0], ctx);
-        
-        // Determine truthiness
-        bool is_true = false;
-        if (condition.is_boolean()) {
-            is_true = condition.get<bool>();
-        } else if (condition.is_number()) {
-            // Numbers: 0 is false, everything else is true
-            if (condition.is_number_integer()) {
-                is_true = condition.get<int64_t>() != 0;
-            } else {
-                is_true = condition.get<double>() != 0.0;
-            }
-        } else if (condition.is_string()) {
-            // Strings: empty string is false, non-empty is true
-            is_true = !condition.get<std::string>().empty();
-        } else if (condition.is_null()) {
-            // null is false
-            is_true = false;
-        } else if (condition.is_array()) {
-            // Arrays: empty array is false, non-empty is true
-            is_true = !condition.empty();
-        } else if (condition.is_object()) {
-            // Objects: empty object is false, non-empty is true
-            is_true = !condition.empty();
-        }
-        
-        // Evaluate and return appropriate branch
-        if (is_true) {
-            return evaluate(args[1], ctx); // then branch
-        } else {
-            return evaluate(args[2], ctx); // else branch
-        }
-    };
+    // Note: if operator now handled as special form in evaluate() for TCO
     
     // Obj operator for object construction
     operators["obj"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
@@ -772,65 +702,137 @@ static void initialize_operators() {
     initialized = true;
 }
 
-nlohmann::json evaluate(const nlohmann::json& expr, ExecutionContext& ctx) {
+nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx) {
     initialize_operators();
     
-    // Check for array object syntax: {"array": [...]}
-    if (expr.is_object() && expr.contains("array")) {
-        if (!expr["array"].is_array()) {
-            throw InvalidArgumentException("array object must contain an actual array");
+    // Trampoline loop for Tail Call Optimization
+    while (true) {
+        // Check for array object syntax: {"array": [...]}
+        if (expr.is_object() && expr.contains("array")) {
+            if (!expr["array"].is_array()) {
+                throw InvalidArgumentException("array object must contain an actual array");
+            }
+            // Evaluate each element in the array
+            nlohmann::json result = nlohmann::json::array();
+            for (const auto& element_expr : expr["array"]) {
+                nlohmann::json element = evaluate(element_expr, ctx);
+                result.push_back(element);
+            }
+            return result;
         }
-        // Evaluate each element in the array
-        nlohmann::json result = nlohmann::json::array();
-        for (const auto& element_expr : expr["array"]) {
-            nlohmann::json element = evaluate(element_expr, ctx);
-            result.push_back(element);
+        
+        // Base case: if expr is not an array or is empty, it's a literal
+        if (!expr.is_array() || expr.empty()) {
+            return expr;
         }
-        return result;
-    }
-    
-    // Base case: if expr is not an array or is empty, it's a literal
-    if (!expr.is_array() || expr.empty()) {
-        return expr;
-    }
-    
-    // Arrays are now always operator calls - no ambiguity!
-    // Check if first element is a string (operator name)
-    if (!expr[0].is_string()) {
-        throw InvalidArgumentException("Array must start with operator name (string)");
-    }
-    
-    std::string op = expr[0].get<std::string>();
-    
-    // Special case: $input operator
-    if (op == "$input") {
-        return ctx.input;
-    }
-    
-    // Special case: $inputs operator
-    if (op == "$inputs") {
-        nlohmann::json result = nlohmann::json::array();
-        for (const auto& input_doc : ctx.inputs) {
-            result.push_back(input_doc);
+        
+        // Arrays are now always operator calls - no ambiguity!
+        // Check if first element is a string (operator name)
+        if (!expr[0].is_string()) {
+            throw InvalidArgumentException("Array must start with operator name (string). For literal arrays, use {\"array\": [...]} syntax.");
         }
-        return result;
+        
+        std::string op = expr[0].get<std::string>();
+        
+        // Special case: $input operator
+        if (op == "$input") {
+            return ctx.input();
+        }
+        
+        // Special case: $inputs operator
+        if (op == "$inputs") {
+            nlohmann::json result = nlohmann::json::array();
+            for (const auto& input_doc : ctx.inputs()) {
+                result.push_back(input_doc);
+            }
+            return result;
+        }
+        
+        // --- TCO Special Forms ---
+        
+        if (op == "if") {
+            if (expr.size() != 4) {
+                throw InvalidArgumentException("if operator requires exactly 3 arguments");
+            }
+            
+            // Evaluate condition
+            auto condition = evaluate(expr[1], ctx);
+            
+            // Determine truthiness (same logic as current implementation)
+            bool is_true = false;
+            if (condition.is_boolean()) {
+                is_true = condition.get<bool>();
+            } else if (condition.is_number()) {
+                if (condition.is_number_integer()) {
+                    is_true = condition.get<int64_t>() != 0;
+                } else {
+                    is_true = condition.get<double>() != 0.0;
+                }
+            } else if (condition.is_string()) {
+                is_true = !condition.get<std::string>().empty();
+            } else if (condition.is_null()) {
+                is_true = false;
+            } else if (condition.is_array()) {
+                is_true = !condition.empty();
+            } else if (condition.is_object()) {
+                is_true = !condition.empty();
+            }
+            
+            // TCO: Replace current expression with chosen branch and continue
+            expr = is_true ? expr[2] : expr[3];
+            continue;
+        }
+        
+        if (op == "let") {
+            if (expr.size() != 3) {
+                throw InvalidArgumentException("let operator requires exactly 2 arguments");
+            }
+            
+            // First argument should be an array of [var_name, expr] pairs
+            if (!expr[1].is_array()) {
+                throw InvalidArgumentException("let operator requires bindings as an array");
+            }
+            
+            std::map<std::string, nlohmann::json> new_vars;
+            
+            // Process each binding
+            for (const auto& binding : expr[1]) {
+                if (!binding.is_array() || binding.size() != 2) {
+                    throw InvalidArgumentException("let binding must be [var_name, expr] pair");
+                }
+                
+                if (!binding[0].is_string()) {
+                    throw InvalidArgumentException("let variable name must be a string");
+                }
+                
+                std::string var_name = binding[0].get<std::string>();
+                nlohmann::json var_value = evaluate(binding[1], ctx);
+                new_vars[var_name] = var_value;
+            }
+            
+            // TCO: Update context and set next expression to the body
+            ctx = ctx.with_variables(new_vars);
+            expr = expr[2];
+            continue;
+        }
+        
+        // --- Normal Functions ---
+        
+        // Look up operator in registry
+        auto it = operators.find(op);
+        if (it == operators.end()) {
+            throw InvalidOperatorException(op);
+        }
+        
+        // Extract arguments (everything except the first element)
+        nlohmann::json args = nlohmann::json::array();
+        for (size_t i = 1; i < expr.size(); ++i) {
+            args.push_back(expr[i]);
+        }
+        
+        // Call the operator function and return (exits the loop)
+        return it->second(args, ctx);
     }
-    
-    // Look up operator in registry
-    auto it = operators.find(op);
-    if (it == operators.end()) {
-        throw InvalidOperatorException(op);
-    }
-    
-    
-    // Extract arguments (everything except the first element)
-    nlohmann::json args = nlohmann::json::array();
-    for (size_t i = 1; i < expr.size(); ++i) {
-        args.push_back(expr[i]);
-    }
-    
-    // Call the operator function
-    return it->second(args, ctx);
 }
 
 nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input) {
