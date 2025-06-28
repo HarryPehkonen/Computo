@@ -556,10 +556,15 @@ computo --pretty=2 --interpolation script.json input.json
 ## Performance & Limits
 
 - **Input Size**: No hard limits, bounded by available memory
+- **Nesting Depth**: No stack overflow limits due to tail call optimization (TCO)
 - **Recursion Depth**: Configurable via Permuto options (default: 100)
 - **Array Operations**: Optimized for large datasets
 - **JSON Patch**: Supports all RFC 6902 operations
 - **Memory Usage**: Immutable operations create new objects, original data unchanged
+
+### Tail Call Optimization
+
+Computo uses tail call optimization to handle deeply nested control flow without stack overflow. This enables safe execution of scripts with arbitrary levels of `if` and `let` nesting, making the engine suitable for complex, programmatically-generated transformations.
 
 ## Dependencies
 
