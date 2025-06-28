@@ -456,6 +456,16 @@ computo --max-depth=32 script.json input.json
 computo --start="{{{" --end="}}}" script.json input.json
 ```
 
+### Output Formatting
+```bash
+# Pretty print with indentation (N spaces)
+computo --pretty=2 script.json input.json
+computo --pretty=4 script.json input.json
+
+# Compact output (default)
+computo script.json input.json
+```
+
 ### Combined Options
 ```bash
 # Interpolation + diff mode
@@ -463,6 +473,9 @@ computo --interpolation --diff transform.json input.json
 
 # Multiple flags
 computo --interpolation --missing-key=error --max-depth=16 script.json input.json
+
+# Pretty printing with other options
+computo --pretty=2 --interpolation script.json input.json
 ```
 
 ## Performance & Limits
