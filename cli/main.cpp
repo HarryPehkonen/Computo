@@ -7,13 +7,24 @@
 
 using json = nlohmann::json;
 
+void print_help(const char* program_name) {
+    std::cout << "Computo - Safe, sandboxed, JSON-native data transformation engine\n\n";
+    std::cout << "Usage: " << program_name << " [OPTIONS] <script.json> [input1.json [input2.json ...]]\n\n";
+    std::cout << "Options:\n";
+    std::cout << "  --help, -?        Show this help message\n";
+    std::cout << "  --interpolation   Enable string interpolation in Permuto templates\n";
+    std::cout << "  --diff            Generate a JSON patch between input and result\n";
+    std::cout << "  --pretty=N        Pretty-print JSON with N spaces of indentation\n";
+    std::cout << "  --comments        Allow comments in script files (/* */ and // style)\n\n";
+    std::cout << "Examples:\n";
+    std::cout << "  " << program_name << " transform.json data.json\n";
+    std::cout << "  " << program_name << " --pretty=2 script.json input1.json input2.json\n";
+    std::cout << "  " << program_name << " --interpolation --diff transform.json data.json\n";
+}
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " [--interpolation] [--diff] [--pretty=N] [--comments] <script.json> [input1.json [input2.json ...]]" << std::endl;
-        std::cerr << "  --interpolation: Enable string interpolation in Permuto templates" << std::endl;
-        std::cerr << "  --diff: Generate a JSON patch between the input and the transformation result" << std::endl;
-        std::cerr << "  --pretty=N: Pretty-print JSON with N spaces of indentation (default: compact)" << std::endl;
-        std::cerr << "  --comments: Allow comments in script files (/* */ and // style)" << std::endl;
+        print_help(argv[0]);
         return 1;
     }
     
@@ -26,7 +37,10 @@ int main(int argc, char* argv[]) {
     // Parse flags
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
-        if (arg == "--interpolation") {
+        if (arg == "--help" || arg == "-?") {
+            print_help(argv[0]);
+            return 0;
+        } else if (arg == "--interpolation") {
             enable_interpolation = true;
             script_arg = i + 1;
         } else if (arg == "--diff") {
