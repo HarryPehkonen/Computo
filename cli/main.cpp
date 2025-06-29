@@ -9,15 +9,17 @@ using json = nlohmann::json;
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " [--interpolation] [--diff] [--pretty=N] <script.json> [input1.json [input2.json ...]]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " [--interpolation] [--diff] [--pretty=N] [--comments] <script.json> [input1.json [input2.json ...]]" << std::endl;
         std::cerr << "  --interpolation: Enable string interpolation in Permuto templates" << std::endl;
         std::cerr << "  --diff: Generate a JSON patch between the input and the transformation result" << std::endl;
         std::cerr << "  --pretty=N: Pretty-print JSON with N spaces of indentation (default: compact)" << std::endl;
+        std::cerr << "  --comments: Allow comments in script files (/* */ and // style)" << std::endl;
         return 1;
     }
     
     bool enable_interpolation = false;
     bool diff_mode = false;
+    bool allow_comments = false;
     int pretty_indent = -1;  // -1 means compact output
     int script_arg = 1;
     
@@ -42,6 +44,9 @@ int main(int argc, char* argv[]) {
                 std::cerr << "Error: Invalid --pretty value: " << indent_str << std::endl;
                 return 1;
             }
+            script_arg = i + 1;
+        } else if (arg == "--comments") {
+            allow_comments = true;
             script_arg = i + 1;
         } else {
             // Found non-flag argument, this is the script
@@ -72,7 +77,11 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         json script;
-        script_file >> script;
+        if (allow_comments) {
+            script = json::parse(script_file, nullptr, true, true);
+        } else {
+            script_file >> script;
+        }
         script_file.close();
         
         // Read input files
