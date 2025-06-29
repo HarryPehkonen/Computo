@@ -87,15 +87,19 @@ static void initialize_operators() {
     // Dollar operator for variable lookup
     operators["$"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
         if (args.size() != 1) {
-            throw InvalidArgumentException("$ operator requires exactly 1 argument");
+            throw InvalidArgumentException("$ operator requires exactly 1 argument", ctx.get_path_string());
         }
         
         if (!args[0].is_string()) {
-            throw InvalidArgumentException("$ operator requires a string path");
+            throw InvalidArgumentException("$ operator requires a string path", ctx.get_path_string());
         }
         
         std::string path = args[0].get<std::string>();
-        return ctx.get_variable(path);
+        try {
+            return ctx.get_variable(path);
+        } catch (const InvalidArgumentException& e) {
+            throw InvalidArgumentException(std::string(e.what()), ctx.get_path_string());
+        }
     };
     
     // Get operator for JSON Pointer access
@@ -164,13 +168,14 @@ static void initialize_operators() {
     // Map operator for array iteration
     operators["map"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
         if (args.size() != 2) {
-            throw InvalidArgumentException("map operator requires exactly 2 arguments");
+            throw InvalidArgumentException("map operator requires exactly 2 arguments", ctx.get_path_string());
         }
         
-        auto array = evaluate(args[0], ctx);
+        ExecutionContext array_ctx = ctx.with_path("array");
+        auto array = evaluate(args[0], array_ctx);
         
         if (!array.is_array()) {
-            throw InvalidArgumentException("map operator requires an array as first argument");
+            throw InvalidArgumentException("map operator requires an array as first argument", ctx.get_path_string());
         }
         
         // Second argument should be a lambda expression (not evaluated)
@@ -179,8 +184,9 @@ static void initialize_operators() {
         nlohmann::json result = nlohmann::json::array();
         
         // Apply lambda to each element
-        for (const auto& item : array) {
-            nlohmann::json transformed = evaluate_lambda(lambda_expr, item, ctx);
+        for (size_t i = 0; i < array.size(); ++i) {
+            ExecutionContext item_ctx = ctx.with_path("lambda[" + std::to_string(i) + "]");
+            nlohmann::json transformed = evaluate_lambda(lambda_expr, array[i], item_ctx);
             result.push_back(transformed);
         }
         
@@ -947,12 +953,13 @@ nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx) {
         // Check for array object syntax: {"array": [...]}
         if (expr.is_object() && expr.contains("array")) {
             if (!expr["array"].is_array()) {
-                throw InvalidArgumentException("array object must contain an actual array");
+                throw InvalidArgumentException("array object must contain an actual array", ctx.get_path_string());
             }
             // Evaluate each element in the array
             nlohmann::json result = nlohmann::json::array();
-            for (const auto& element_expr : expr["array"]) {
-                nlohmann::json element = evaluate(element_expr, ctx);
+            for (size_t i = 0; i < expr["array"].size(); ++i) {
+                ExecutionContext element_ctx = ctx.with_path("array[" + std::to_string(i) + "]");
+                nlohmann::json element = evaluate(expr["array"][i], element_ctx);
                 result.push_back(element);
             }
             return result;
@@ -966,10 +973,11 @@ nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx) {
         // Arrays are now always operator calls - no ambiguity!
         // Check if first element is a string (operator name)
         if (!expr[0].is_string()) {
-            throw InvalidArgumentException("Array must start with operator name (string). For literal arrays, use {\"array\": [...]} syntax.");
+            throw InvalidArgumentException("Array must start with operator name (string). For literal arrays, use {\"array\": [...]} syntax.", ctx.get_path_string());
         }
         
         std::string op = expr[0].get<std::string>();
+        ExecutionContext op_ctx = ctx.with_path(op);
         
         // Special case: $input operator
         if (op == "$input") {
@@ -989,11 +997,12 @@ nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx) {
         
         if (op == "if") {
             if (expr.size() != 4) {
-                throw InvalidArgumentException("if operator requires exactly 3 arguments");
+                throw InvalidArgumentException("if operator requires exactly 3 arguments", op_ctx.get_path_string());
             }
             
             // Evaluate condition
-            auto condition = evaluate(expr[1], ctx);
+            ExecutionContext condition_ctx = op_ctx.with_path("condition");
+            auto condition = evaluate(expr[1], condition_ctx);
             
             // Determine truthiness (same logic as current implementation)
             bool is_true = false;
@@ -1016,30 +1025,34 @@ nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx) {
             }
             
             // TCO: Replace current expression with chosen branch and continue
+            ctx = op_ctx.with_path(is_true ? "then" : "else");
             expr = is_true ? expr[2] : expr[3];
             continue;
         }
         
         if (op == "let") {
             if (expr.size() != 3) {
-                throw InvalidArgumentException("let operator requires exactly 2 arguments");
+                throw InvalidArgumentException("let operator requires exactly 2 arguments", op_ctx.get_path_string());
             }
             
             // First argument should be an array of [var_name, expr] pairs
             if (!expr[1].is_array()) {
-                throw InvalidArgumentException("let operator requires bindings as an array");
+                throw InvalidArgumentException("let operator requires bindings as an array", op_ctx.get_path_string());
             }
             
             std::map<std::string, nlohmann::json> new_vars;
             
             // Process each binding
-            for (const auto& binding : expr[1]) {
+            for (size_t i = 0; i < expr[1].size(); ++i) {
+                const auto& binding = expr[1][i];
+                ExecutionContext binding_ctx = op_ctx.with_path("bindings[" + std::to_string(i) + "]");
+                
                 if (!binding.is_array() || binding.size() != 2) {
-                    throw InvalidArgumentException("let binding must be [var_name, expr] pair");
+                    throw InvalidArgumentException("let binding must be [var_name, expr] pair", binding_ctx.get_path_string());
                 }
                 
                 if (!binding[0].is_string()) {
-                    throw InvalidArgumentException("let variable name must be a string");
+                    throw InvalidArgumentException("let variable name must be a string", binding_ctx.get_path_string());
                 }
                 
                 std::string var_name = binding[0].get<std::string>();
@@ -1050,13 +1063,14 @@ nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx) {
                     binding[1][0].is_string() && binding[1][0].get<std::string>() == "lambda") {
                     var_value = binding[1];  // Store lambda as-is
                 } else {
-                    var_value = evaluate(binding[1], ctx);  // Evaluate normally
+                    ExecutionContext value_ctx = binding_ctx.with_path("value");
+                    var_value = evaluate(binding[1], value_ctx);  // Evaluate normally
                 }
                 new_vars[var_name] = var_value;
             }
             
             // TCO: Update context and set next expression to the body
-            ctx = ctx.with_variables(new_vars);
+            ctx = op_ctx.with_path("body").with_variables(new_vars);
             expr = expr[2];
             continue;
         }
@@ -1076,7 +1090,7 @@ nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx) {
         }
         
         // Call the operator function and return (exits the loop)
-        return it->second(args, ctx);
+        return it->second(args, op_ctx);
     }
 }
 

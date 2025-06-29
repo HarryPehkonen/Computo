@@ -34,6 +34,9 @@ class InvalidArgumentException : public ComputoException {
 public:
     explicit InvalidArgumentException(const std::string& message) 
         : ComputoException("Invalid argument: " + message) {}
+    
+    explicit InvalidArgumentException(const std::string& message, const std::string& path) 
+        : ComputoException("Invalid argument: " + message + " at " + path) {}
 };
 
 class PatchFailedException : public ComputoException {
@@ -53,6 +56,7 @@ private:
 public:
     std::map<std::string, nlohmann::json> variables;
     permuto::Options permuto_options;
+    std::vector<std::string> evaluation_path;  // Path tracking for error reporting
     
     // Constructor for single input (backward compatibility)
     explicit ExecutionContext(const nlohmann::json& input_data) 
@@ -88,11 +92,29 @@ public:
     ExecutionContext with_variables(const std::map<std::string, nlohmann::json>& new_vars) const {
         ExecutionContext new_ctx(*inputs_ptr, permuto_options);
         new_ctx.variables = variables; // Copy existing variables
+        new_ctx.evaluation_path = evaluation_path; // Copy path
         // Add/override with new variables
         for (const auto& pair : new_vars) {
             new_ctx.variables[pair.first] = pair.second;
         }
         return new_ctx;
+    }
+    
+    // Create a new context with additional path segment
+    ExecutionContext with_path(const std::string& segment) const {
+        ExecutionContext new_ctx = *this;
+        new_ctx.evaluation_path.push_back(segment);
+        return new_ctx;
+    }
+    
+    // Get current evaluation path as string
+    std::string get_path_string() const {
+        if (evaluation_path.empty()) return "/";
+        std::string result;
+        for (const auto& segment : evaluation_path) {
+            result += "/" + segment;
+        }
+        return result;
     }
     
     // Lookup a variable by path (e.g., "/var_name")

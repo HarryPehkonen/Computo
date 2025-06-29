@@ -14,6 +14,7 @@ A safe, sandboxed JSON transformation engine with Lisp-like syntax expressed in 
 - **Code is Data**: All scripts are valid JSON with unambiguous syntax
 - **Immutable**: Pure functions that don't modify input data
 - **Sandboxed**: No I/O operations or system access
+- **Enhanced Error Reporting**: Precise path tracking for debugging complex scripts
 
 ## Quick Start
 
@@ -23,7 +24,7 @@ A safe, sandboxed JSON transformation engine with Lisp-like syntax expressed in 
 cmake -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
 
-# Run tests (190 tests, 100% passing)
+# Run tests (198 tests, 100% passing)
 cd build && ctest --verbose
 ```
 
@@ -314,6 +315,61 @@ nlohmann::json result = computo::execute(multi_script, inputs);
 
 ### Templates
 - `["permuto.apply", template, context]` - Process Permuto templates
+
+## Enhanced Error Reporting
+
+Computo provides **precise path tracking** for debugging complex scripts, showing exactly where errors occur in your JSON structure:
+
+### Error Message Format
+```
+Computo error: [Error Description] at [Evaluation Path]
+```
+
+### Example Error Messages
+
+**Variable not found:**
+```bash
+# Script with error:
+["let", [["x", 5]], ["obj", ["result", ["*", ["$", "/missing"], 2]]]]
+
+# Error output:
+Computo error: Invalid argument: Variable not found: /missing at /let/body/obj/*/$
+```
+
+**Array syntax error:**
+```bash
+# Script with error:
+["let", [["data", [1, 2, 3]]], ["map", ["$", "/data"], "invalid"]]
+
+# Error output:  
+Computo error: Invalid argument: Array must start with operator name (string). For literal arrays, use {"array": [...]} syntax. at /let/body/map
+```
+
+**Lambda execution error:**
+```bash
+# Script with error:
+["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["$", "/undefined"]]]
+
+# Error output:
+Computo error: Invalid argument: Variable not found: /undefined at /map/lambda[1]/$
+```
+
+### Path Interpretation
+
+Path segments show the **logical execution flow**:
+- `/let/body` - Inside let expression body
+- `/map/array` - In map operator's array argument  
+- `/lambda[2]` - In lambda applied to 3rd array element
+- `/obj/key` - In object constructor for specific key
+- `/*` - In multiplication operator
+- `/$` - In variable lookup operator
+
+### Benefits
+
+- **Format Independent**: Works with minified or formatted JSON
+- **Zero Performance Impact**: Path tracking only during errors
+- **Thread-Safe**: No shared state between evaluations
+- **Precise Location**: Shows logical structure, not just syntax position
 
 ## JSON Patch Workflow Examples
 

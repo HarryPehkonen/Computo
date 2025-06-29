@@ -2776,3 +2776,177 @@ TEST_F(ComputoTest, LambdaVariableResolutionErrors) {
     });
     EXPECT_THROW(computo::execute(script3, input_data), computo::InvalidArgumentException);
 }
+
+// === Tests for Enhanced Error Reporting (Path Tracking) ===
+
+// Test basic path tracking in variable lookup
+TEST_F(ComputoTest, ErrorPathTrackingBasic) {
+    json script = json::array({
+        "$", "/nonexistent"
+    });
+    
+    try {
+        computo::execute(script, input_data);
+        FAIL() << "Expected InvalidArgumentException";
+    } catch (const computo::InvalidArgumentException& e) {
+        std::string error_msg = e.what();
+        EXPECT_NE(error_msg.find("at /$"), std::string::npos) << "Error: " << error_msg;
+    }
+}
+
+// Test path tracking in nested let expressions
+TEST_F(ComputoTest, ErrorPathTrackingNestedLet) {
+    json script = json::array({
+        "let",
+        json::array({json::array({"x", 5})}),
+        json::array({
+            "obj",
+            json::array({"result", json::array({"$", "/missing"})})
+        })
+    });
+    
+    try {
+        computo::execute(script, input_data);
+        FAIL() << "Expected InvalidArgumentException";
+    } catch (const computo::InvalidArgumentException& e) {
+        std::string error_msg = e.what();
+        EXPECT_NE(error_msg.find("at /let/body/obj/$"), std::string::npos) << "Error: " << error_msg;
+    }
+}
+
+// Test path tracking in map lambda execution
+TEST_F(ComputoTest, ErrorPathTrackingMapLambda) {
+    json script = json::array({
+        "map",
+        json{{"array", json::array({1, 2, 3})}},
+        json::array({
+            "lambda",
+            json::array({"x"}),
+            json::array({"$", "/undefined"})
+        })
+    });
+    
+    try {
+        computo::execute(script, input_data);
+        FAIL() << "Expected InvalidArgumentException";
+    } catch (const computo::InvalidArgumentException& e) {
+        std::string error_msg = e.what();
+        // Should show error in lambda execution for first element
+        EXPECT_NE(error_msg.find("at /map/lambda[0]/$"), std::string::npos) << "Error: " << error_msg;
+    }
+}
+
+// Test path tracking in complex nested structure
+TEST_F(ComputoTest, ErrorPathTrackingComplexNesting) {
+    json script = json::array({
+        "let",
+        json::array({
+            json::array({"data", json{{"array", json::array({1, 2, 3})}}})
+        }),
+        json::array({
+            "if",
+            true,
+            json::array({
+                "map",
+                json::array({"$", "/data"}),
+                json::array({
+                    "lambda",
+                    json::array({"x"}),
+                    json::array({"*", json::array({"$", "/missing"}), 2})
+                })
+            }),
+            json::array({"$", "/fallback"})
+        })
+    });
+    
+    try {
+        computo::execute(script, input_data);
+        FAIL() << "Expected InvalidArgumentException";
+    } catch (const computo::InvalidArgumentException& e) {
+        std::string error_msg = e.what();
+        // Should show path through let->if(then)->map->lambda->multiply->$
+        EXPECT_NE(error_msg.find("at /let/body/if/then/map/lambda[0]/*/$"), std::string::npos) << "Error: " << error_msg;
+    }
+}
+
+// Test path tracking with array syntax error
+TEST_F(ComputoTest, ErrorPathTrackingArraySyntax) {
+    json script = json::array({
+        "let",
+        json::array({json::array({"x", 5})}),
+        json::array({
+            "obj",
+            json::array({"bad_array", json::array({42, "not_operator"})})  // Invalid array syntax
+        })
+    });
+    
+    try {
+        computo::execute(script, input_data);
+        FAIL() << "Expected InvalidArgumentException";
+    } catch (const computo::InvalidArgumentException& e) {
+        std::string error_msg = e.what();
+        EXPECT_NE(error_msg.find("at /let/body/obj"), std::string::npos) << "Error: " << error_msg;
+        EXPECT_NE(error_msg.find("Array must start with operator name"), std::string::npos) << "Error: " << error_msg;
+    }
+}
+
+// Test path tracking in if conditions
+TEST_F(ComputoTest, ErrorPathTrackingIfCondition) {
+    json script = json::array({
+        "if",
+        json::array({"$", "/missing_condition"}),
+        "then_value",
+        "else_value"
+    });
+    
+    try {
+        computo::execute(script, input_data);
+        FAIL() << "Expected InvalidArgumentException";
+    } catch (const computo::InvalidArgumentException& e) {
+        std::string error_msg = e.what();
+        EXPECT_NE(error_msg.find("at /if/condition/$"), std::string::npos) << "Error: " << error_msg;
+    }
+}
+
+// Test path tracking in array object evaluation
+TEST_F(ComputoTest, ErrorPathTrackingArrayObject) {
+    json script = json{
+        {"array", json::array({
+            1,
+            json::array({"$", "/missing"}),
+            3
+        })}
+    };
+    
+    try {
+        computo::execute(script, input_data);
+        FAIL() << "Expected InvalidArgumentException";
+    } catch (const computo::InvalidArgumentException& e) {
+        std::string error_msg = e.what();
+        EXPECT_NE(error_msg.find("at /array[1]/$"), std::string::npos) << "Error: " << error_msg;
+    }
+}
+
+// Test path tracking with lambda variable resolution
+TEST_F(ComputoTest, ErrorPathTrackingLambdaVariable) {
+    json script = json::array({
+        "let",
+        json::array({
+            json::array({"process", json::array({"lambda", json::array({"x"}), json::array({"$", "/missing"})})})
+        }),
+        json::array({
+            "map",
+            json{{"array", json::array({1, 2})}},
+            json::array({"$", "/process"})
+        })
+    });
+    
+    try {
+        computo::execute(script, input_data);
+        FAIL() << "Expected InvalidArgumentException";
+    } catch (const computo::InvalidArgumentException& e) {
+        std::string error_msg = e.what();
+        // Error occurs in lambda variable execution
+        EXPECT_NE(error_msg.find("at /let/body/map/lambda[0]/$"), std::string::npos) << "Error: " << error_msg;
+    }
+}
