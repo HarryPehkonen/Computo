@@ -2610,3 +2610,169 @@ TEST_F(ComputoTest, PartitionOperatorErrors) {
     });
     EXPECT_THROW(computo::execute(script2, input_data), computo::InvalidArgumentException);
 }
+
+// === Tests for Lambda Variable Resolution ===
+
+// Test basic lambda variable resolution with map
+TEST_F(ComputoTest, LambdaVariableResolutionMap) {
+    // ["let", [["double", ["lambda", ["x"], ["*", ["$", "/x"], 2]]]], 
+    //  ["map", {"array": [1, 2, 3]}, ["$", "/double"]]]
+    json script = json::array({
+        "let",
+        json::array({json::array({"double", json::array({"lambda", json::array({"x"}), json::array({"*", json::array({"$", "/x"}), 2})})})}),
+        json::array({
+            "map",
+            json{{"array", json::array({1, 2, 3})}},
+            json::array({"$", "/double"})
+        })
+    });
+    json expected = json::array({2, 4, 6});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test lambda variable resolution with filter
+TEST_F(ComputoTest, LambdaVariableResolutionFilter) {
+    // ["let", [["gt_two", ["lambda", ["x"], [">", ["$", "/x"], 2]]]], 
+    //  ["filter", {"array": [1, 2, 3, 4, 5]}, ["$", "/gt_two"]]]
+    json script = json::array({
+        "let",
+        json::array({json::array({"gt_two", json::array({"lambda", json::array({"x"}), json::array({">", json::array({"$", "/x"}), 2})})})}),
+        json::array({
+            "filter",
+            json{{"array", json::array({1, 2, 3, 4, 5})}},
+            json::array({"$", "/gt_two"})
+        })
+    });
+    json expected = json::array({3, 4, 5});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test lambda variable resolution with reduce
+TEST_F(ComputoTest, LambdaVariableResolutionReduce) {
+    // ["let", [["add", ["lambda", ["acc", "x"], ["+", ["$", "/acc"], ["$", "/x"]]]]], 
+    //  ["reduce", {"array": [1, 2, 3, 4]}, ["$", "/add"], 0]]
+    json script = json::array({
+        "let",
+        json::array({json::array({"add", json::array({"lambda", json::array({"acc", "x"}), json::array({"+", json::array({"$", "/acc"}), json::array({"$", "/x"})})})})}),
+        json::array({
+            "reduce",
+            json{{"array", json::array({1, 2, 3, 4})}},
+            json::array({"$", "/add"}),
+            0
+        })
+    });
+    json expected = 10;
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test lambda variable resolution with partition
+TEST_F(ComputoTest, LambdaVariableResolutionPartition) {
+    // ["let", [["is_even", ["lambda", ["x"], ["==", ["%", ["$", "/x"], 2], 0]]]], 
+    //  ["partition", {"array": [1, 2, 3, 4, 5]}, ["$", "/is_even"]]]
+    json script = json::array({
+        "let",
+        json::array({json::array({"is_even", json::array({"lambda", json::array({"x"}), json::array({"==", json::array({"%", json::array({"$", "/x"}), 2}), 0})})})}),
+        json::array({
+            "partition",
+            json{{"array", json::array({1, 2, 3, 4, 5})}},
+            json::array({"$", "/is_even"})
+        })
+    });
+    // Note: We don't have % operator, so let's use a simpler test
+    json script_simple = json::array({
+        "let",
+        json::array({json::array({"gt_three", json::array({"lambda", json::array({"x"}), json::array({">", json::array({"$", "/x"}), 3})})})}),
+        json::array({
+            "partition",
+            json{{"array", json::array({1, 2, 3, 4, 5})}},
+            json::array({"$", "/gt_three"})
+        })
+    });
+    json expected = json::array({
+        json::array({4, 5}),    // truthy items
+        json::array({1, 2, 3})  // falsy items
+    });
+    EXPECT_EQ(computo::execute(script_simple, input_data), expected);
+}
+
+// Test multiple lambda variables in same scope
+TEST_F(ComputoTest, MultipleLambdaVariables) {
+    // ["let", [["double", ["lambda", ["x"], ["*", ["$", "/x"], 2]]], 
+    //          ["increment", ["lambda", ["x"], ["+", ["$", "/x"], 1]]]], 
+    //  ["map", ["map", {"array": [1, 2, 3]}, ["$", "/double"]], ["$", "/increment"]]]
+    json script = json::array({
+        "let",
+        json::array({
+            json::array({"double", json::array({"lambda", json::array({"x"}), json::array({"*", json::array({"$", "/x"}), 2})})}),
+            json::array({"increment", json::array({"lambda", json::array({"x"}), json::array({"+", json::array({"$", "/x"}), 1})})})
+        }),
+        json::array({
+            "map",
+            json::array({
+                "map",
+                json{{"array", json::array({1, 2, 3})}},
+                json::array({"$", "/double"})
+            }),
+            json::array({"$", "/increment"})
+        })
+    });
+    json expected = json::array({3, 5, 7});  // [1,2,3] -> [2,4,6] -> [3,5,7]
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test lambda variable in nested let scopes
+TEST_F(ComputoTest, LambdaVariableNestedScopes) {
+    // ["let", [["outer_lambda", ["lambda", ["x"], ["*", ["$", "/x"], 2]]]], 
+    //  ["let", [["inner_lambda", ["lambda", ["x"], ["+", ["$", "/x"], 1]]]], 
+    //   ["map", {"array": [1, 2, 3]}, ["$", "/outer_lambda"]]]]
+    json script = json::array({
+        "let",
+        json::array({json::array({"outer_lambda", json::array({"lambda", json::array({"x"}), json::array({"*", json::array({"$", "/x"}), 2})})})}),
+        json::array({
+            "let",
+            json::array({json::array({"inner_lambda", json::array({"lambda", json::array({"x"}), json::array({"+", json::array({"$", "/x"}), 1})})})}),
+            json::array({
+                "map",
+                json{{"array", json::array({1, 2, 3})}},
+                json::array({"$", "/outer_lambda"})  // Access outer scope lambda
+            })
+        })
+    });
+    json expected = json::array({2, 4, 6});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test lambda variable resolution error cases
+TEST_F(ComputoTest, LambdaVariableResolutionErrors) {
+    // Variable not found
+    json script1 = json::array({
+        "map",
+        json{{"array", json::array({1, 2, 3})}},
+        json::array({"$", "/nonexistent"})
+    });
+    EXPECT_THROW(computo::execute(script1, input_data), computo::InvalidArgumentException);
+    
+    // Variable contains non-lambda
+    json script2 = json::array({
+        "let",
+        json::array({json::array({"not_lambda", "just_a_string"})}),
+        json::array({
+            "map",
+            json{{"array", json::array({1, 2, 3})}},
+            json::array({"$", "/not_lambda"})
+        })
+    });
+    EXPECT_THROW(computo::execute(script2, input_data), computo::InvalidArgumentException);
+    
+    // Invalid variable reference format
+    json script3 = json::array({
+        "let",
+        json::array({json::array({"valid_lambda", json::array({"lambda", json::array({"x"}), json::array({"$", "/x"})})})}),
+        json::array({
+            "map",
+            json{{"array", json::array({1, 2, 3})}},
+            json::array({"$", 42})  // Non-string path
+        })
+    });
+    EXPECT_THROW(computo::execute(script3, input_data), computo::InvalidArgumentException);
+}

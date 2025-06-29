@@ -14,24 +14,40 @@ static std::once_flag operators_init_flag;
 
 // Helper function for evaluating lambda expressions
 static nlohmann::json evaluate_lambda(const nlohmann::json& lambda_expr, const nlohmann::json& item_value, ExecutionContext& ctx) {
+    nlohmann::json actual_lambda = lambda_expr;
+    
+    // Handle variable references to lambdas
+    if (lambda_expr.is_array() && lambda_expr.size() == 2 && 
+        lambda_expr[0].is_string() && lambda_expr[0].get<std::string>() == "$") {
+        if (!lambda_expr[1].is_string()) {
+            throw InvalidArgumentException("Lambda variable reference requires string path");
+        }
+        std::string var_path = lambda_expr[1].get<std::string>();
+        try {
+            actual_lambda = ctx.get_variable(var_path);
+        } catch (const InvalidArgumentException& e) {
+            throw InvalidArgumentException("Lambda variable resolution failed: " + std::string(e.what()));
+        }
+    }
+    
     // Lambda format: ["lambda", ["var_name"], <body_expr>]
-    if (!lambda_expr.is_array() || lambda_expr.size() != 3) {
+    if (!actual_lambda.is_array() || actual_lambda.size() != 3) {
         throw InvalidArgumentException("lambda must be [\"lambda\", [\"var_name\"], body_expr]");
     }
     
-    if (!lambda_expr[0].is_string() || lambda_expr[0].get<std::string>() != "lambda") {
+    if (!actual_lambda[0].is_string() || actual_lambda[0].get<std::string>() != "lambda") {
         throw InvalidArgumentException("lambda expression must start with \"lambda\"");
     }
     
-    if (!lambda_expr[1].is_array() || lambda_expr[1].size() != 1) {
+    if (!actual_lambda[1].is_array() || actual_lambda[1].size() != 1) {
         throw InvalidArgumentException("lambda must have exactly one parameter: [\"var_name\"]");
     }
     
-    if (!lambda_expr[1][0].is_string()) {
+    if (!actual_lambda[1][0].is_string()) {
         throw InvalidArgumentException("lambda parameter must be a string");
     }
     
-    std::string var_name = lambda_expr[1][0].get<std::string>();
+    std::string var_name = actual_lambda[1][0].get<std::string>();
     
     // Create new context with the lambda variable
     std::map<std::string, nlohmann::json> lambda_vars;
@@ -39,7 +55,7 @@ static nlohmann::json evaluate_lambda(const nlohmann::json& lambda_expr, const n
     ExecutionContext lambda_ctx = ctx.with_variables(lambda_vars);
     
     // Evaluate the lambda body
-    return evaluate(lambda_expr[2], lambda_ctx);
+    return evaluate(actual_lambda[2], lambda_ctx);
 }
 
 // Initialize operators - thread-safe version
@@ -238,28 +254,43 @@ static void initialize_operators() {
         // Third argument is the initial value (evaluated)
         nlohmann::json accumulator = evaluate(args[2], ctx);
         
+        // Resolve lambda variable reference if needed
+        nlohmann::json actual_lambda = lambda_expr;
+        if (lambda_expr.is_array() && lambda_expr.size() == 2 && 
+            lambda_expr[0].is_string() && lambda_expr[0].get<std::string>() == "$") {
+            if (!lambda_expr[1].is_string()) {
+                throw InvalidArgumentException("Reduce lambda variable reference requires string path");
+            }
+            std::string var_path = lambda_expr[1].get<std::string>();
+            try {
+                actual_lambda = ctx.get_variable(var_path);
+            } catch (const InvalidArgumentException& e) {
+                throw InvalidArgumentException("Reduce lambda variable resolution failed: " + std::string(e.what()));
+            }
+        }
+
         // Apply lambda to each element with accumulator
         for (const auto& item : array) {
             // Create a lambda evaluation function that takes accumulator and item
             // Lambda format: ["lambda", ["acc", "item"], body_expr]
-            if (!lambda_expr.is_array() || lambda_expr.size() != 3) {
+            if (!actual_lambda.is_array() || actual_lambda.size() != 3) {
                 throw InvalidArgumentException("reduce lambda must be [\"lambda\", [\"acc\", \"item\"], body_expr]");
             }
             
-            if (!lambda_expr[0].is_string() || lambda_expr[0].get<std::string>() != "lambda") {
+            if (!actual_lambda[0].is_string() || actual_lambda[0].get<std::string>() != "lambda") {
                 throw InvalidArgumentException("reduce lambda expression must start with \"lambda\"");
             }
             
-            if (!lambda_expr[1].is_array() || lambda_expr[1].size() != 2) {
+            if (!actual_lambda[1].is_array() || actual_lambda[1].size() != 2) {
                 throw InvalidArgumentException("reduce lambda must have exactly two parameters: [\"acc\", \"item\"]");
             }
             
-            if (!lambda_expr[1][0].is_string() || !lambda_expr[1][1].is_string()) {
+            if (!actual_lambda[1][0].is_string() || !actual_lambda[1][1].is_string()) {
                 throw InvalidArgumentException("reduce lambda parameters must be strings");
             }
             
-            std::string acc_var = lambda_expr[1][0].get<std::string>();
-            std::string item_var = lambda_expr[1][1].get<std::string>();
+            std::string acc_var = actual_lambda[1][0].get<std::string>();
+            std::string item_var = actual_lambda[1][1].get<std::string>();
             
             // Create new context with both accumulator and item variables
             std::map<std::string, nlohmann::json> lambda_vars;
@@ -268,7 +299,7 @@ static void initialize_operators() {
             ExecutionContext lambda_ctx = ctx.with_variables(lambda_vars);
             
             // Evaluate the lambda body and update accumulator
-            accumulator = evaluate(lambda_expr[2], lambda_ctx);
+            accumulator = evaluate(actual_lambda[2], lambda_ctx);
         }
         
         return accumulator;
@@ -1012,7 +1043,15 @@ nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx) {
                 }
                 
                 std::string var_name = binding[0].get<std::string>();
-                nlohmann::json var_value = evaluate(binding[1], ctx);
+                
+                // Special case: don't evaluate lambda expressions, store them as-is
+                nlohmann::json var_value;
+                if (binding[1].is_array() && binding[1].size() == 3 &&
+                    binding[1][0].is_string() && binding[1][0].get<std::string>() == "lambda") {
+                    var_value = binding[1];  // Store lambda as-is
+                } else {
+                    var_value = evaluate(binding[1], ctx);  // Evaluate normally
+                }
                 new_vars[var_name] = var_value;
             }
             

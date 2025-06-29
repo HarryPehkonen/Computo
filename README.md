@@ -23,7 +23,7 @@ A safe, sandboxed JSON transformation engine with Lisp-like syntax expressed in 
 cmake -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
 
-# Run tests (183 tests, 100% passing)
+# Run tests (190 tests, 100% passing)
 cd build && ctest --verbose
 ```
 
@@ -286,6 +286,30 @@ nlohmann::json result = computo::execute(multi_script, inputs);
 ### Lambda Syntax
 ```json
 ["lambda", ["param1", "param2"], body_expression]
+```
+
+### Lambda Variables (Reusable Functions)
+```json
+// Store lambda in variable for reuse
+["let", [["double", ["lambda", ["x"], ["*", ["$", "/x"], 2]]]],
+  ["obj",
+    ["list1", ["map", {"array": [1, 2, 3]}, ["$", "/double"]]],
+    ["list2", ["map", {"array": [4, 5, 6]}, ["$", "/double"]]]
+  ]
+]
+// Result: {"list1": [2, 4, 6], "list2": [8, 10, 12]}
+
+// Multiple lambda variables
+["let", [
+    ["increment", ["lambda", ["x"], ["+", ["$", "/x"], 1]]],
+    ["gt_three", ["lambda", ["x"], [">", ["$", "/x"], 3]]]
+  ],
+  ["map", 
+    ["filter", {"array": [1, 2, 3, 4, 5]}, ["$", "/gt_three"]], 
+    ["$", "/increment"]
+  ]
+]
+// Result: [5, 6] (filter >3: [4,5], then increment: [5,6])
 ```
 
 ### Templates
