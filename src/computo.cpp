@@ -1,6 +1,7 @@
 #include <computo/computo.hpp>
 #include <permuto/permuto.hpp>
 #include <iostream>
+#include <mutex>
 
 namespace computo {
 
@@ -9,6 +10,7 @@ const nlohmann::json ExecutionContext::null_input = nlohmann::json(nullptr);
 
 // Operator registry
 static std::map<std::string, OperatorFunc> operators;
+static std::once_flag operators_init_flag;
 
 // Helper function for evaluating lambda expressions
 static nlohmann::json evaluate_lambda(const nlohmann::json& lambda_expr, const nlohmann::json& item_value, ExecutionContext& ctx) {
@@ -40,10 +42,9 @@ static nlohmann::json evaluate_lambda(const nlohmann::json& lambda_expr, const n
     return evaluate(lambda_expr[2], lambda_ctx);
 }
 
-// Initialize operators
+// Initialize operators - thread-safe version
 static void initialize_operators() {
-    static bool initialized = false;
-    if (initialized) return;
+    std::call_once(operators_init_flag, []() {
     
     // Addition operator
     operators["+"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
@@ -772,7 +773,7 @@ static void initialize_operators() {
         return result;
     };
     
-    initialized = true;
+    });
 }
 
 nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx) {
