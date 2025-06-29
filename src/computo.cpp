@@ -440,6 +440,79 @@ static void initialize_operators() {
         return std::abs(left_val - right_val) <= epsilon_val;
     };
     
+    // Logical operators with short-circuit evaluation
+    operators["&&"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() < 1) {
+            throw InvalidArgumentException("&& operator requires at least 1 argument");
+        }
+        
+        // Short-circuit evaluation: return false on first false expression
+        for (const auto& expr : args) {
+            auto result = evaluate(expr, ctx);
+            
+            // Determine truthiness using same logic as if operator
+            bool is_true = false;
+            if (result.is_boolean()) {
+                is_true = result.get<bool>();
+            } else if (result.is_number()) {
+                if (result.is_number_integer()) {
+                    is_true = result.get<int64_t>() != 0;
+                } else {
+                    is_true = result.get<double>() != 0.0;
+                }
+            } else if (result.is_string()) {
+                is_true = !result.get<std::string>().empty();
+            } else if (result.is_null()) {
+                is_true = false;
+            } else if (result.is_array()) {
+                is_true = !result.empty();
+            } else if (result.is_object()) {
+                is_true = !result.empty();
+            }
+            
+            if (!is_true) {
+                return false;
+            }
+        }
+        
+        return true;
+    };
+    
+    operators["||"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() < 1) {
+            throw InvalidArgumentException("|| operator requires at least 1 argument");
+        }
+        
+        // Short-circuit evaluation: return true on first true expression
+        for (const auto& expr : args) {
+            auto result = evaluate(expr, ctx);
+            
+            // Determine truthiness using same logic as if operator
+            bool is_true = false;
+            if (result.is_boolean()) {
+                is_true = result.get<bool>();
+            } else if (result.is_number()) {
+                if (result.is_number_integer()) {
+                    is_true = result.get<int64_t>() != 0;
+                } else {
+                    is_true = result.get<double>() != 0.0;
+                }
+            } else if (result.is_string()) {
+                is_true = !result.get<std::string>().empty();
+            } else if (result.is_array()) {
+                is_true = !result.empty();
+            } else if (result.is_object()) {
+                is_true = !result.empty();
+            }
+            
+            if (is_true) {
+                return true;
+            }
+        }
+        
+        return false;
+    };
+    
     // Array utility operators
     operators["find"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
         if (args.size() != 2) {

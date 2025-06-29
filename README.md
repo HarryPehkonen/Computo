@@ -139,6 +139,13 @@ nlohmann::json result = computo::execute(multi_script, inputs);
 // Conditional execution
 ["if", [">", ["$", "/score"], 80], "Pass", "Fail"]
 
+// Logical operators with short-circuit evaluation
+["&&", true, [">", ["$", "/age"], 18], ["!=", ["$", "/status"], "banned"]]
+["||", ["==", ["$", "/role"], "admin"], ["==", ["$", "/role"], "moderator"]]
+
+// Complex logical conditions
+["if", ["&&", [">", ["$", "/score"], 80], ["<", ["$", "/attempts"], 3]], "Pass", "Fail"]
+
 // Comparison operators
 [">", 10, 5]     // true
 ["==", "a", "b"] // false
@@ -214,6 +221,8 @@ nlohmann::json result = computo::execute(multi_script, inputs);
 
 ### Logical & Comparison
 - `["if", condition, then_value, else_value]` - Conditional
+- `["&&", expr1, expr2, ...]` - Logical AND with short-circuit evaluation
+- `["||", expr1, expr2, ...]` - Logical OR with short-circuit evaluation
 - `[">", a, b]`, `["<", a, b]`, `[">=", a, b]`, `["<=", a, b]` - Comparisons
 - `["==", a, b]`, `["!=", a, b]` - Equality checks
 - `["approx", a, b, epsilon]` - Approximate equality for floats
@@ -348,6 +357,20 @@ echo '["patch", ["get", ["$inputs"], "/0"], ["get", ["$inputs"], "/1"]]' > apply
     ["changes_summary", ["$", "/differences"]]
   ]
 ]
+```
+
+### Logical Operators
+```json
+// Logical AND - short-circuit evaluation, all must be true
+["&&", expr1, expr2, ...]
+
+// Logical OR - short-circuit evaluation, any must be true  
+["||", expr1, expr2, ...]
+
+// Examples
+["&&", true, [">", 5, 3], ["!=", "hello", ""]]  // true
+["||", false, ["==", 2, 2]]                     // true (stops at second)
+["&&", false, ["/", 1, 0]]                      // false (division not evaluated)
 ```
 
 ## Real-World Examples

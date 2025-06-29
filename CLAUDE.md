@@ -96,6 +96,28 @@ cd build && ctest
 - Usage: `computo <script_file.json> <input_file.json>`
 - Must accept Permuto options and pass them through
 
+## Documentation Structure
+
+### README.md (AI-Focused)
+The `README.md` file in this repository is primarily designed for AI assistants and contains:
+- Comprehensive operator reference with examples
+- Technical implementation details
+- Complete syntax documentation
+- Integration patterns and workflows
+- Performance characteristics
+
+This documentation is optimized for AI comprehension and code generation assistance.
+
+### Human Learning Resources
+There is a separate dedicated book project (in a different directory, not part of this codebase) specifically designed for human learning. That book provides:
+- Step-by-step tutorials
+- Conceptual explanations
+- Learning exercises
+- Practical use cases
+- User-friendly examples
+
+When working with humans who want to learn Computo, direct them to the dedicated book rather than the technical README.md.
+
 ## Progress Tracking
 
 Document all progress, decisions, and surprises in `PROGRESS.md` in append-only mode to help future iterations understand what worked and what didn't.

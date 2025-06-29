@@ -2086,3 +2086,297 @@ TEST_F(ComputoTest, CarCdrWithInputs) {
     });
     EXPECT_EQ(result2, expected);
 }
+
+// === Tests for Logical Operators && and || ===
+
+// Test && operator with all true values
+TEST_F(ComputoTest, AndOperatorAllTrue) {
+    // ["&&", true, 1, "hello", {"array": [1]}] -> true
+    json script = json::array({
+        "&&", 
+        true, 
+        1, 
+        "hello", 
+        json{{"array", json::array({1})}}
+    });
+    EXPECT_EQ(computo::execute(script, input_data), true);
+}
+
+// Test && operator with false value (short-circuit)
+TEST_F(ComputoTest, AndOperatorWithFalse) {
+    // ["&&", true, false, "hello"] -> false (stops at false)
+    json script = json::array({
+        "&&", 
+        true, 
+        false, 
+        "hello"
+    });
+    EXPECT_EQ(computo::execute(script, input_data), false);
+}
+
+// Test && operator with zero (falsy)
+TEST_F(ComputoTest, AndOperatorWithZero) {
+    // ["&&", true, 0, "hello"] -> false (stops at 0)
+    json script = json::array({
+        "&&", 
+        true, 
+        0, 
+        "hello"
+    });
+    EXPECT_EQ(computo::execute(script, input_data), false);
+}
+
+// Test && operator with empty string (falsy)
+TEST_F(ComputoTest, AndOperatorWithEmptyString) {
+    // ["&&", true, "", "hello"] -> false (stops at "")
+    json script = json::array({
+        "&&", 
+        true, 
+        "", 
+        "hello"
+    });
+    EXPECT_EQ(computo::execute(script, input_data), false);
+}
+
+// Test && operator with null (falsy)
+TEST_F(ComputoTest, AndOperatorWithNull) {
+    // ["&&", true, null, "hello"] -> false (stops at null)
+    json script = json::array({
+        "&&", 
+        true, 
+        json(nullptr), 
+        "hello"
+    });
+    EXPECT_EQ(computo::execute(script, input_data), false);
+}
+
+// Test && operator with empty array (falsy)
+TEST_F(ComputoTest, AndOperatorWithEmptyArray) {
+    // ["&&", true, {"array": []}, "hello"] -> false (stops at empty array)
+    json script = json::array({
+        "&&", 
+        true, 
+        json{{"array", json::array()}}, 
+        "hello"
+    });
+    EXPECT_EQ(computo::execute(script, input_data), false);
+}
+
+// Test && operator with empty object (falsy)
+TEST_F(ComputoTest, AndOperatorWithEmptyObject) {
+    // ["&&", true, {}, "hello"] -> false (stops at empty object)
+    json script = json::array({
+        "&&", 
+        true, 
+        json::object(), 
+        "hello"
+    });
+    EXPECT_EQ(computo::execute(script, input_data), false);
+}
+
+// Test && operator with single argument
+TEST_F(ComputoTest, AndOperatorSingleArg) {
+    // ["&&", true] -> true
+    json script = json::array({"&&", true});
+    EXPECT_EQ(computo::execute(script, input_data), true);
+    
+    // ["&&", false] -> false
+    json script2 = json::array({"&&", false});
+    EXPECT_EQ(computo::execute(script2, input_data), false);
+}
+
+// Test && operator with expressions
+TEST_F(ComputoTest, AndOperatorWithExpressions) {
+    // ["&&", [">", 5, 3], ["<", 2, 4], ["==", "hello", "hello"]] -> true
+    json script = json::array({
+        "&&",
+        json::array({">", 5, 3}),
+        json::array({"<", 2, 4}),
+        json::array({"==", "hello", "hello"})
+    });
+    EXPECT_EQ(computo::execute(script, input_data), true);
+}
+
+// Test && operator short-circuit with expensive expressions
+TEST_F(ComputoTest, AndOperatorShortCircuit) {
+    // ["&&", false, ["/", 1, 0]] -> false (division by zero not evaluated)
+    json script = json::array({
+        "&&",
+        false,
+        json::array({"/", 1, 0})  // This would throw if evaluated
+    });
+    EXPECT_EQ(computo::execute(script, input_data), false);
+}
+
+// Test || operator with all false values
+TEST_F(ComputoTest, OrOperatorAllFalse) {
+    // ["||", false, 0, "", null, {"array": []}, {}] -> false
+    json script = json::array({
+        "||", 
+        false, 
+        0, 
+        "", 
+        json(nullptr),
+        json{{"array", json::array()}},
+        json::object()
+    });
+    EXPECT_EQ(computo::execute(script, input_data), false);
+}
+
+// Test || operator with true value (short-circuit)
+TEST_F(ComputoTest, OrOperatorWithTrue) {
+    // ["||", false, true, "hello"] -> true (stops at true)
+    json script = json::array({
+        "||", 
+        false, 
+        true, 
+        "hello"
+    });
+    EXPECT_EQ(computo::execute(script, input_data), true);
+}
+
+// Test || operator with truthy value
+TEST_F(ComputoTest, OrOperatorWithTruthy) {
+    // ["||", false, "hello", true] -> true (stops at "hello")
+    json script = json::array({
+        "||", 
+        false, 
+        "hello", 
+        true
+    });
+    EXPECT_EQ(computo::execute(script, input_data), true);
+}
+
+// Test || operator with single argument
+TEST_F(ComputoTest, OrOperatorSingleArg) {
+    // ["||", true] -> true
+    json script = json::array({"||", true});
+    EXPECT_EQ(computo::execute(script, input_data), true);
+    
+    // ["||", false] -> false
+    json script2 = json::array({"||", false});
+    EXPECT_EQ(computo::execute(script2, input_data), false);
+}
+
+// Test || operator with expressions
+TEST_F(ComputoTest, OrOperatorWithExpressions) {
+    // ["||", [">", 3, 5], ["<", 4, 2], ["==", "hello", "world"]] -> false
+    json script = json::array({
+        "||",
+        json::array({">", 3, 5}),  // false
+        json::array({"<", 4, 2}),  // false
+        json::array({"==", "hello", "world"})  // false
+    });
+    EXPECT_EQ(computo::execute(script, input_data), false);
+    
+    // ["||", [">", 3, 5], ["<", 2, 4], ["==", "hello", "world"]] -> true (stops at second)
+    json script2 = json::array({
+        "||",
+        json::array({">", 3, 5}),  // false
+        json::array({"<", 2, 4}),  // true
+        json::array({"==", "hello", "world"})  // not evaluated
+    });
+    EXPECT_EQ(computo::execute(script2, input_data), true);
+}
+
+// Test || operator short-circuit with expensive expressions
+TEST_F(ComputoTest, OrOperatorShortCircuit) {
+    // ["||", true, ["/", 1, 0]] -> true (division by zero not evaluated)
+    json script = json::array({
+        "||",
+        true,
+        json::array({"/", 1, 0})  // This would throw if evaluated
+    });
+    EXPECT_EQ(computo::execute(script, input_data), true);
+}
+
+// Test nested && and || operators
+TEST_F(ComputoTest, NestedLogicalOperators) {
+    // ["&&", ["||", false, true], ["||", false, false, true]] -> true
+    json script = json::array({
+        "&&",
+        json::array({"||", false, true}),  // true
+        json::array({"||", false, false, true})  // true
+    });
+    EXPECT_EQ(computo::execute(script, input_data), true);
+    
+    // ["||", ["&&", false, true], ["&&", true, true]] -> true
+    json script2 = json::array({
+        "||",
+        json::array({"&&", false, true}),  // false
+        json::array({"&&", true, true})    // true
+    });
+    EXPECT_EQ(computo::execute(script2, input_data), true);
+}
+
+// Test && and || in if conditions
+TEST_F(ComputoTest, LogicalOperatorsInIfConditions) {
+    // ["if", ["&&", true, ["==", "hello", "hello"]], "success", "failure"]
+    json script = json::array({
+        "if",
+        json::array({"&&", true, json::array({"==", "hello", "hello"})}),
+        "success",
+        "failure"
+    });
+    EXPECT_EQ(computo::execute(script, input_data), "success");
+    
+    // ["if", ["||", false, ["==", "world", "world"]], "success", "failure"]
+    json script2 = json::array({
+        "if",
+        json::array({"||", false, json::array({"==", "world", "world"})}),
+        "success",
+        "failure"
+    });
+    EXPECT_EQ(computo::execute(script2, input_data), "success");
+}
+
+// Test && and || with let variables
+TEST_F(ComputoTest, LogicalOperatorsWithLet) {
+    // ["let", [["x", true], ["y", false]], ["&&", ["$", "/x"], ["$", "/y"]]]
+    json script = json::array({
+        "let",
+        json::array({
+            json::array({"x", true}),
+            json::array({"y", false})
+        }),
+        json::array({"&&", json::array({"$", "/x"}), json::array({"$", "/y"})})
+    });
+    EXPECT_EQ(computo::execute(script, input_data), false);
+    
+    // ["let", [["a", false], ["b", true]], ["||", ["$", "/a"], ["$", "/b"]]]
+    json script2 = json::array({
+        "let",
+        json::array({
+            json::array({"a", false}),
+            json::array({"b", true})
+        }),
+        json::array({"||", json::array({"$", "/a"}), json::array({"$", "/b"})})
+    });
+    EXPECT_EQ(computo::execute(script2, input_data), true);
+}
+
+// Test complex logical expression
+TEST_F(ComputoTest, ComplexLogicalExpression) {
+    // ["&&", ["||", false, true], ["||", ["==", 1, 1], ["!=", 2, 2]], [">", 10, 5]]
+    json script = json::array({
+        "&&",
+        json::array({"||", false, true}),  // true
+        json::array({"||", json::array({"==", 1, 1}), json::array({"!=", 2, 2})}),  // true || false = true
+        json::array({">", 10, 5})  // true
+    });
+    EXPECT_EQ(computo::execute(script, input_data), true);
+}
+
+// === Error Tests for Logical Operators ===
+
+// Test && operator with no arguments
+TEST_F(ComputoTest, AndOperatorNoArgs) {
+    json script = json::array({"&&"});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+// Test || operator with no arguments
+TEST_F(ComputoTest, OrOperatorNoArgs) {
+    json script = json::array({"||"});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
