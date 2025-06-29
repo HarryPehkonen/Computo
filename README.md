@@ -2,6 +2,10 @@
 
 A safe, sandboxed JSON transformation engine with Lisp-like syntax expressed in JSON. Features RFC 6902 JSON Patch support for document diffing and patching, plus **Permuto** integration for advanced templating.
 
+**📖 Human-readable documentation:** [Computo & Permuto Book](https://harrypehkonen.github.io/ComputoPermutoBook/) | [Repository](https://github.com/HarryPehkonen/ComputoPermutoBook)
+
+*This README is optimized for AI assistants. For tutorials, examples, and learning materials, see the book above.*
+
 ## Architecture Overview
 
 - **Computo**: Handles complex programmatic logic (conditionals, loops, calculations, diff/patch operations)
