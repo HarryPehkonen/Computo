@@ -37,6 +37,9 @@ cd build && ctest --verbose
 # With Permuto string interpolation
 ./build/computo --interpolation script.json input.json
 
+# Allow comments in script files (CLI only)
+./build/computo --comments script_with_comments.json input.json
+
 # Available CLI options
 ./build/computo --missing-key=error --max-depth=32 script.json input.json
 ```
@@ -541,13 +544,39 @@ computo --pretty=4 script.json input.json
 computo script.json input.json
 ```
 
+### Comment Support (CLI Only)
+```bash
+# Allow comments in script files (/* */ and // style)
+computo --comments script_with_comments.json input.json
+
+# Comments are ONLY supported in script files, not input files
+# This feature is CLI-only and not available in the library API
+```
+
+**Important**: The `--comments` flag only enables comment parsing for **script files**. Input files are never parsed with comment support, regardless of this flag. This feature is exclusive to the CLI tool and is not exposed in the C++ library API.
+
+Example commented script:
+```json
+[
+  // This is a transformation script with comments
+  "obj", // Create an object
+  /* Multi-line comment explaining the transformation:
+     This extracts the user's name and creates a greeting */
+  ["name", ["get", ["$input"], "/user/name"]],
+  ["greeting", "Hello World!"]
+]
+```
+
 ### Combined Options
 ```bash
 # Interpolation + diff mode
 computo --interpolation --diff transform.json input.json
 
+# Comments with other flags
+computo --comments --interpolation --pretty=2 script.json input.json
+
 # Multiple flags
-computo --interpolation --missing-key=error --max-depth=16 script.json input.json
+computo --comments --interpolation --missing-key=error --max-depth=16 script.json input.json
 
 # Pretty printing with other options
 computo --pretty=2 --interpolation script.json input.json
