@@ -773,6 +773,138 @@ static void initialize_operators() {
         return result;
     };
     
+    
+    // Cons operator - prepends item to array
+    operators["cons"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("cons operator requires exactly 2 arguments");
+        }
+        
+        auto item = evaluate(args[0], ctx);
+        auto array = evaluate(args[1], ctx);
+        
+        if (!array.is_array()) {
+            throw InvalidArgumentException("cons operator requires an array as second argument");
+        }
+        
+        nlohmann::json result = nlohmann::json::array();
+        result.push_back(item);
+        for (const auto& element : array) {
+            result.push_back(element);
+        }
+        
+        return result;
+    };
+    
+    // Append operator - concatenates arrays
+    operators["append"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() < 1) {
+            throw InvalidArgumentException("append operator requires at least 1 argument");
+        }
+        
+        nlohmann::json result = nlohmann::json::array();
+        
+        for (const auto& arg : args) {
+            auto array = evaluate(arg, ctx);
+            
+            if (!array.is_array()) {
+                throw InvalidArgumentException("append operator requires all arguments to be arrays");
+            }
+            
+            for (const auto& element : array) {
+                result.push_back(element);
+            }
+        }
+        
+        return result;
+    };
+    
+    // Chunk operator - splits array into chunks of specified size
+    operators["chunk"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("chunk operator requires exactly 2 arguments");
+        }
+        
+        auto array = evaluate(args[0], ctx);
+        auto size_val = evaluate(args[1], ctx);
+        
+        if (!array.is_array()) {
+            throw InvalidArgumentException("chunk operator requires an array as first argument");
+        }
+        
+        if (!size_val.is_number_integer() || size_val.get<int64_t>() <= 0) {
+            throw InvalidArgumentException("chunk operator requires a positive integer as second argument");
+        }
+        
+        int64_t chunk_size = size_val.get<int64_t>();
+        nlohmann::json result = nlohmann::json::array();
+        
+        for (size_t i = 0; i < array.size(); i += chunk_size) {
+            nlohmann::json chunk = nlohmann::json::array();
+            for (size_t j = i; j < std::min(i + chunk_size, array.size()); ++j) {
+                chunk.push_back(array[j]);
+            }
+            result.push_back(chunk);
+        }
+        
+        return result;
+    };
+    
+    // Partition operator - splits array into two arrays based on predicate
+    operators["partition"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("partition operator requires exactly 2 arguments");
+        }
+        
+        auto array = evaluate(args[0], ctx);
+        
+        if (!array.is_array()) {
+            throw InvalidArgumentException("partition operator requires an array as first argument");
+        }
+        
+        const auto& lambda_expr = args[1];
+        
+        nlohmann::json truthy_items = nlohmann::json::array();
+        nlohmann::json falsy_items = nlohmann::json::array();
+        
+        for (const auto& item : array) {
+            nlohmann::json condition_result = evaluate_lambda(lambda_expr, item, ctx);
+            
+            // Use same truthiness logic as filter
+            bool is_true = false;
+            if (condition_result.is_boolean()) {
+                is_true = condition_result.get<bool>();
+            } else if (condition_result.is_number()) {
+                if (condition_result.is_number_integer()) {
+                    is_true = condition_result.get<int64_t>() != 0;
+                } else {
+                    is_true = condition_result.get<double>() != 0.0;
+                }
+            } else if (condition_result.is_string()) {
+                is_true = !condition_result.get<std::string>().empty();
+            } else if (condition_result.is_null()) {
+                is_true = false;
+            } else if (condition_result.is_array()) {
+                is_true = !condition_result.empty();
+            } else if (condition_result.is_object()) {
+                is_true = !condition_result.empty();
+            }
+            
+            if (is_true) {
+                truthy_items.push_back(item);
+            } else {
+                falsy_items.push_back(item);
+            }
+        }
+        
+        // Return array containing [truthy_items, falsy_items]
+        nlohmann::json result = nlohmann::json::array();
+        result.push_back(truthy_items);
+        result.push_back(falsy_items);
+        
+        return result;
+    };
+    
     });
 }
 

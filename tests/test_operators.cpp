@@ -2380,3 +2380,233 @@ TEST_F(ComputoTest, OrOperatorNoArgs) {
     json script = json::array({"||"});
     EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
 }
+
+// === Tests for Additional Operators ===
+
+// Test cons operator
+TEST_F(ComputoTest, ConsOperator) {
+    // ["cons", 1, {"array": [2, 3]}] should return [1, 2, 3]
+    json script = json::array({
+        "cons", 
+        1, 
+        json{{"array", json::array({2, 3})}}
+    });
+    json expected = json::array({1, 2, 3});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+    
+    // Test with empty array
+    json script2 = json::array({
+        "cons", 
+        "first", 
+        json{{"array", json::array()}}
+    });
+    json expected2 = json::array({"first"});
+    EXPECT_EQ(computo::execute(script2, input_data), expected2);
+}
+
+// Test cons operator error cases
+TEST_F(ComputoTest, ConsOperatorErrors) {
+    // Wrong number of arguments
+    json script1 = json::array({"cons", 1});
+    EXPECT_THROW(computo::execute(script1, input_data), computo::InvalidArgumentException);
+    
+    // Second argument not an array
+    json script2 = json::array({"cons", 1, "not_array"});
+    EXPECT_THROW(computo::execute(script2, input_data), computo::InvalidArgumentException);
+}
+
+// Test append operator
+TEST_F(ComputoTest, AppendOperator) {
+    // ["append", {"array": [1, 2]}, {"array": [3, 4]}] should return [1, 2, 3, 4]
+    json script = json::array({
+        "append",
+        json{{"array", json::array({1, 2})}},
+        json{{"array", json::array({3, 4})}}
+    });
+    json expected = json::array({1, 2, 3, 4});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+    
+    // Test with multiple arrays
+    json script2 = json::array({
+        "append",
+        json{{"array", json::array({1})}},
+        json{{"array", json::array({2, 3})}},
+        json{{"array", json::array({4, 5, 6})}}
+    });
+    json expected2 = json::array({1, 2, 3, 4, 5, 6});
+    EXPECT_EQ(computo::execute(script2, input_data), expected2);
+    
+    // Test with empty arrays
+    json script3 = json::array({
+        "append",
+        json{{"array", json::array()}},
+        json{{"array", json::array({1, 2})}},
+        json{{"array", json::array()}}
+    });
+    json expected3 = json::array({1, 2});
+    EXPECT_EQ(computo::execute(script3, input_data), expected3);
+}
+
+// Test append operator error cases
+TEST_F(ComputoTest, AppendOperatorErrors) {
+    // No arguments
+    json script1 = json::array({"append"});
+    EXPECT_THROW(computo::execute(script1, input_data), computo::InvalidArgumentException);
+    
+    // Non-array argument
+    json script2 = json::array({"append", json{{"array", json::array({1, 2})}}, "not_array"});
+    EXPECT_THROW(computo::execute(script2, input_data), computo::InvalidArgumentException);
+}
+
+// Test chunk operator
+TEST_F(ComputoTest, ChunkOperator) {
+    // ["chunk", {"array": [1, 2, 3, 4, 5]}, 2] should return [[1, 2], [3, 4], [5]]
+    json script = json::array({
+        "chunk",
+        json{{"array", json::array({1, 2, 3, 4, 5})}},
+        2
+    });
+    json expected = json::array({
+        json::array({1, 2}),
+        json::array({3, 4}),
+        json::array({5})
+    });
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+    
+    // Test with exact division
+    json script2 = json::array({
+        "chunk",
+        json{{"array", json::array({1, 2, 3, 4})}},
+        2
+    });
+    json expected2 = json::array({
+        json::array({1, 2}),
+        json::array({3, 4})
+    });
+    EXPECT_EQ(computo::execute(script2, input_data), expected2);
+    
+    // Test with chunk size 1
+    json script3 = json::array({
+        "chunk",
+        json{{"array", json::array({"a", "b"})}},
+        1
+    });
+    json expected3 = json::array({
+        json::array({"a"}),
+        json::array({"b"})
+    });
+    EXPECT_EQ(computo::execute(script3, input_data), expected3);
+    
+    // Test with empty array
+    json script4 = json::array({
+        "chunk",
+        json{{"array", json::array()}},
+        3
+    });
+    json expected4 = json::array();
+    EXPECT_EQ(computo::execute(script4, input_data), expected4);
+}
+
+// Test chunk operator error cases
+TEST_F(ComputoTest, ChunkOperatorErrors) {
+    // Wrong number of arguments
+    json script1 = json::array({"chunk", json{{"array", json::array({1, 2})}}});
+    EXPECT_THROW(computo::execute(script1, input_data), computo::InvalidArgumentException);
+    
+    // First argument not an array
+    json script2 = json::array({"chunk", "not_array", 2});
+    EXPECT_THROW(computo::execute(script2, input_data), computo::InvalidArgumentException);
+    
+    // Second argument not a positive integer
+    json script3 = json::array({"chunk", json{{"array", json::array({1, 2})}}, 0});
+    EXPECT_THROW(computo::execute(script3, input_data), computo::InvalidArgumentException);
+    
+    json script4 = json::array({"chunk", json{{"array", json::array({1, 2})}}, -1});
+    EXPECT_THROW(computo::execute(script4, input_data), computo::InvalidArgumentException);
+    
+    json script5 = json::array({"chunk", json{{"array", json::array({1, 2})}}, 2.5});
+    EXPECT_THROW(computo::execute(script5, input_data), computo::InvalidArgumentException);
+}
+
+// Test partition operator
+TEST_F(ComputoTest, PartitionOperator) {
+    // ["partition", {"array": [1, 2, 3, 4, 5]}, ["lambda", ["x"], [">", ["$", "/x"], 3]]]
+    // Should return [[4, 5], [1, 2, 3]]
+    json script = json::array({
+        "partition",
+        json{{"array", json::array({1, 2, 3, 4, 5})}},
+        json::array({
+            "lambda",
+            json::array({"x"}),
+            json::array({">", json::array({"$", "/x"}), 3})
+        })
+    });
+    json expected = json::array({
+        json::array({4, 5}),  // truthy items
+        json::array({1, 2, 3})  // falsy items
+    });
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+    
+    // Test with all items truthy
+    json script2 = json::array({
+        "partition",
+        json{{"array", json::array({1, 2, 3})}},
+        json::array({
+            "lambda",
+            json::array({"x"}),
+            true
+        })
+    });
+    json expected2 = json::array({
+        json::array({1, 2, 3}),  // all truthy
+        json::array()  // none falsy
+    });
+    EXPECT_EQ(computo::execute(script2, input_data), expected2);
+    
+    // Test with all items falsy
+    json script3 = json::array({
+        "partition",
+        json{{"array", json::array({1, 2, 3})}},
+        json::array({
+            "lambda",
+            json::array({"x"}),
+            false
+        })
+    });
+    json expected3 = json::array({
+        json::array(),  // none truthy
+        json::array({1, 2, 3})  // all falsy
+    });
+    EXPECT_EQ(computo::execute(script3, input_data), expected3);
+    
+    // Test with empty array
+    json script4 = json::array({
+        "partition",
+        json{{"array", json::array()}},
+        json::array({
+            "lambda",
+            json::array({"x"}),
+            true
+        })
+    });
+    json expected4 = json::array({
+        json::array(),  // empty truthy
+        json::array()   // empty falsy
+    });
+    EXPECT_EQ(computo::execute(script4, input_data), expected4);
+}
+
+// Test partition operator error cases
+TEST_F(ComputoTest, PartitionOperatorErrors) {
+    // Wrong number of arguments
+    json script1 = json::array({"partition", json{{"array", json::array({1, 2})}}});
+    EXPECT_THROW(computo::execute(script1, input_data), computo::InvalidArgumentException);
+    
+    // First argument not an array
+    json script2 = json::array({
+        "partition", 
+        "not_array", 
+        json::array({"lambda", json::array({"x"}), true})
+    });
+    EXPECT_THROW(computo::execute(script2, input_data), computo::InvalidArgumentException);
+}

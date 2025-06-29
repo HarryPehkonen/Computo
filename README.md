@@ -23,7 +23,7 @@ A safe, sandboxed JSON transformation engine with Lisp-like syntax expressed in 
 cmake -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
 
-# Run tests (153 tests, 100% passing)
+# Run tests (183 tests, 100% passing)
 cd build && ctest --verbose
 ```
 
@@ -193,6 +193,25 @@ nlohmann::json result = computo::execute(multi_script, inputs);
 // Composition: get second element
 ["car", ["cdr", {"array": [1, 2, 3, 4]}]]
 // Result: 2
+```
+
+#### List Building and Manipulation
+```json
+// Prepend item to array (cons)
+["cons", "first", {"array": [2, 3, 4]}]
+// Result: ["first", 2, 3, 4]
+
+// Concatenate multiple arrays
+["append", {"array": [1, 2]}, {"array": [3, 4]}, {"array": [5]}]
+// Result: [1, 2, 3, 4, 5]
+
+// Split array into chunks
+["chunk", {"array": [1, 2, 3, 4, 5]}, 2]
+// Result: [[1, 2], [3, 4], [5]]
+
+// Partition array by predicate
+["partition", {"array": [1, 2, 3, 4, 5]}, ["lambda", ["x"], [">", ["$", "/x"], 3]]]
+// Result: [[4, 5], [1, 2, 3]]  // [truthy_items, falsy_items]
 
 // Process multiple inputs functionally
 ["reduce", 
@@ -255,10 +274,14 @@ nlohmann::json result = computo::execute(multi_script, inputs);
 - `["some", array, lambda]` - Test if any element matches
 - `["every", array, lambda]` - Test if all elements match
 - `["flatMap", array, lambda]` - Map and flatten results
+- `["partition", array, lambda]` - Split array into [truthy, falsy] based on predicate
 
 ### List Processing (Functional)
 - `["car", array]` - Get first element of array
 - `["cdr", array]` - Get all but first element of array
+- `["cons", item, array]` - Prepend item to array (list building primitive)
+- `["append", array1, array2, ...]` - Concatenate multiple arrays
+- `["chunk", array, size]` - Split array into chunks of specified size
 
 ### Lambda Syntax
 ```json
