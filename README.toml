@@ -1,0 +1,1369 @@
+# Computo Documentation Source
+# This TOML file is the single source of truth for README.md and examples/
+# Use: python generate_readme.py && python generate_examples.py
+
+[meta]
+title = "Computo"
+subtitle = "A safe, sandboxed JSON transformation engine with Lisp-like syntax expressed in JSON"
+human_docs_url = "https://harrypehkonen.github.io/ComputoPermutoBook/"
+human_docs_repo = "https://github.com/HarryPehkonen/ComputoPermutoBook"
+
+[intro]
+description = """
+Features RFC 6902 JSON Patch support for document diffing and patching, plus **Permuto** integration for advanced templating.
+
+**📖 Human-readable documentation:** [Computo & Permuto Book]({human_docs_url}) | [Repository]({human_docs_repo})
+
+*This README is optimized for AI assistants. For tutorials, examples, and learning materials, see the book above.*
+
+## Architecture Overview
+
+- **Computo**: Handles complex programmatic logic (conditionals, loops, calculations, diff/patch operations)
+- **Permuto**: Handles simple declarative substitutions and templating using `${{path}}` syntax
+- **JSON Patch**: RFC 6902 compliant diff generation and patch application
+- **Code is Data**: All scripts are valid JSON with unambiguous syntax
+- **Immutable**: Pure functions that don't modify input data
+- **Sandboxed**: No I/O operations or system access
+- **Enhanced Error Reporting**: Precise path tracking for debugging complex scripts
+
+## Installation & Building
+
+### Prerequisites
+- C++17 compatible compiler (GCC 7+, Clang 5+, MSVC 2017+)
+- CMake 3.10 or higher
+- nlohmann/json library
+- Permuto library (included as submodule)
+
+### Building from Source
+```bash
+# Clone the repository
+git clone https://github.com/your-org/computo.git
+cd computo
+
+# Initialize submodules
+git submodule init
+git submodule update
+
+# Configure build
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
+
+# Build library and CLI
+cmake --build build
+
+# Run tests (198 tests, 100% passing)
+cd build && ctest --verbose
+```
+
+### Installation
+```bash
+# Install system-wide
+sudo cmake --install build
+
+# Or install to custom prefix
+cmake --install build --prefix=/usr/local
+```
+
+## Library Usage
+
+### C++ API
+
+Include the header and use the execute function:
+
+```cpp
+#include <computo/computo.hpp>
+
+// Single input (traditional)
+nlohmann::json script = R"(["*", ["get", ["$input"], "/value"], 2])"_json;
+nlohmann::json input = R"({{"value": 21}})"_json;
+nlohmann::json result = computo::execute(script, input);
+// Result: 42
+
+// Multiple inputs (new)
+std::vector<nlohmann::json> inputs = {{
+    R"({{"data": [1, 2, 3]}})"_json,
+    R"({{"multiplier": 10}})"_json
+}};
+nlohmann::json multi_script = R"(["map", ["get", ["$inputs"], "/0/data"], 
+  ["lambda", ["x"], ["*", ["$", "/x"], ["get", ["$inputs"], "/1/multiplier"]]]])"_json;
+nlohmann::json result = computo::execute(multi_script, inputs);
+// Result: [10, 20, 30]
+```
+
+### Exception Handling
+```cpp
+try {{
+    nlohmann::json result = computo::execute(script, input);
+    std::cout << result.dump(2) << std::endl;
+}} catch (const computo::ComputoException& e) {{
+    std::cerr << "Computo error: " << e.what() << std::endl;
+}}
+```
+
+### CMake Integration
+```cmake
+find_package(computo REQUIRED)
+target_link_libraries(your_target computo::computo)
+```
+
+## Core Syntax
+
+### Operator Calls vs Literal Data
+- **Operator call**: `[operator, arg1, arg2, ...]`
+- **Literal array**: `{{"array": [item1, item2, ...]}}`
+- **Objects**: Standard JSON objects
+
+### System Variables
+- `["$input"]` - Access entire input data (first input if multiple)
+- `["$inputs"]` - Access all input documents as array
+- `["$", "/variable_name"]` - Access variable by path
+
+### Unambiguous Syntax
+The key insight of Computo is that **code is data** - all scripts are valid JSON with zero ambiguity between operator calls and literal data.
+
+## CLI Usage
+
+### Basic Usage
+```bash
+# Single input transformation
+./build/computo script.json input.json
+
+# Multiple input processing  
+./build/computo script.json input1.json input2.json input3.json
+
+# No input (script only)
+./build/computo script.json
+```
+
+### Diff Mode
+```bash
+# Generate patch from transformation
+./build/computo --diff transform_script.json original.json
+```
+
+### Permuto Integration
+```bash
+# Enable string interpolation
+./build/computo --interpolation script.json input.json
+```
+
+### Output Formatting
+```bash
+# Pretty print with indentation
+./build/computo --pretty=2 script.json input.json
+```
+
+### Comment Support (CLI Only)
+```bash
+# Allow comments in script files
+./build/computo --comments script_with_comments.json input.json
+```
+"""
+
+# ============================================================================
+# MATHEMATICAL OPERATORS
+# ============================================================================
+
+[[examples]]
+name = "basic_addition"
+category = "arithmetic"
+description = """
+Basic addition of two numbers.
+Computo supports standard arithmetic operations on numbers.
+"""
+script = ["+", 15, 27]
+input = {}
+expected = 42
+
+[[examples]]
+name = "basic_subtraction"
+category = "arithmetic"
+description = """
+Basic subtraction operation.
+Demonstrates numeric subtraction with integer operands.
+"""
+script = ["-", 50, 8]
+input = {}
+expected = 42
+
+[[examples]]
+name = "basic_multiplication"
+category = "arithmetic"
+description = """
+Basic multiplication of two numbers.
+This is the simplest form of Computo operation.
+"""
+script = ["*", 6, 7]
+input = {}
+expected = 42
+
+[[examples]]
+name = "basic_division"
+category = "arithmetic"
+description = """
+Basic division operation.
+Demonstrates numeric division with precise results.
+"""
+script = ["/", 84, 2]
+input = {}
+expected = 42
+
+[[examples]]
+name = "nested_arithmetic"
+category = "arithmetic"
+description = """
+Nested arithmetic operations showing operator composition.
+Demonstrates how operators can be nested to create complex expressions.
+"""
+script = ["+", ["*", 3, 4], ["*", 5, 6]]
+input = {}
+expected = 42
+
+# ============================================================================
+# COMPARISON OPERATORS
+# ============================================================================
+
+[[examples]]
+name = "greater_than_true"
+category = "comparison"
+description = """
+Greater than comparison returning true.
+Demonstrates numeric comparison operations.
+"""
+script = [">", 10, 5]
+input = {}
+expected = true
+
+[[examples]]
+name = "greater_than_false"
+category = "comparison"
+description = """
+Greater than comparison returning false.
+Shows how comparison operators work with different outcomes.
+"""
+script = [">", 3, 8]
+input = {}
+expected = false
+
+[[examples]]
+name = "less_than_true"
+category = "comparison"
+description = """
+Less than comparison returning true.
+Demonstrates the less than operator.
+"""
+script = ["<", 5, 10]
+input = {}
+expected = true
+
+[[examples]]
+name = "greater_equal_true"
+category = "comparison"
+description = """
+Greater than or equal comparison with equality.
+Shows boundary condition handling.
+"""
+script = [">=", 5, 5]
+input = {}
+expected = true
+
+[[examples]]
+name = "less_equal_false"
+category = "comparison"
+description = """
+Less than or equal comparison returning false.
+Demonstrates boundary condition failure.
+"""
+script = ["<=", 10, 5]
+input = {}
+expected = false
+
+[[examples]]
+name = "equality_strings_true"
+category = "comparison"
+description = """
+String equality comparison returning true.
+Demonstrates exact string matching.
+"""
+script = ["==", "hello", "hello"]
+input = {}
+expected = true
+
+[[examples]]
+name = "equality_strings_false"
+category = "comparison"
+description = """
+String equality comparison returning false.
+Shows string inequality detection.
+"""
+script = ["==", "hello", "world"]
+input = {}
+expected = false
+
+[[examples]]
+name = "not_equal_numbers"
+category = "comparison"
+description = """
+Not equal comparison with numbers.
+Demonstrates inequality operator with numeric values.
+"""
+script = ["!=", 1, 2]
+input = {}
+expected = true
+
+[[examples]]
+name = "approximate_equality"
+category = "comparison"
+description = """
+Approximate equality for floating point numbers.
+Uses epsilon tolerance for float comparison to handle precision issues.
+"""
+script = ["approx", 0.1, 0.10000001, 0.001]
+input = {}
+expected = true
+
+# ============================================================================
+# LOGICAL OPERATORS
+# ============================================================================
+
+[[examples]]
+name = "logical_and_all_true"
+category = "logical"
+description = """
+Logical AND with all true conditions.
+Demonstrates short-circuit evaluation - all expressions must be true.
+"""
+script = ["&&", true, [">", 10, 5], ["==", 2, 2]]
+input = {}
+expected = true
+
+[[examples]]
+name = "logical_and_short_circuit"
+category = "logical"
+description = """
+Logical AND with short-circuit evaluation.
+Shows how AND stops at first false condition, preventing division by zero.
+"""
+script = ["&&", false, ["/", 1, 0]]
+input = {}
+expected = false
+
+[[examples]]
+name = "logical_or_first_true"
+category = "logical"
+description = """
+Logical OR with short-circuit evaluation.
+Demonstrates that OR returns true when first condition is true.
+"""
+script = ["||", true, ["/", 1, 0]]
+input = {}
+expected = true
+
+[[examples]]
+name = "logical_or_second_true"
+category = "logical"
+description = """
+Logical OR with second condition true.
+Shows OR continuing evaluation until it finds a true condition.
+"""
+script = ["||", false, ["==", 3, 3], ["!=", 1, 1]]
+input = {}
+expected = true
+
+[[examples]]
+name = "logical_or_all_false"
+category = "logical"
+description = """
+Logical OR with all false conditions.
+Shows OR behavior when all conditions are false.
+"""
+script = ["||", false, [">", 2, 5], ["==", "a", "b"]]
+input = {}
+expected = false
+
+# ============================================================================
+# CONDITIONAL EXECUTION
+# ============================================================================
+
+[[examples]]
+name = "if_condition_true"
+category = "conditional"
+description = """
+Conditional execution with true condition.
+Demonstrates basic if-then-else control flow executing the then branch.
+"""
+script = ["if", [">", 10, 5], "condition_was_true", "condition_was_false"]
+input = {}
+expected = "condition_was_true"
+
+[[examples]]
+name = "if_condition_false"
+category = "conditional"
+description = """
+Conditional execution with false condition.
+Shows else branch execution when condition is false.
+"""
+script = ["if", ["<", 10, 5], "condition_was_true", "condition_was_false"]
+input = {}
+expected = "condition_was_false"
+
+[[examples]]
+name = "if_nested_conditions"
+category = "conditional"
+description = """
+Nested conditional expressions.
+Demonstrates how if statements can be nested for complex decision logic.
+"""
+script = ["if", [">", 15, 10], ["if", ["<", 15, 20], "both_conditions_true", "only_first_true"], "first_condition_false"]
+input = {}
+expected = "both_conditions_true"
+
+[[examples]]
+name = "if_with_complex_condition"
+category = "conditional"
+description = """
+Conditional with complex logical expression.
+Shows combining logical operators in if conditions.
+"""
+script = ["if", ["&&", [">", 20, 10], ["<", 20, 30]], "in_range", "out_of_range"]
+input = {}
+expected = "in_range"
+
+# ============================================================================
+# DATA ACCESS AND INPUT HANDLING
+# ============================================================================
+
+[[examples]]
+name = "input_access_whole"
+category = "data-access"
+description = """
+Access entire input document.
+Demonstrates using $input to access the complete input data.
+"""
+script = ["$input"]
+input = {message = "Hello World", number = 42}
+expected = {message = "Hello World", number = 42}
+
+[[examples]]
+name = "json_pointer_simple"
+category = "data-access"
+description = """
+Simple JSON Pointer data extraction.
+Shows extracting a specific field using JSON Pointer syntax.
+"""
+script = ["get", ["$input"], "/message"]
+input = {message = "Hello Computo", status = "active"}
+expected = "Hello Computo"
+
+[[examples]]
+name = "json_pointer_nested"
+category = "data-access"
+description = """
+Nested JSON Pointer access.
+Demonstrates accessing deeply nested data structures.
+"""
+script = ["get", ["$input"], "/user/profile/name"]
+input = {user = {profile = {name = "Alice", age = 30}, id = 123}}
+expected = "Alice"
+
+[[examples]]
+name = "json_pointer_array_index"
+category = "data-access"
+description = """
+JSON Pointer array element access.
+Shows accessing specific array elements by index.
+"""
+script = ["get", ["$input"], "/items/1"]
+input = {items = ["first", "second", "third"]}
+expected = "second"
+
+[[examples]]
+name = "variable_binding_simple"
+category = "data-access"
+description = """
+Simple variable binding with let.
+Demonstrates creating local variables for reuse in expressions.
+"""
+script = ["let", [["x", 25], ["y", 17]], ["+", ["$", "/x"], ["$", "/y"]]]
+input = {}
+expected = 42
+
+[[examples]]
+name = "variable_binding_from_input"
+category = "data-access"
+description = """
+Variable binding using input data.
+Shows extracting input values into variables for cleaner expressions.
+"""
+script = ["let", [["user_name", ["get", ["$input"], "/user/name"]], ["user_age", ["get", ["$input"], "/user/age"]]], ["obj", ["greeting", ["$", "/user_name"]], ["next_age", ["+", ["$", "/user_age"], 1]]]]
+input = {user = {name = "Bob", age = 25}}
+expected = {greeting = "Bob", next_age = 26}
+
+[[examples]]
+name = "variable_binding_nested"
+category = "data-access"
+description = """
+Nested variable bindings.
+Demonstrates creating multiple variable scopes with let expressions.
+"""
+script = ["let", [["outer", 10]], ["let", [["inner", 32]], ["+", ["$", "/outer"], ["$", "/inner"]]]]
+input = {}
+expected = 42
+
+# ============================================================================
+# MULTIPLE INPUT HANDLING
+# ============================================================================
+
+[[examples]]
+name = "multiple_inputs_access_all"
+category = "multiple-inputs"
+description = """
+Access all input documents using $inputs.
+Demonstrates the new system variable for multiple input handling.
+"""
+script = ["$inputs"]
+inputs = [
+    {type = "user", name = "Alice"},
+    {type = "config", theme = "dark"},
+    {type = "metadata", version = "1.0"}
+]
+expected = [
+    {type = "user", name = "Alice"},
+    {type = "config", theme = "dark"},
+    {type = "metadata", version = "1.0"}
+]
+
+[[examples]]
+name = "multiple_inputs_by_index"
+category = "multiple-inputs"
+description = """
+Access specific inputs by index.
+Shows extracting individual documents from multiple inputs.
+"""
+script = ["obj", ["first_name", ["get", ["$inputs"], "/0/name"]], ["second_name", ["get", ["$inputs"], "/1/name"]]]
+inputs = [
+    {name = "Alice", role = "admin"},
+    {name = "Bob", role = "user"}
+]
+expected = {first_name = "Alice", second_name = "Bob"}
+
+[[examples]]
+name = "multi_input_merge"
+category = "multiple-inputs"
+description = """
+Merge data from multiple inputs using $inputs.
+Shows how to access different input files and combine them.
+"""
+script = ["obj", ["user", ["get", ["$inputs"], "/0"]], ["config", ["get", ["$inputs"], "/1"]]]
+inputs = [
+    {name = "Alice", id = 123},
+    {theme = "dark", lang = "en"}
+]
+expected = {user = {name = "Alice", id = 123}, config = {theme = "dark", lang = "en"}}
+
+[[examples]]
+name = "input_count"
+category = "multiple-inputs"
+description = """
+Count the number of input documents.
+Demonstrates using count operator with the $inputs array.
+"""
+script = ["count", ["$inputs"]]
+inputs = [
+    {data = "first"},
+    {data = "second"},
+    {data = "third"}
+]
+expected = 3
+
+[[examples]]
+name = "backward_compatibility"
+category = "multiple-inputs"
+description = """
+Backward compatibility - $input equals first input.
+Shows that existing scripts still work with multiple inputs.
+"""
+script = ["obj", ["old_way", ["$input"]], ["new_way", ["get", ["$inputs"], "/0"]]]  
+inputs = [
+    {message = "Hello World"}
+]
+expected = {old_way = {message = "Hello World"}, new_way = {message = "Hello World"}}
+
+# ============================================================================
+# DATA CONSTRUCTION
+# ============================================================================
+
+[[examples]]
+name = "object_construction_simple"
+category = "data-construction"
+description = """
+Simple object construction using obj operator.
+Shows creating JSON objects with literal values.
+"""
+script = ["obj", ["name", "Alice"], ["age", 30], ["active", true]]
+input = {}
+expected = {name = "Alice", age = 30, active = true}
+
+[[examples]]
+name = "object_construction_computed"
+category = "data-construction"
+description = """
+Object construction with computed values.
+Demonstrates creating objects with calculated fields.
+"""
+script = ["obj", ["name", "Bob"], ["birth_year", ["-", 2024, 25]], ["score", ["*", 6, 7]]]
+input = {}
+expected = {name = "Bob", birth_year = 1999, score = 42}
+
+[[examples]]
+name = "array_construction_literal"
+category = "data-construction"
+description = """
+Array construction using literal syntax.
+Shows creating arrays with the {"array": [...]} syntax.
+"""
+script = {array = [1, 2, 3, "hello", true]}
+input = {}
+expected = [1, 2, 3, "hello", true]
+
+[[examples]]
+name = "array_construction_mixed"
+category = "data-construction"
+description = """
+Array construction with mixed literal and computed values.
+Demonstrates arrays containing both static and calculated elements.
+"""
+script = {array = [1, ["*", 2, 3], ["+", 4, 3], "mixed"]}
+input = {}
+expected = [1, 6, 7, "mixed"]
+
+[[examples]]
+name = "nested_object_construction"
+category = "data-construction"
+description = """
+Nested object and array construction.
+Shows creating complex nested data structures.
+"""
+script = ["obj", ["user", ["obj", ["name", "Charlie"], ["hobbies", {array = ["reading", "coding"]}]]], ["metadata", ["obj", ["created", "2024-01-01"], ["version", 1]]]]
+input = {}
+expected = {user = {name = "Charlie", hobbies = ["reading", "coding"]}, metadata = {created = "2024-01-01", version = 1}}
+
+[[examples]]
+name = "object_from_input_data"
+category = "data-construction"
+description = """
+Dynamic object construction from input data.
+Demonstrates building objects using values extracted from input.
+"""
+script = ["obj", ["full_name", ["get", ["$input"], "/first_name"]], ["age_category", ["if", [">", ["get", ["$input"], "/age"], 18], "adult", "minor"]]]
+input = {first_name = "Diana", age = 25}
+expected = {full_name = "Diana", age_category = "adult"}
+
+# ============================================================================
+# ARRAY OPERATIONS
+# ============================================================================
+
+[[examples]]
+name = "array_map_double"
+category = "array-operations"
+description = """
+Array transformation using map to double values.
+Demonstrates applying a function to each array element.
+"""
+script = ["map", {array = [1, 2, 3, 4]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]]
+input = {}
+expected = [2, 4, 6, 8]
+
+[[examples]]
+name = "array_map_from_input"
+category = "array-operations"
+description = """
+Map operation on array from input data.
+Shows transforming arrays that come from input documents.
+"""
+script = ["map", ["get", ["$input"], "/numbers"], ["lambda", ["n"], ["+", ["$", "/n"], 10]]]
+input = {numbers = [1, 2, 3]}
+expected = [11, 12, 13]
+
+[[examples]]
+name = "array_filter_greater_than"
+category = "array-operations"
+description = """
+Array filtering based on numeric condition.
+Shows keeping only elements that satisfy a predicate.
+"""
+script = ["filter", {array = [1, 2, 3, 4, 5, 6]}, ["lambda", ["x"], [">", ["$", "/x"], 3]]]
+input = {}
+expected = [4, 5, 6]
+
+[[examples]]
+name = "array_filter_greater_than_two"
+category = "array-operations"
+description = """
+Filter array to keep numbers greater than 2.
+Demonstrates filtering arrays based on numeric conditions.
+"""
+script = ["filter", {array = [1, 2, 3, 4, 5, 6, 7, 8]}, ["lambda", ["x"], [">", ["$", "/x"], 2]]]
+input = {}
+expected = [3, 4, 5, 6, 7, 8]
+
+[[examples]]
+name = "array_reduce_sum"
+category = "array-operations"
+description = """
+Array reduction to sum all elements.
+Demonstrates aggregating an array to a single value.
+"""
+script = ["reduce", {array = [1, 2, 3, 4, 5]}, ["lambda", ["acc", "x"], ["+", ["$", "/acc"], ["$", "/x"]]], 0]
+input = {}
+expected = 15
+
+[[examples]]
+name = "array_reduce_product"
+category = "array-operations"
+description = """
+Array reduction to multiply all elements.
+Shows calculating the product using reduce with different initial value.
+"""
+script = ["reduce", {array = [2, 3, 4]}, ["lambda", ["acc", "x"], ["*", ["$", "/acc"], ["$", "/x"]]], 1]
+input = {}
+expected = 24
+
+[[examples]]
+name = "array_find_first_match"
+category = "array-operations"
+description = """
+Find first element matching condition.
+Shows locating the first element that satisfies a predicate.
+"""
+script = ["find", {array = [1, 2, 5, 8, 10]}, ["lambda", ["x"], [">", ["$", "/x"], 4]]]
+input = {}
+expected = 5
+
+[[examples]]
+name = "array_some_has_match"
+category = "array-operations"
+description = """
+Test if some elements match condition.
+Demonstrates checking if any element satisfies a condition.
+"""
+script = ["some", {array = [1, 2, 3, 8]}, ["lambda", ["x"], [">", ["$", "/x"], 5]]]
+input = {}
+expected = true
+
+[[examples]]
+name = "array_some_no_match"
+category = "array-operations"
+description = """
+Test if some elements match condition - no matches.
+Shows some operator returning false when no elements match.
+"""
+script = ["some", {array = [1, 2, 3, 4]}, ["lambda", ["x"], [">", ["$", "/x"], 10]]]
+input = {}
+expected = false
+
+[[examples]]
+name = "array_every_all_match"
+category = "array-operations"
+description = """
+Test if all elements match condition - all match.
+Shows every operator returning true when all elements satisfy condition.
+"""
+script = ["every", {array = [4, 6, 8, 10]}, ["lambda", ["x"], [">", ["$", "/x"], 3]]]
+input = {}
+expected = true
+
+[[examples]]
+name = "array_every_not_all"
+category = "array-operations"
+description = """
+Test if all elements match condition - not all match.
+Demonstrates every operator returning false when some elements don't match.
+"""
+script = ["every", {array = [2, 4, 6, 8]}, ["lambda", ["x"], [">", ["$", "/x"], 3]]]
+input = {}
+expected = false
+
+[[examples]]
+name = "array_flatmap_expand"
+category = "array-operations"
+description = """
+Map and flatten array results.
+Demonstrates mapping over an array and flattening nested results.
+"""
+script = ["flatMap", {array = [1, 2, 3]}, ["lambda", ["x"], {array = [["$", "/x"], ["*", ["$", "/x"], 2]]}]]
+input = {}
+expected = [1, 2, 2, 4, 3, 6]
+
+[[examples]]
+name = "array_partition_by_size"
+category = "array-operations"
+description = """
+Partition array into large and small numbers.
+Shows splitting an array based on a predicate into [matching, non-matching].
+"""
+script = ["partition", {array = [1, 2, 3, 4, 5, 6]}, ["lambda", ["x"], [">", ["$", "/x"], 3]]]
+input = {}
+expected = [[4, 5, 6], [1, 2, 3]]
+
+[[examples]]
+name = "array_count_length"
+category = "array-operations"
+description = """
+Get array length using count.
+Demonstrates measuring the size of arrays.
+"""
+script = ["count", {array = ["apple", "banana", "cherry", "date"]}]
+input = {}
+expected = 4
+
+# ============================================================================
+# FUNCTIONAL LIST OPERATIONS
+# ============================================================================
+
+[[examples]]
+name = "list_car_first_element"
+category = "functional-lists"
+description = """
+Get first element using car.
+Demonstrates the car operation from functional programming.
+"""
+script = ["car", {array = ["first", "second", "third"]}]
+input = {}
+expected = "first"
+
+[[examples]]
+name = "list_car_single_element"
+category = "functional-lists"
+description = """
+Car operation on single-element array.
+Shows car behavior with minimal arrays.
+"""
+script = ["car", {array = [42]}]
+input = {}
+expected = 42
+
+[[examples]]
+name = "list_cdr_rest_elements"
+category = "functional-lists"
+description = """
+Get all but first element using cdr.
+Shows the cdr operation for accessing the tail of a list.
+"""
+script = ["cdr", {array = [1, 2, 3, 4, 5]}]
+input = {}
+expected = [2, 3, 4, 5]
+
+[[examples]]
+name = "list_cdr_single_element"
+category = "functional-lists"
+description = """
+Cdr operation on single-element array.
+Shows cdr returning empty array for single-element lists.
+"""
+script = ["cdr", {array = ["only"]}]
+input = {}
+expected = []
+
+[[examples]]
+name = "list_cons_prepend"
+category = "functional-lists"
+description = """
+Prepend element using cons.
+Demonstrates list construction by adding element to front.
+"""
+script = ["cons", "new_first", {array = ["second", "third"]}]
+input = {}
+expected = ["new_first", "second", "third"]
+
+[[examples]]
+name = "list_cons_empty_array"
+category = "functional-lists"
+description = """
+Cons operation with empty array.
+Shows creating single-element array using cons.
+"""
+script = ["cons", "only_element", {array = []}]
+input = {}
+expected = ["only_element"]
+
+[[examples]]
+name = "list_append_two_arrays"
+category = "functional-lists"
+description = """
+Concatenate two arrays using append.
+Shows basic array concatenation functionality.
+"""
+script = ["append", {array = [1, 2]}, {array = [3, 4]}]
+input = {}
+expected = [1, 2, 3, 4]
+
+[[examples]]
+name = "list_append_multiple_arrays"
+category = "functional-lists"
+description = """
+Concatenate multiple arrays using append.
+Demonstrates joining several arrays together.
+"""
+script = ["append", {array = ["a"]}, {array = ["b", "c"]}, {array = ["d", "e", "f"]}]
+input = {}
+expected = ["a", "b", "c", "d", "e", "f"]
+
+[[examples]]
+name = "list_chunk_even_split"
+category = "functional-lists"
+description = """
+Split array into even chunks.
+Shows breaking an array into equal-sized smaller arrays.
+"""
+script = ["chunk", {array = [1, 2, 3, 4, 5, 6]}, 2]
+input = {}
+expected = [[1, 2], [3, 4], [5, 6]]
+
+[[examples]]
+name = "list_chunk_uneven_split"
+category = "functional-lists"
+description = """
+Split array into chunks with remainder.
+Demonstrates chunking when array size isn't divisible by chunk size.
+"""
+script = ["chunk", {array = [1, 2, 3, 4, 5, 6, 7]}, 3]
+input = {}
+expected = [[1, 2, 3], [4, 5, 6], [7]]
+
+[[examples]]
+name = "list_car_cdr_composition"
+category = "functional-lists"
+description = """
+Compose car and cdr to get second element.
+Shows how functional operations can be composed for complex access.
+"""
+script = ["car", ["cdr", {array = ["first", "second", "third", "fourth"]}]]
+input = {}
+expected = "second"
+
+[[examples]]
+name = "list_functional_pipeline"
+category = "functional-lists"
+description = """
+Complex functional composition pipeline.
+Demonstrates chaining multiple functional operations together.
+"""
+script = ["cons", "new_head", ["cdr", ["cdr", {array = ["remove1", "remove2", "keep1", "keep2"]}]]]
+input = {}
+expected = ["new_head", "keep1", "keep2"]
+
+# ============================================================================
+# LAMBDA FUNCTIONS
+# ============================================================================
+
+[[examples]]
+name = "lambda_simple_transform"
+category = "lambda-functions"
+description = """
+Simple lambda function for array transformation.
+Demonstrates basic lambda syntax with single parameter.
+"""
+script = ["map", {array = [1, 2, 3, 4]}, ["lambda", ["x"], ["+", ["$", "/x"], 100]]]
+input = {}
+expected = [101, 102, 103, 104]
+
+[[examples]]
+name = "lambda_conditional_logic"
+category = "lambda-functions"
+description = """
+Lambda with conditional logic.
+Shows lambda functions containing if-then-else expressions.
+"""
+script = ["map", {array = [1, 5, 10, 15]}, ["lambda", ["x"], ["if", [">", ["$", "/x"], 5], ["*", ["$", "/x"], 2], ["$", "/x"]]]]
+input = {}
+expected = [1, 5, 20, 30]
+
+[[examples]]
+name = "lambda_multiple_parameters"
+category = "lambda-functions"
+description = """
+Lambda with multiple parameters in reduce.
+Demonstrates lambda functions with accumulator and item parameters using Permuto for string concatenation.
+"""
+script = ["reduce", {array = ["hello", "world", "computo"]}, ["lambda", ["acc", "word"], ["permuto.apply", "${/acc}${/word}", ["obj", ["acc", ["$", "/acc"]], ["word", ["$", "/word"]]]]], ""]
+input = {}
+expected = "helloworldcomputo"
+flags = ["--interpolation"]
+
+[[examples]]
+name = "lambda_nested_operations"
+category = "lambda-functions"
+description = """
+Lambda with nested arithmetic operations.
+Shows complex expressions within lambda bodies.
+"""
+script = ["map", {array = [1, 2, 3, 4]}, ["lambda", ["x"], ["+", ["*", ["$", "/x"], ["$", "/x"]], ["*", 2, ["$", "/x"]]]]]
+input = {}
+expected = [3, 8, 15, 24]
+
+[[examples]]
+name = "lambda_variables_for_reuse"
+category = "lambda-functions"
+description = """
+Reusable lambda functions stored in variables.
+Demonstrates storing lambda functions in let variables for reuse.
+"""
+script = ["let", [["doubler", ["lambda", ["x"], ["*", ["$", "/x"], 2]]]], ["obj", ["first_list", ["map", {array = [1, 2, 3]}, ["$", "/doubler"]]], ["second_list", ["map", {array = [10, 20, 30]}, ["$", "/doubler"]]]]]
+input = {}
+expected = {first_list = [2, 4, 6], second_list = [20, 40, 60]}
+
+[[examples]]
+name = "lambda_multiple_reusable_functions"
+category = "lambda-functions"
+description = """
+Multiple lambda variables for different operations.
+Shows storing and reusing multiple lambda functions.
+"""
+script = ["let", [["add_ten", ["lambda", ["x"], ["+", ["$", "/x"], 10]]], ["gt_three", ["lambda", ["x"], [">", ["$", "/x"], 3]]]], ["map", ["filter", {array = [1, 2, 3, 4, 5, 6]}, ["$", "/gt_three"]], ["$", "/add_ten"]]]
+input = {}
+expected = [14, 15, 16]
+
+[[examples]]
+name = "lambda_closure_behavior"
+category = "lambda-functions"
+description = """
+Lambda function accessing outer scope variables.
+Demonstrates variable capture in lambda expressions.
+"""
+script = ["let", [["multiplier", 3]], ["map", {array = [1, 2, 3, 4]}, ["lambda", ["x"], ["*", ["$", "/x"], ["$", "/multiplier"]]]]]
+input = {}
+expected = [3, 6, 9, 12]
+
+# ============================================================================
+# JSON PATCH OPERATIONS (RFC 6902)
+# ============================================================================
+
+[[examples]]
+name = "json_patch_diff_replace"
+category = "json-patch"
+description = """
+Generate JSON Patch diff with replace operation.
+Demonstrates creating RFC 6902 compliant patches for field changes.
+"""
+script = ["diff", {name = "Alice", status = "active"}, {name = "Alice", status = "inactive"}]
+input = {}
+expected = [{op = "replace", path = "/status", value = "inactive"}]
+
+[[examples]]
+name = "json_patch_diff_add_field"
+category = "json-patch"
+description = """
+Generate JSON Patch diff with add operation.
+Shows patch generation when new fields are added.
+"""
+script = ["diff", {name = "Bob"}, {name = "Bob", age = 30}]
+input = {}
+expected = [{op = "add", path = "/age", value = 30}]
+
+[[examples]]
+name = "json_patch_diff_remove_field"
+category = "json-patch"
+description = """
+Generate JSON Patch diff with remove operation.
+Demonstrates patch creation when fields are deleted.
+"""
+script = ["diff", {name = "Charlie", temp = "remove_me"}, {name = "Charlie"}]
+input = {}
+expected = [{op = "remove", path = "/temp"}]
+
+[[examples]]
+name = "json_patch_apply_replace"
+category = "json-patch"
+description = """
+Apply JSON Patch replace operation.
+Shows applying RFC 6902 patches to modify documents.
+"""
+script = ["patch", {name = "David", status = "pending"}, {array = [{op = "replace", path = "/status", value = "completed"}]}]
+input = {}
+expected = {name = "David", status = "completed"}
+
+[[examples]]
+name = "json_patch_apply_add"
+category = "json-patch"
+description = """
+Apply JSON Patch add operation.
+Demonstrates adding new fields to documents via patches.
+"""
+script = ["patch", {name = "Eve"}, {array = [{op = "add", path = "/role", value = "admin"}]}]
+input = {}
+expected = {name = "Eve", role = "admin"}
+
+[[examples]]
+name = "json_patch_apply_remove"
+category = "json-patch"
+description = """
+Apply JSON Patch remove operation.
+Shows removing fields from documents using patches.
+"""
+script = ["patch", {name = "Frank", temp_field = "delete_this", role = "user"}, {array = [{op = "remove", path = "/temp_field"}]}]
+input = {}
+expected = {name = "Frank", role = "user"}
+
+[[examples]]
+name = "json_patch_apply_move"
+category = "json-patch"
+description = """
+Apply JSON Patch move operation.
+Demonstrates moving fields within documents.
+"""
+script = ["patch", {user_name = "Grace", profile = {}}, {array = [{op = "move", from = "/user_name", path = "/profile/name"}]}]
+input = {}
+expected = {profile = {name = "Grace"}}
+
+[[examples]]
+name = "json_patch_apply_copy"
+category = "json-patch"
+description = """
+Apply JSON Patch copy operation.
+Shows copying values to new locations in documents.
+"""
+script = ["patch", {id = 12345, data = {important = "value"}}, {array = [{op = "copy", from = "/data/important", path = "/backup_value"}]}]
+input = {}
+expected = {id = 12345, data = {important = "value"}, backup_value = "value"}
+
+[[examples]]
+name = "json_patch_apply_test_success"
+category = "json-patch"
+description = """
+Apply JSON Patch with successful test operation.
+Demonstrates conditional patching using test operations.
+"""
+script = ["patch", {version = 1, data = "current"}, {array = [{op = "test", path = "/version", value = 1}, {op = "replace", path = "/data", value = "updated"}]}]
+input = {}
+expected = {version = 1, data = "updated"}
+
+[[examples]]
+name = "json_patch_multiple_operations"
+category = "json-patch"
+description = """
+Apply multiple JSON Patch operations in sequence.
+Shows complex document transformations with multiple patch operations.
+"""
+script = ["patch", {name = "Henry", status = "draft", temp = "remove"}, {array = [{op = "replace", path = "/status", value = "published"}, {op = "remove", path = "/temp"}, {op = "add", path = "/published_date", value = "2024-01-01"}]}]
+input = {}
+expected = {name = "Henry", status = "published", published_date = "2024-01-01"}
+
+# ============================================================================
+# PERMUTO INTEGRATION
+# ============================================================================
+
+[[examples]]
+name = "permuto_simple_interpolation"
+category = "permuto"
+description = """
+Simple Permuto template with string interpolation.
+Demonstrates basic variable substitution in strings.
+"""
+script = ["permuto.apply", {greeting = "Hello ${/name}!", role = "User: ${/role}"}, {name = "Alice", role = "Administrator"}]
+input = {}
+expected = {greeting = "Hello Alice!", role = "User: Administrator"}
+flags = ["--interpolation"]
+
+[[examples]]
+name = "permuto_with_input_data"
+category = "permuto"
+description = """
+Permuto template using input data as context.
+Shows using input document as the template context.
+"""
+script = ["permuto.apply", {summary = "Profile: ${/profile/name} (${/profile/email})", status = "Active: ${/active}"}, ["$input"]]
+input = {profile = {name = "Bob", email = "bob@example.com"}, active = true}
+expected = {summary = "Profile: Bob (bob@example.com)", status = "Active: true"}
+flags = ["--interpolation"]
+
+[[examples]]
+name = "permuto_nested_object_access"
+category = "permuto"
+description = """
+Permuto templates with deep object access.
+Demonstrates accessing nested data in template interpolation.
+"""
+script = ["permuto.apply", {message = "User ${/user/profile/firstName} ${/user/profile/lastName} has ${/user/stats/points} points"}, {user = {profile = {firstName = "Charlie", lastName = "Brown"}, stats = {points = 1500}}}]
+input = {}
+expected = {message = "User Charlie Brown has 1500 points"}
+flags = ["--interpolation"]
+
+[[examples]]
+name = "permuto_array_access"
+category = "permuto"
+description = """
+Permuto templates accessing array elements.
+Shows using array indices in template paths.
+"""
+script = ["permuto.apply", {first_item = "First: ${/items/0}", last_item = "Last: ${/items/2}"}, {items = ["apple", "banana", "cherry"]}]
+input = {}
+expected = {first_item = "First: apple", last_item = "Last: cherry"}
+flags = ["--interpolation"]
+
+[[examples]]
+name = "permuto_computed_context"
+category = "permuto"
+description = """
+Permuto with computed template context.
+Demonstrates building template context using Computo operations.
+"""
+script = ["permuto.apply", {report = "Total: ${/sum}, Average: ${/avg}"}, ["obj", ["sum", ["reduce", {array = [10, 20, 30]}, ["lambda", ["a", "b"], ["+", ["$", "/a"], ["$", "/b"]]], 0]], ["avg", ["/", 60, 3]]]]
+input = {}
+expected = {report = "Total: 60, Average: 20"}
+flags = ["--interpolation"]
+
+# ============================================================================
+# REAL-WORLD EXAMPLES
+# ============================================================================
+
+[[examples]]
+name = "api_response_transform"
+category = "real-world"
+description = """
+Transform API response structure.
+Demonstrates typical API data transformation patterns in real applications.
+"""
+script = ["obj", ["users", ["map", ["get", ["$input"], "/data"], ["lambda", ["user"], ["obj", ["id", ["get", ["$", "/user"], "/userId"]], ["name", ["get", ["$", "/user"], "/fullName"]], ["active", ["==", ["get", ["$", "/user"], "/status"], "active"]]]]]], ["metadata", ["obj", ["total", ["count", ["get", ["$input"], "/data"]]], ["processed_at", "2024-01-01"]]]]
+input = {data = [{userId = 1, fullName = "Alice Smith", status = "active"}, {userId = 2, fullName = "Bob Jones", status = "inactive"}]}
+expected = {users = [{id = 1, name = "Alice Smith", active = true}, {id = 2, name = "Bob Jones", active = false}], metadata = {total = 2, processed_at = "2024-01-01"}}
+
+[[examples]]
+name = "configuration_merge_multiple_sources"
+category = "real-world"
+description = """
+Merge configuration from multiple input sources.
+Shows practical configuration management with precedence rules.
+"""
+script = ["let", [["defaults", ["get", ["$inputs"], "/0"]], ["environment", ["get", ["$inputs"], "/1"]], ["user_prefs", ["get", ["$inputs"], "/2"]]], ["obj", ["database", ["obj", ["host", ["get", ["$", "/user_prefs"], "/database/host"]], ["port", ["get", ["$", "/defaults"], "/database/port"]], ["ssl", ["get", ["$", "/environment"], "/database/ssl"]]]], ["logging", ["get", ["$", "/environment"], "/logging"]], ["theme", ["get", ["$", "/user_prefs"], "/ui/theme"]]]]
+inputs = [
+    {database = {host = "localhost", port = 5432}, logging = {level = "info"}},
+    {database = {ssl = true}, logging = {level = "debug"}},
+    {database = {host = "prod.example.com"}, ui = {theme = "dark"}}
+]
+expected = {database = {host = "prod.example.com", port = 5432, ssl = true}, logging = {level = "debug"}, theme = "dark"}
+
+[[examples]]
+name = "document_versioning_workflow"
+category = "real-world"
+description = """
+Document versioning with patch generation and rollback capability.
+Demonstrates creating version control for documents with change tracking.
+"""
+script = ["let", [["original", ["get", ["$inputs"], "/0"]], ["modified", ["get", ["$inputs"], "/1"]], ["changes", ["diff", ["$", "/original"], ["$", "/modified"]]], ["rollback_patch", ["diff", ["$", "/modified"], ["$", "/original"]]]], ["obj", ["document_id", ["get", ["$", "/original"], "/id"]], ["version_info", ["obj", ["from_version", ["get", ["$", "/original"], "/version"]], ["to_version", ["get", ["$", "/modified"], "/version"]], ["change_count", ["count", ["$", "/changes"]]]]], ["forward_patch", ["$", "/changes"]], ["rollback_patch", ["$", "/rollback_patch"]], ["can_rollback", [">", ["count", ["$", "/rollback_patch"]], 0]]]]
+inputs = [
+    {id = "doc_001", version = 1, title = "Original Title", content = "Original content"},
+    {id = "doc_001", version = 2, title = "Updated Title", content = "Updated content", author = "Alice"}
+]
+expected = {document_id = "doc_001", version_info = {from_version = 1, to_version = 2, change_count = 3}, forward_patch = [{op = "replace", path = "/version", value = 2}, {op = "replace", path = "/title", value = "Updated Title"}, {op = "replace", path = "/content", value = "Updated content"}, {op = "add", path = "/author", value = "Alice"}], rollback_patch = [{op = "replace", path = "/version", value = 1}, {op = "replace", path = "/title", value = "Original Title"}, {op = "replace", path = "/content", value = "Original content"}, {op = "remove", path = "/author"}], can_rollback = true}
+
+[[examples]]
+name = "functional_pipeline_multi_input"
+category = "real-world"
+description = """
+Functional pipeline processing using car/cdr for multiple inputs.
+Shows advanced functional programming patterns for processing input sequences.
+"""
+script = ["let", [["initial_doc", ["car", ["$inputs"]]], ["patch_sequence", ["cdr", ["$inputs"]]], ["final_doc", ["reduce", ["$", "/patch_sequence"], ["lambda", ["doc", "patch"], ["patch", ["$", "/doc"], ["$", "/patch"]]], ["$", "/initial_doc"]]]], ["obj", ["initial_state", ["$", "/initial_doc"]], ["final_state", ["$", "/final_doc"]], ["transformations_applied", ["count", ["$", "/patch_sequence"]]], ["title_changed", ["!=", ["get", ["$", "/initial_doc"], "/title"], ["get", ["$", "/final_doc"], "/title"]]]]]
+inputs = [
+    {id = "doc_123", title = "Draft", status = "draft", content = "Initial content"},
+    [{op = "replace", path = "/status", value = "review"}],
+    [{op = "replace", path = "/title", value = "Final Document"}],
+    [{op = "add", path = "/reviewed_by", value = "Editor"}],
+    [{op = "replace", path = "/status", value = "published"}]
+]
+expected = {initial_state = {id = "doc_123", title = "Draft", status = "draft", content = "Initial content"}, final_state = {id = "doc_123", title = "Final Document", status = "published", content = "Initial content", reviewed_by = "Editor"}, transformations_applied = 4, title_changed = true}
+
+[[examples]]
+name = "data_aggregation_report"
+category = "real-world"
+description = """
+Data aggregation and reporting pipeline.
+Demonstrates complex data processing for analytics and reporting.
+"""
+script = ["let", [["sales_data", ["get", ["$input"], "/sales"]], ["total_revenue", ["reduce", ["$", "/sales_data"], ["lambda", ["sum", "sale"], ["+", ["$", "/sum"], ["get", ["$", "/sale"], "/amount"]]], 0]], ["high_value_sales", ["filter", ["$", "/sales_data"], ["lambda", ["sale"], [">", ["get", ["$", "/sale"], "/amount"], 1000]]]], ["top_regions", ["reduce", ["$", "/sales_data"], ["lambda", ["regions", "sale"], ["let", [["region", ["get", ["$", "/sale"], "/region"]], ["amount", ["get", ["$", "/sale"], "/amount"]]], ["if", ["get", ["$", "/regions"], ["$", "/region"]], ["obj", ["$", "/region"], ["+", ["get", ["$", "/regions"], ["$", "/region"]], ["$", "/amount"]]], ["obj", ["$", "/region"], ["$", "/amount"]]]]], {}]]], ["obj", ["summary", ["obj", ["total_sales", ["count", ["$", "/sales_data"]]], ["total_revenue", ["$", "/total_revenue"]], ["average_sale", ["/", ["$", "/total_revenue"], ["count", ["$", "/sales_data"]]]]]], ["high_value", ["obj", ["count", ["count", ["$", "/high_value_sales"]]], ["revenue", ["reduce", ["$", "/high_value_sales"], ["lambda", ["sum", "sale"], ["+", ["$", "/sum"], ["get", ["$", "/sale"], "/amount"]]], 0]]]], ["by_region", ["$", "/top_regions"]]]]
+input = {sales = [{region = "North", amount = 1500, product = "A"}, {region = "South", amount = 800, product = "B"}, {region = "North", amount = 2000, product = "C"}, {region = "East", amount = 1200, product = "A"}]}
+expected = {summary = {total_sales = 4, total_revenue = 5500, average_sale = 1375}, high_value = {count = 3, revenue = 4700}, by_region = {North = 3500, South = 800, East = 1200}}
+
+# ============================================================================
+# CLI USAGE EXAMPLES (Documentation)
+# ============================================================================
+
+[[examples]]
+name = "cli_basic_transformation"
+category = "cli-usage"
+description = """
+Basic CLI usage for single input transformation.
+This demonstrates the standard command-line interface pattern.
+Note: This is a documentation example showing CLI usage patterns.
+"""
+script = ["obj", ["greeting", ["get", ["$input"], "/message"]], ["timestamp", "2024-01-01"]]
+input = {message = "Hello from CLI", user = "Alice"}
+expected = {greeting = "Hello from CLI", timestamp = "2024-01-01"}
+cli_example = "./build/computo script.json input.json"
+
+[[examples]]
+name = "cli_multiple_inputs_merge"
+category = "cli-usage"
+description = """
+CLI usage with multiple input files for data merging.
+Shows processing multiple input files from the command line.
+Note: This is a documentation example showing multi-input CLI patterns.
+"""
+script = ["obj", ["combined_data", ["append", ["get", ["$inputs"], "/0/items"], ["get", ["$inputs"], "/1/items"]]], ["sources", ["count", ["$inputs"]]]]
+inputs = [
+    {items = ["from_file_1", "data_1"]},
+    {items = ["from_file_2", "data_2"]}
+]
+expected = {combined_data = ["from_file_1", "data_1", "from_file_2", "data_2"], sources = 2}
+cli_example = "./build/computo script.json input1.json input2.json"
+
+[[examples]]
+name = "diff_generation_example"
+category = "json-patch"
+description = """
+Generate JSON Patch between transformed and original documents.
+Demonstrates diff generation for document transformation.
+"""
+script = ["diff", {id = 123, status = "pending", created = "2023-12-01"}, ["obj", ["id", 123], ["status", "completed"], ["created", "2023-12-01"], ["completed_date", "2024-01-01"]]]
+input = {}
+expected = [{op = "replace", path = "/status", value = "completed"}, {op = "add", path = "/completed_date", value = "2024-01-01"}]
+
+[[examples]]
+name = "cli_permuto_interpolation"
+category = "cli-usage"
+description = """
+CLI with Permuto interpolation for template processing.
+Shows using --interpolation flag for string template processing.
+Note: This is a documentation example showing Permuto integration.
+"""
+script = ["permuto.apply", {welcome = "Welcome ${/user/name}!", summary = "You have ${/user/points} points."}, ["$input"]]
+input = {user = {name = "Bob", points = 250}}
+expected = {welcome = "Welcome Bob!", summary = "You have 250 points."}
+cli_example = "./build/computo --interpolation script.json input.json"
+flags = ["--interpolation"]
+
+[[examples]]
+name = "cli_pretty_output_formatting"
+category = "cli-usage"
+description = """
+CLI with pretty-printed output formatting.
+Demonstrates using --pretty flag for readable JSON output.
+Note: This is a documentation example showing output formatting.
+"""
+script = ["obj", ["data", ["map", {array = [1, 2, 3]}, ["lambda", ["x"], ["obj", ["value", ["$", "/x"]], ["squared", ["*", ["$", "/x"], ["$", "/x"]]]]]]], ["timestamp", "2024-01-01"]]
+input = {}
+expected = {data = [{value = 1, squared = 1}, {value = 2, squared = 4}, {value = 3, squared = 9}], timestamp = "2024-01-01"}
+cli_example = "./build/computo --pretty=2 script.json input.json"
+
+[[examples]]
+name = "cli_comments_in_scripts"
+category = "cli-usage"
+description = """
+CLI with comment support in script files.
+Shows using --comments flag to allow comments in JSON scripts.
+Note: This is a documentation example showing comment parsing.
+"""
+script = ["obj", ["message", "Hello World"], ["computed", ["*", 6, 7]]]
+input = {}
+expected = {message = "Hello World", computed = 42}
+cli_example = "./build/computo --comments script_with_comments.json input.json"

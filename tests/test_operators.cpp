@@ -2950,3 +2950,632 @@ TEST_F(ComputoTest, ErrorPathTrackingLambdaVariable) {
         EXPECT_NE(error_msg.find("at /let/body/map/lambda[0]/$"), std::string::npos) << "Error: " << error_msg;
     }
 }
+
+// === Multi-Parameter Lambda Tests ===
+
+// Test basic two-parameter lambda with reduce (backward compatibility)
+TEST_F(ComputoTest, MultiParamLambdaReduce) {
+    json input = json::array({1, 2, 3, 4, 5});
+    json script = json::array({
+        "reduce",
+        json::array({"$input"}),
+        json::array({"lambda", json::array({"acc", "item"}), json::array({"+", json::array({"$", "/acc"}), json::array({"$", "/item"})})}),
+        0
+    });
+    EXPECT_EQ(computo::execute(script, input), 15);
+}
+
+// Test multi-parameter lambda with zipWith (testing three-param indirectly)
+TEST_F(ComputoTest, MultiParamLambdaThreeParamsViaCustom) {
+    // We can't directly test 3+ param lambdas without exposing internal functions,
+    // but we can test that the multi-parameter system works via zipWith and complex combinations
+    json input = json::array({1, 2, 3});
+    json script = json::array({
+        "let",
+        json::array({json::array({
+            "combiner",
+            json::array({"lambda", json::array({"a", "b"}), json::array({"+", json::array({"*", json::array({"$", "/a"}), 10}), json::array({"$", "/b"})})})
+        })}),
+        json::array({
+            "zipWith",
+            json::array({"$input"}),
+            json{{"array", json::array({100, 200, 300})}},
+            json::array({"$", "/combiner"})
+        })
+    });
+    json expected = json::array({110, 220, 330}); // (1*10)+100, (2*10)+200, (3*10)+300
+    EXPECT_EQ(computo::execute(script, input), expected);
+}
+
+// Test parameter count validation through zipWith
+TEST_F(ComputoTest, MultiParamLambdaParameterCountMismatchViaZipWith) {
+    json input = json::array({1, 2, 3});
+    
+    // zipWith provides 2 parameters but lambda only accepts 1
+    json script = json::array({
+        "zipWith",
+        json::array({"$input"}),
+        json::array({10, 20, 30}),
+        json::array({"lambda", json::array({"a"}), json::array({"$", "/a"})}) // Only 1 param but zipWith provides 2
+    });
+    
+    EXPECT_THROW(computo::execute(script, input), computo::InvalidArgumentException);
+}
+
+// Test empty parameter list error through reduce
+TEST_F(ComputoTest, MultiParamLambdaEmptyParams) {
+    json input = json::array({1, 2, 3});
+    
+    json script = json::array({
+        "reduce",
+        json::array({"$input"}),
+        json::array({"lambda", json::array(), json::array({"$", "/a"})}), // Empty parameter list
+        0
+    });
+    
+    EXPECT_THROW(computo::execute(script, input), computo::InvalidArgumentException);
+}
+
+// Test non-string parameter names through reduce
+TEST_F(ComputoTest, MultiParamLambdaNonStringParam) {
+    json input = json::array({1, 2, 3});
+    
+    json script = json::array({
+        "reduce",
+        json::array({"$input"}),
+        json::array({"lambda", json::array({123, "item"}), json::array({"+", json::array({"$", "/acc"}), json::array({"$", "/item"})})}), // 123 instead of string
+        0
+    });
+    
+    EXPECT_THROW(computo::execute(script, input), computo::InvalidArgumentException);
+}
+
+// === zipWith Operator Tests ===
+
+// Test basic zipWith functionality
+TEST_F(ComputoTest, ZipWithOperatorBasic) {
+    json input = json::object({
+        {"array1", json::array({1, 2, 3, 4, 5})},
+        {"array2", json::array({10, 20, 30, 40, 50})}
+    });
+    json script = json::array({
+        "zipWith",
+        json::array({"get", json::array({"$input"}), "/array1"}),
+        json::array({"get", json::array({"$input"}), "/array2"}),
+        json::array({"lambda", json::array({"a", "b"}), json::array({"+", json::array({"$", "/a"}), json::array({"$", "/b"})})})
+    });
+    json expected = json::array({11, 22, 33, 44, 55});
+    EXPECT_EQ(computo::execute(script, input), expected);
+}
+
+// Test zipWith with different sized arrays (takes minimum)
+TEST_F(ComputoTest, ZipWithOperatorDifferentSizes) {
+    json input = json::object({
+        {"array1", json::array({1, 2, 3})},
+        {"array2", json::array({10, 20, 30, 40, 50})}
+    });
+    json script = json::array({
+        "zipWith",
+        json::array({"get", json::array({"$input"}), "/array1"}),
+        json::array({"get", json::array({"$input"}), "/array2"}),
+        json::array({"lambda", json::array({"a", "b"}), json::array({"*", json::array({"$", "/a"}), json::array({"$", "/b"})})})
+    });
+    json expected = json::array({10, 40, 90}); // Only first 3 elements
+    EXPECT_EQ(computo::execute(script, input), expected);
+}
+
+// Test zipWith with empty arrays
+TEST_F(ComputoTest, ZipWithOperatorEmpty) {
+    json input = json::object({
+        {"array1", json::array()},
+        {"array2", json::array({10, 20, 30})}
+    });
+    json script = json::array({
+        "zipWith",
+        json::array({"get", json::array({"$input"}), "/array1"}),
+        json::array({"get", json::array({"$input"}), "/array2"}),
+        json::array({"lambda", json::array({"a", "b"}), json::array({"+", json::array({"$", "/a"}), json::array({"$", "/b"})})})
+    });
+    json expected = json::array();
+    EXPECT_EQ(computo::execute(script, input), expected);
+}
+
+// Test zipWith error cases
+TEST_F(ComputoTest, ZipWithOperatorErrors) {
+    // Wrong number of arguments
+    json script1 = json::array({"zipWith", json::array({1, 2, 3})});
+    EXPECT_THROW(computo::execute(script1, input_data), computo::InvalidArgumentException);
+    
+    // First argument not an array
+    json script2 = json::array({
+        "zipWith",
+        "not_an_array",
+        json::array({1, 2, 3}),
+        json::array({"lambda", json::array({"a", "b"}), json::array({"+", json::array({"$", "/a"}), json::array({"$", "/b"})})})
+    });
+    EXPECT_THROW(computo::execute(script2, input_data), computo::InvalidArgumentException);
+    
+    // Second argument not an array
+    json script3 = json::array({
+        "zipWith",
+        json::array({1, 2, 3}),
+        "not_an_array", 
+        json::array({"lambda", json::array({"a", "b"}), json::array({"+", json::array({"$", "/a"}), json::array({"$", "/b"})})})
+    });
+    EXPECT_THROW(computo::execute(script3, input_data), computo::InvalidArgumentException);
+}
+
+// === mapWithIndex Operator Tests ===
+
+// Test basic mapWithIndex functionality
+TEST_F(ComputoTest, MapWithIndexOperatorBasic) {
+    json input = json::array({5, 7, 2, 9, 1});
+    json script = json::array({
+        "mapWithIndex",
+        json::array({"$input"}),
+        json::array({"lambda", json::array({"value", "index"}), json::array({"*", json::array({"$", "/value"}), json::array({"$", "/index"})})})
+    });
+    json expected = json::array({0, 7, 4, 27, 4}); // value * index
+    EXPECT_EQ(computo::execute(script, input), expected);
+}
+
+// Test mapWithIndex with object construction
+TEST_F(ComputoTest, MapWithIndexOperatorObjectConstruction) {
+    json input = json::array({"a", "b", "c"});
+    json script = json::array({
+        "mapWithIndex", 
+        json::array({"$input"}),
+        json::array({"lambda", json::array({"value", "index"}), json::array({
+            "obj",
+            json::array({"value", json::array({"$", "/value"})}),
+            json::array({"index", json::array({"$", "/index"})})
+        })})
+    });
+    json expected = json::array({
+        json::object({{"value", "a"}, {"index", 0}}),
+        json::object({{"value", "b"}, {"index", 1}}),
+        json::object({{"value", "c"}, {"index", 2}})
+    });
+    EXPECT_EQ(computo::execute(script, input), expected);
+}
+
+// Test mapWithIndex with empty array
+TEST_F(ComputoTest, MapWithIndexOperatorEmpty) {
+    json input = json::array();
+    json script = json::array({
+        "mapWithIndex",
+        json::array({"$input"}),
+        json::array({"lambda", json::array({"value", "index"}), json::array({"$", "/value"})})
+    });
+    json expected = json::array();
+    EXPECT_EQ(computo::execute(script, input), expected);
+}
+
+// Test mapWithIndex error cases
+TEST_F(ComputoTest, MapWithIndexOperatorErrors) {
+    // Wrong number of arguments
+    json script1 = json::array({"mapWithIndex", json::array({1, 2, 3})});
+    EXPECT_THROW(computo::execute(script1, input_data), computo::InvalidArgumentException);
+    
+    // First argument not an array
+    json script2 = json::array({
+        "mapWithIndex",
+        "not_an_array",
+        json::array({"lambda", json::array({"value", "index"}), json::array({"$", "/value"})})
+    });
+    EXPECT_THROW(computo::execute(script2, input_data), computo::InvalidArgumentException);
+}
+
+// === enumerate Operator Tests ===
+
+// Test basic enumerate functionality
+TEST_F(ComputoTest, EnumerateOperatorBasic) {
+    json input = json::array({"apple", "banana", "cherry"});
+    json script = json::array({
+        "enumerate",
+        json::array({"$input"})
+    });
+    json expected = json::array({
+        json::array({0, "apple"}),
+        json::array({1, "banana"}),
+        json::array({2, "cherry"})
+    });
+    EXPECT_EQ(computo::execute(script, input), expected);
+}
+
+// Test enumerate with mixed types
+TEST_F(ComputoTest, EnumerateOperatorMixedTypes) {
+    json input = json::array({42, "hello", true, json(nullptr)});
+    json script = json::array({
+        "enumerate",
+        json::array({"$input"})
+    });
+    json expected = json::array({
+        json::array({0, 42}),
+        json::array({1, "hello"}),
+        json::array({2, true}),
+        json::array({3, json(nullptr)})
+    });
+    EXPECT_EQ(computo::execute(script, input), expected);
+}
+
+// Test enumerate with empty array
+TEST_F(ComputoTest, EnumerateOperatorEmpty) {
+    json input = json::array();
+    json script = json::array({
+        "enumerate",
+        json::array({"$input"})
+    });
+    json expected = json::array();
+    EXPECT_EQ(computo::execute(script, input), expected);
+}
+
+// Test enumerate error cases
+TEST_F(ComputoTest, EnumerateOperatorErrors) {
+    // Wrong number of arguments
+    json script1 = json::array({"enumerate"});
+    EXPECT_THROW(computo::execute(script1, input_data), computo::InvalidArgumentException);
+    
+    json script2 = json::array({"enumerate", json::array({1, 2, 3}), "extra_arg"});
+    EXPECT_THROW(computo::execute(script2, input_data), computo::InvalidArgumentException);
+    
+    // Argument not an array
+    json script3 = json::array({"enumerate", "not_an_array"});
+    EXPECT_THROW(computo::execute(script3, input_data), computo::InvalidArgumentException);
+}
+
+// === zip Operator Tests ===
+
+// Test basic zip functionality
+TEST_F(ComputoTest, ZipOperatorBasic) {
+    json input = json::object({
+        {"names", json::array({"Alice", "Bob", "Charlie"})},
+        {"ages", json::array({25, 30, 35})}
+    });
+    json script = json::array({
+        "zip",
+        json::array({"get", json::array({"$input"}), "/names"}),
+        json::array({"get", json::array({"$input"}), "/ages"})
+    });
+    json expected = json::array({
+        json::array({"Alice", 25}),
+        json::array({"Bob", 30}),
+        json::array({"Charlie", 35})
+    });
+    EXPECT_EQ(computo::execute(script, input), expected);
+}
+
+// Test zip with different sized arrays
+TEST_F(ComputoTest, ZipOperatorDifferentSizes) {
+    json input = json::object({
+        {"array1", json::array({1, 2, 3, 4, 5})},
+        {"array2", json::array({"a", "b", "c"})}
+    });
+    json script = json::array({
+        "zip",
+        json::array({"get", json::array({"$input"}), "/array1"}),
+        json::array({"get", json::array({"$input"}), "/array2"})
+    });
+    json expected = json::array({
+        json::array({1, "a"}),
+        json::array({2, "b"}),
+        json::array({3, "c"})
+    });
+    EXPECT_EQ(computo::execute(script, input), expected);
+}
+
+// Test zip with empty arrays
+TEST_F(ComputoTest, ZipOperatorEmpty) {
+    json input = json::object({
+        {"array1", json::array()},
+        {"array2", json::array({1, 2, 3})}
+    });
+    json script = json::array({
+        "zip",
+        json::array({"get", json::array({"$input"}), "/array1"}),
+        json::array({"get", json::array({"$input"}), "/array2"})
+    });
+    json expected = json::array();
+    EXPECT_EQ(computo::execute(script, input), expected);
+}
+
+// Test zip error cases
+TEST_F(ComputoTest, ZipOperatorErrors) {
+    // Wrong number of arguments
+    json script1 = json::array({"zip", json::array({1, 2, 3})});
+    EXPECT_THROW(computo::execute(script1, input_data), computo::InvalidArgumentException);
+    
+    // First argument not an array
+    json script2 = json::array({"zip", "not_an_array", json::array({1, 2, 3})});
+    EXPECT_THROW(computo::execute(script2, input_data), computo::InvalidArgumentException);
+    
+    // Second argument not an array
+    json script3 = json::array({"zip", json::array({1, 2, 3}), "not_an_array"});
+    EXPECT_THROW(computo::execute(script3, input_data), computo::InvalidArgumentException);
+}
+
+// === Integration Tests for Multi-Parameter Lambda Features ===
+
+// Test complex combination: enumerate + mapWithIndex + zipWith
+TEST_F(ComputoTest, MultiParamLambdaIntegration) {
+    json input = json::array({10, 20, 30});
+    json script = json::array({
+        "zipWith",
+        json::array({
+            "enumerate",
+            json::array({"$input"})
+        }),
+        json::array({
+            "mapWithIndex",
+            json::array({"$input"}),
+            json::array({"lambda", json::array({"value", "index"}), json::array({"+", json::array({"$", "/value"}), json::array({"$", "/index"})})})
+        }),
+        json::array({"lambda", json::array({"enumerated", "mapped"}), json::array({
+            "obj",
+            json::array({"index", json::array({"get", json::array({"$", "/enumerated"}), "/0"})}),
+            json::array({"original", json::array({"get", json::array({"$", "/enumerated"}), "/1"})}),
+            json::array({"calculated", json::array({"$", "/mapped"})})
+        })})
+    });
+    
+    json expected = json::array({
+        json::object({{"index", 0}, {"original", 10}, {"calculated", 10}}),  // 10 + 0 = 10
+        json::object({{"index", 1}, {"original", 20}, {"calculated", 21}}),  // 20 + 1 = 21
+        json::object({{"index", 2}, {"original", 30}, {"calculated", 32}})   // 30 + 2 = 32
+    });
+    EXPECT_EQ(computo::execute(script, input), expected);
+}
+
+// Test reduce with complex multi-parameter lambda
+TEST_F(ComputoTest, ReduceWithComplexMultiParamLambda) {
+    json input = json::array({1, 2, 3, 4, 5});
+    json script = json::array({
+        "reduce",
+        json::array({"$input"}),
+        json::array({"lambda", json::array({"acc", "item"}), json::array({
+            "obj",
+            json::array({"sum", json::array({"+", json::array({"get", json::array({"$", "/acc"}), "/sum"}), json::array({"$", "/item"})})}),
+            json::array({"count", json::array({"+", json::array({"get", json::array({"$", "/acc"}), "/count"}), 1})}),
+            json::array({"max", json::array({"if", json::array({">", json::array({"$", "/item"}), json::array({"get", json::array({"$", "/acc"}), "/max"})}), json::array({"$", "/item"}), json::array({"get", json::array({"$", "/acc"}), "/max"})})})
+        })}),
+        json::object({{"sum", 0}, {"count", 0}, {"max", 0}})
+    });
+    
+    json expected = json::object({{"sum", 15}, {"count", 5}, {"max", 5}});
+    EXPECT_EQ(computo::execute(script, input), expected);
+}
+
+// Test lambda variable resolution with multi-parameter lambdas
+TEST_F(ComputoTest, MultiParamLambdaVariableResolution) {
+    json input = json::array({1, 2, 3});
+    json script = json::array({
+        "let",
+        json::array({json::array({
+            "adder",
+            json::array({"lambda", json::array({"a", "b"}), json::array({"+", json::array({"$", "/a"}), json::array({"$", "/b"})})})
+        })}),
+        json::array({
+            "zipWith",
+            json::array({"$input"}),
+            json{{"array", json::array({10, 20, 30})}},
+            json::array({"$", "/adder"})
+        })
+    });
+    
+    json expected = json::array({11, 22, 33});
+    EXPECT_EQ(computo::execute(script, input), expected);
+}
+
+// Test error handling in complex multi-parameter scenarios
+TEST_F(ComputoTest, MultiParamLambdaErrorHandling) {
+    json input = json::array({1, 2, 3});
+    
+    // Test lambda parameter count mismatch in zipWith
+    json script = json::array({
+        "zipWith",
+        json::array({"$input"}),
+        json::array({10, 20, 30}),
+        json::array({"lambda", json::array({"a"}), json::array({"$", "/a"})}) // Only 1 param but zipWith provides 2
+    });
+    
+    EXPECT_THROW(computo::execute(script, input), computo::InvalidArgumentException);
+}
+
+// === concat operator tests ===
+
+// Test basic string concatenation
+TEST_F(ComputoTest, ConcatOperatorBasic) {
+    json script = json::array({"concat", "Hello", " ", "World"});
+    EXPECT_EQ(computo::execute(script, input_data), "Hello World");
+}
+
+// Test concatenation with single argument
+TEST_F(ComputoTest, ConcatOperatorSingle) {
+    json script = json::array({"concat", "Hello"});
+    EXPECT_EQ(computo::execute(script, input_data), "Hello");
+}
+
+// Test concatenation with many arguments
+TEST_F(ComputoTest, ConcatOperatorMany) {
+    json script = json::array({"concat", "a", "b", "c", "d", "e"});
+    EXPECT_EQ(computo::execute(script, input_data), "abcde");
+}
+
+// Test concatenation with empty strings
+TEST_F(ComputoTest, ConcatOperatorEmptyStrings) {
+    json script = json::array({"concat", "", "Hello", "", "World", ""});
+    EXPECT_EQ(computo::execute(script, input_data), "HelloWorld");
+}
+
+// Test concatenation with numbers
+TEST_F(ComputoTest, ConcatOperatorNumbers) {
+    json script = json::array({"concat", "Count: ", 42, " items"});
+    EXPECT_EQ(computo::execute(script, input_data), "Count: 42 items");
+}
+
+// Test concatenation with floating point numbers
+TEST_F(ComputoTest, ConcatOperatorFloats) {
+    json script = json::array({"concat", "Pi is ", 3.14159});
+    EXPECT_EQ(computo::execute(script, input_data), "Pi is 3.14159");
+}
+
+// Test concatenation with booleans
+TEST_F(ComputoTest, ConcatOperatorBooleans) {
+    json script = json::array({"concat", "Success: ", true, ", Failed: ", false});
+    EXPECT_EQ(computo::execute(script, input_data), "Success: true, Failed: false");
+}
+
+// Test concatenation with null values
+TEST_F(ComputoTest, ConcatOperatorNull) {
+    json script = json::array({"concat", "Before", json(nullptr), "After"});
+    EXPECT_EQ(computo::execute(script, input_data), "BeforeAfter");
+}
+
+// Test concatenation with mixed types
+TEST_F(ComputoTest, ConcatOperatorMixed) {
+    json script = json::array({"concat", "User ", 123, " is ", true, " years old: ", 25.5});
+    EXPECT_EQ(computo::execute(script, input_data), "User 123 is true years old: 25.5");
+}
+
+// Test concatenation with arrays and objects (JSON representation)
+TEST_F(ComputoTest, ConcatOperatorComplexTypes) {
+    json script = json::array({
+        "concat", 
+        "Array: ", 
+        json{{"array", json::array({1, 2, 3})}},
+        " Object: ",
+        json{{"name", "test"}}
+    });
+    EXPECT_EQ(computo::execute(script, input_data), "Array: [1,2,3] Object: {\"name\":\"test\"}");
+}
+
+// Test concatenation with expressions
+TEST_F(ComputoTest, ConcatOperatorWithExpressions) {
+    json script = json::array({
+        "concat",
+        "Sum: ",
+        json::array({"+", 2, 3}),
+        " Input: ",
+        json::array({"get", json::array({"$input"}), "/test"})
+    });
+    EXPECT_EQ(computo::execute(script, input_data), "Sum: 5 Input: value");
+}
+
+// Test concatenation with let variables
+TEST_F(ComputoTest, ConcatOperatorWithLet) {
+    json script = json::array({
+        "let",
+        json::array({
+            json::array({"name", "Alice"}),
+            json::array({"age", 30})
+        }),
+        json::array({"concat", "User ", json::array({"$", "/name"}), " is ", json::array({"$", "/age"}), " years old"})
+    });
+    EXPECT_EQ(computo::execute(script, input_data), "User Alice is 30 years old");
+}
+
+// Test concatenation in object construction
+TEST_F(ComputoTest, ConcatOperatorInObject) {
+    json script = json::array({
+        "obj",
+        json::array({"message", json::array({"concat", "Hello ", "World"})}),
+        json::array({"count", json::array({"concat", "Total: ", 42})})
+    });
+    json expected = json{{"message", "Hello World"}, {"count", "Total: 42"}};
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test concatenation with map operation
+TEST_F(ComputoTest, ConcatOperatorWithMap) {
+    json script = json::array({
+        "map",
+        json{{"array", json::array({"Alice", "Bob", "Charlie"})}},
+        json::array({"lambda", json::array({"name"}), json::array({"concat", "Hello, ", json::array({"$", "/name"}), "!"})})
+    });
+    json expected = json::array({"Hello, Alice!", "Hello, Bob!", "Hello, Charlie!"});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test nested concatenation
+TEST_F(ComputoTest, ConcatOperatorNested) {
+    json script = json::array({
+        "concat",
+        json::array({"concat", "A", "B"}),
+        json::array({"concat", "C", "D"}),
+        "E"
+    });
+    EXPECT_EQ(computo::execute(script, input_data), "ABCDE");
+}
+
+// Test concatenation with $input
+TEST_F(ComputoTest, ConcatOperatorWithInput) {
+    json test_input = json{{"user", "John"}, {"action", "login"}};
+    json script = json::array({
+        "concat",
+        "User ",
+        json::array({"get", json::array({"$input"}), "/user"}),
+        " performed action: ",
+        json::array({"get", json::array({"$input"}), "/action"})
+    });
+    EXPECT_EQ(computo::execute(script, test_input), "User John performed action: login");
+}
+
+// Test concatenation with complex nested objects
+TEST_F(ComputoTest, ConcatOperatorComplexObjects) {
+    json nested_obj = json{
+        {"level1", json{
+            {"level2", json{
+                {"data", json::array({1, 2, 3})},
+                {"info", "test"}
+            }}
+        }}
+    };
+    json script = json::array({"concat", "Data: ", nested_obj});
+    std::string expected_start = "Data: ";
+    auto result = computo::execute(script, input_data).get<std::string>();
+    EXPECT_TRUE(result.substr(0, expected_start.length()) == expected_start);
+    EXPECT_TRUE(result.find("level1") != std::string::npos);
+    EXPECT_TRUE(result.find("level2") != std::string::npos);
+}
+
+// Test concatenation with reduce operation
+TEST_F(ComputoTest, ConcatOperatorWithReduce) {
+    json script = json::array({
+        "reduce",
+        json{{"array", json::array({"a", "b", "c", "d"})}},
+        json::array({"lambda", json::array({"acc", "item"}), json::array({"concat", json::array({"$", "/acc"}), json::array({"$", "/item"})})}),
+        ""
+    });
+    EXPECT_EQ(computo::execute(script, input_data), "abcd");
+}
+
+// Test concatenation with if operator
+TEST_F(ComputoTest, ConcatOperatorWithIf) {
+    json script = json::array({
+        "if",
+        true,
+        json::array({"concat", "Success: ", "Operation completed"}),
+        json::array({"concat", "Error: ", "Operation failed"})
+    });
+    EXPECT_EQ(computo::execute(script, input_data), "Success: Operation completed");
+}
+
+// === concat operator error tests ===
+
+// Test concatenation with no arguments
+TEST_F(ComputoTest, ConcatOperatorNoArguments) {
+    json script = json::array({"concat"});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+// Test concatenation error message content
+TEST_F(ComputoTest, ConcatOperatorErrorMessage) {
+    json script = json::array({"concat"});
+    try {
+        computo::execute(script, input_data);
+        FAIL() << "Expected InvalidArgumentException";
+    } catch (const computo::InvalidArgumentException& e) {
+        std::string error_msg = e.what();
+        EXPECT_NE(error_msg.find("concat operator requires at least 1 argument"), std::string::npos);
+    }
+}

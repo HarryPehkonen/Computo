@@ -12,8 +12,8 @@ const nlohmann::json ExecutionContext::null_input = nlohmann::json(nullptr);
 static std::map<std::string, OperatorFunc> operators;
 static std::once_flag operators_init_flag;
 
-// Helper function for evaluating lambda expressions
-static nlohmann::json evaluate_lambda(const nlohmann::json& lambda_expr, const nlohmann::json& item_value, ExecutionContext& ctx) {
+// Helper function for evaluating lambda expressions with multiple parameters
+static nlohmann::json evaluate_lambda(const nlohmann::json& lambda_expr, const std::vector<nlohmann::json>& param_values, ExecutionContext& ctx) {
     nlohmann::json actual_lambda = lambda_expr;
     
     // Handle variable references to lambdas
@@ -30,32 +30,41 @@ static nlohmann::json evaluate_lambda(const nlohmann::json& lambda_expr, const n
         }
     }
     
-    // Lambda format: ["lambda", ["var_name"], <body_expr>]
+    // Lambda format: ["lambda", ["param1", "param2", ...], <body_expr>]
     if (!actual_lambda.is_array() || actual_lambda.size() != 3) {
-        throw InvalidArgumentException("lambda must be [\"lambda\", [\"var_name\"], body_expr]");
+        throw InvalidArgumentException("lambda must be [\"lambda\", [\"param1\", \"param2\", ...], body_expr]");
     }
     
     if (!actual_lambda[0].is_string() || actual_lambda[0].get<std::string>() != "lambda") {
         throw InvalidArgumentException("lambda expression must start with \"lambda\"");
     }
     
-    if (!actual_lambda[1].is_array() || actual_lambda[1].size() != 1) {
-        throw InvalidArgumentException("lambda must have exactly one parameter: [\"var_name\"]");
+    if (!actual_lambda[1].is_array() || actual_lambda[1].empty()) {
+        throw InvalidArgumentException("lambda must have at least one parameter");
     }
     
-    if (!actual_lambda[1][0].is_string()) {
-        throw InvalidArgumentException("lambda parameter must be a string");
+    if (actual_lambda[1].size() != param_values.size()) {
+        throw InvalidArgumentException("Lambda parameter count mismatch: expected " + std::to_string(actual_lambda[1].size()) + ", got " + std::to_string(param_values.size()));
     }
     
-    std::string var_name = actual_lambda[1][0].get<std::string>();
-    
-    // Create new context with the lambda variable
+    // Create new context with all lambda variables
     std::map<std::string, nlohmann::json> lambda_vars;
-    lambda_vars[var_name] = item_value;
+    for (size_t i = 0; i < actual_lambda[1].size(); ++i) {
+        if (!actual_lambda[1][i].is_string()) {
+            throw InvalidArgumentException("Lambda parameter must be a string");
+        }
+        std::string var_name = actual_lambda[1][i].get<std::string>();
+        lambda_vars[var_name] = param_values[i];
+    }
     ExecutionContext lambda_ctx = ctx.with_variables(lambda_vars);
     
     // Evaluate the lambda body
     return evaluate(actual_lambda[2], lambda_ctx);
+}
+
+// Convenience function for single-parameter lambdas
+static nlohmann::json evaluate_lambda(const nlohmann::json& lambda_expr, const nlohmann::json& item_value, ExecutionContext& ctx) {
+    return evaluate_lambda(lambda_expr, std::vector<nlohmann::json>{item_value}, ctx);
 }
 
 // Initialize operators - thread-safe version
@@ -260,52 +269,10 @@ static void initialize_operators() {
         // Third argument is the initial value (evaluated)
         nlohmann::json accumulator = evaluate(args[2], ctx);
         
-        // Resolve lambda variable reference if needed
-        nlohmann::json actual_lambda = lambda_expr;
-        if (lambda_expr.is_array() && lambda_expr.size() == 2 && 
-            lambda_expr[0].is_string() && lambda_expr[0].get<std::string>() == "$") {
-            if (!lambda_expr[1].is_string()) {
-                throw InvalidArgumentException("Reduce lambda variable reference requires string path");
-            }
-            std::string var_path = lambda_expr[1].get<std::string>();
-            try {
-                actual_lambda = ctx.get_variable(var_path);
-            } catch (const InvalidArgumentException& e) {
-                throw InvalidArgumentException("Reduce lambda variable resolution failed: " + std::string(e.what()));
-            }
-        }
-
         // Apply lambda to each element with accumulator
+        // Lambda format: ["lambda", ["acc", "item"], body_expr]
         for (const auto& item : array) {
-            // Create a lambda evaluation function that takes accumulator and item
-            // Lambda format: ["lambda", ["acc", "item"], body_expr]
-            if (!actual_lambda.is_array() || actual_lambda.size() != 3) {
-                throw InvalidArgumentException("reduce lambda must be [\"lambda\", [\"acc\", \"item\"], body_expr]");
-            }
-            
-            if (!actual_lambda[0].is_string() || actual_lambda[0].get<std::string>() != "lambda") {
-                throw InvalidArgumentException("reduce lambda expression must start with \"lambda\"");
-            }
-            
-            if (!actual_lambda[1].is_array() || actual_lambda[1].size() != 2) {
-                throw InvalidArgumentException("reduce lambda must have exactly two parameters: [\"acc\", \"item\"]");
-            }
-            
-            if (!actual_lambda[1][0].is_string() || !actual_lambda[1][1].is_string()) {
-                throw InvalidArgumentException("reduce lambda parameters must be strings");
-            }
-            
-            std::string acc_var = actual_lambda[1][0].get<std::string>();
-            std::string item_var = actual_lambda[1][1].get<std::string>();
-            
-            // Create new context with both accumulator and item variables
-            std::map<std::string, nlohmann::json> lambda_vars;
-            lambda_vars[acc_var] = accumulator;
-            lambda_vars[item_var] = item;
-            ExecutionContext lambda_ctx = ctx.with_variables(lambda_vars);
-            
-            // Evaluate the lambda body and update accumulator
-            accumulator = evaluate(actual_lambda[2], lambda_ctx);
+            accumulator = evaluate_lambda(lambda_expr, std::vector<nlohmann::json>{accumulator, item}, ctx);
         }
         
         return accumulator;
@@ -732,6 +699,144 @@ static void initialize_operators() {
         }
         
         return array_val.size();
+    };
+    
+    // concat operator - concatenates values as strings
+    operators["concat"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() < 1) {
+            throw InvalidArgumentException("concat operator requires at least 1 argument");
+        }
+        
+        std::string result;
+        for (const auto& arg : args) {
+            auto value = evaluate(arg, ctx);
+            if (value.is_string()) {
+                result += value.get<std::string>();
+            } else if (value.is_null()) {
+                // null values contribute nothing to concatenation
+                continue;
+            } else {
+                // Convert non-strings to their JSON representation without quotes for primitives
+                if (value.is_number() || value.is_boolean()) {
+                    result += value.dump();
+                } else {
+                    // For objects and arrays, use JSON dump
+                    result += value.dump();
+                }
+            }
+        }
+        
+        return result;
+    };
+    
+    // zipWith operator - combines two arrays element-wise using a lambda
+    operators["zipWith"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 3) {
+            throw InvalidArgumentException("zipWith operator requires exactly 3 arguments: array1, array2, lambda");
+        }
+        
+        auto array1 = evaluate(args[0], ctx);
+        auto array2 = evaluate(args[1], ctx);
+        const auto& lambda_expr = args[2];
+        
+        if (!array1.is_array()) {
+            throw InvalidArgumentException("zipWith operator requires an array as first argument");
+        }
+        
+        if (!array2.is_array()) {
+            throw InvalidArgumentException("zipWith operator requires an array as second argument");
+        }
+        
+        nlohmann::json result = nlohmann::json::array();
+        size_t min_size = std::min(array1.size(), array2.size());
+        
+        // Apply lambda to each pair of elements
+        for (size_t i = 0; i < min_size; ++i) {
+            nlohmann::json combined = evaluate_lambda(lambda_expr, std::vector<nlohmann::json>{array1[i], array2[i]}, ctx);
+            result.push_back(combined);
+        }
+        
+        return result;
+    };
+    
+    // mapWithIndex operator - maps over array with element and index
+    operators["mapWithIndex"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("mapWithIndex operator requires exactly 2 arguments: array, lambda");
+        }
+        
+        auto array = evaluate(args[0], ctx);
+        const auto& lambda_expr = args[1];
+        
+        if (!array.is_array()) {
+            throw InvalidArgumentException("mapWithIndex operator requires an array as first argument");
+        }
+        
+        nlohmann::json result = nlohmann::json::array();
+        
+        // Apply lambda to each element with its index
+        for (size_t i = 0; i < array.size(); ++i) {
+            nlohmann::json transformed = evaluate_lambda(lambda_expr, std::vector<nlohmann::json>{array[i], static_cast<int64_t>(i)}, ctx);
+            result.push_back(transformed);
+        }
+        
+        return result;
+    };
+    
+    // enumerate operator - converts array to [index, value] pairs
+    operators["enumerate"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 1) {
+            throw InvalidArgumentException("enumerate operator requires exactly 1 argument: array");
+        }
+        
+        auto array = evaluate(args[0], ctx);
+        
+        if (!array.is_array()) {
+            throw InvalidArgumentException("enumerate operator requires an array");
+        }
+        
+        nlohmann::json result = nlohmann::json::array();
+        
+        // Create [index, value] pairs
+        for (size_t i = 0; i < array.size(); ++i) {
+            nlohmann::json pair = nlohmann::json::array();
+            pair.push_back(static_cast<int64_t>(i));
+            pair.push_back(array[i]);
+            result.push_back(pair);
+        }
+        
+        return result;
+    };
+    
+    // zip operator - combines two arrays into pairs
+    operators["zip"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("zip operator requires exactly 2 arguments: array1, array2");
+        }
+        
+        auto array1 = evaluate(args[0], ctx);
+        auto array2 = evaluate(args[1], ctx);
+        
+        if (!array1.is_array()) {
+            throw InvalidArgumentException("zip operator requires an array as first argument");
+        }
+        
+        if (!array2.is_array()) {
+            throw InvalidArgumentException("zip operator requires an array as second argument");
+        }
+        
+        nlohmann::json result = nlohmann::json::array();
+        size_t min_size = std::min(array1.size(), array2.size());
+        
+        // Create [element1, element2] pairs
+        for (size_t i = 0; i < min_size; ++i) {
+            nlohmann::json pair = nlohmann::json::array();
+            pair.push_back(array1[i]);
+            pair.push_back(array2[i]);
+            result.push_back(pair);
+        }
+        
+        return result;
     };
     
     // Diff operator for generating JSON patches
