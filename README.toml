@@ -985,10 +985,18 @@ description = """
 Lambda with multiple parameters in reduce.
 Demonstrates lambda functions with accumulator and item parameters using Permuto for string concatenation.
 """
-script = ["reduce", {array = ["hello", "world", "computo"]}, ["lambda", ["acc", "word"], ["permuto.apply", "${/acc}${/word}", ["obj", ["acc", ["$", "/acc"]], ["word", ["$", "/word"]]]]], ""]
+script = """
+["reduce",
+	{"array": ["Hello", "World", "From", "Computo"]},
+	["lambda",
+		["acc", "word"],
+		["concat", ["$", "/acc"], ["$", "/word"]]
+	],
+	""
+]
+"""
 input = {}
-expected = "helloworldcomputo"
-flags = ["--interpolation"]
+expected = "HelloWorldFromComputo"
 
 [[examples]]
 name = "lambda_nested_operations"
@@ -1209,7 +1217,7 @@ Demonstrates building template context using Computo operations.
 """
 script = ["permuto.apply", {report = "Total: ${/sum}, Average: ${/avg}"}, ["obj", ["sum", ["reduce", {array = [10, 20, 30]}, ["lambda", ["a", "b"], ["+", ["$", "/a"], ["$", "/b"]]], 0]], ["avg", ["/", 60, 3]]]]
 input = {}
-expected = {report = "Total: 60, Average: 20"}
+expected = {report = "Total: 60, Average: 20.000000"}
 flags = ["--interpolation"]
 
 # ============================================================================

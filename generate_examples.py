@@ -235,7 +235,16 @@ def create_example_readme(example: dict) -> str:
 
 ```json
 '''
-    readme += json.dumps(example['script'], indent=2)
+    # Handle both direct JSON and string formats for README display
+    script_for_display = example['script']
+    if isinstance(script_for_display, str):
+        # Parse string as JSON (for triple-quoted multiline scripts)
+        try:
+            script_for_display = json.loads(script_for_display)
+        except json.JSONDecodeError:
+            # If parsing fails, display as-is (shouldn't happen with valid examples)
+            pass
+    readme += json.dumps(script_for_display, indent=2)
     readme += '''
 ```
 '''
@@ -366,8 +375,15 @@ def create_examples_from_toml(toml_data: dict, output_dir: str = "examples"):
         example_path = create_example_directory(example, base_path)
         name = sanitize_name(example['name'])
         
-        # Write script.json
-        write_json_file(example_path / "script.json", example['script'])
+        # Write script.json - handle both direct JSON and string formats
+        script_data = example['script']
+        if isinstance(script_data, str):
+            # Parse string as JSON (for triple-quoted multiline scripts)
+            try:
+                script_data = json.loads(script_data)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Failed to parse script as JSON in example '{example['name']}': {e}")
+        write_json_file(example_path / "script.json", script_data)
         
         # Write input files
         if 'inputs' in example:

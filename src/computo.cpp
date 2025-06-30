@@ -144,12 +144,15 @@ static void initialize_operators() {
                 throw InvalidArgumentException("obj operator requires [key, value] pairs");
             }
             
-            // First element should be a string key (literal, not evaluated)
-            if (!pair_expr[0].is_string()) {
-                throw InvalidArgumentException("obj operator requires string keys");
+            // Evaluate the first element to get the key
+            nlohmann::json key_val = evaluate(pair_expr[0], ctx);
+            
+            // Key must evaluate to a string
+            if (!key_val.is_string()) {
+                throw InvalidArgumentException("obj operator keys must evaluate to strings");
             }
             
-            std::string key = pair_expr[0].get<std::string>();
+            std::string key = key_val.get<std::string>();
             nlohmann::json value = evaluate(pair_expr[1], ctx);
             result[key] = value;
         }

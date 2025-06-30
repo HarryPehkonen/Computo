@@ -559,6 +559,19 @@ TEST_F(ComputoTest, ObjOperatorNonStringKey) {
     EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
 }
 
+TEST_F(ComputoTest, ObjOperatorComputedKeyNonString) {
+    // Computed key that evaluates to non-string
+    json script = json::array({
+        "let",
+        json::array({json::array({"num", 123})}),
+        json::array({
+            "obj",
+            json::array({json::array({"$", "/num"}), "value"})
+        })
+    });
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
 // === Phase 4 Tests: The Permuto Bridge ===
 
 // Test permuto.apply basic functionality
@@ -3578,4 +3591,59 @@ TEST_F(ComputoTest, ConcatOperatorErrorMessage) {
         std::string error_msg = e.what();
         EXPECT_NE(error_msg.find("concat operator requires at least 1 argument"), std::string::npos);
     }
+}
+
+// Test obj operator with computed keys
+TEST_F(ComputoTest, ObjOperatorComputedKeys) {
+    // ["let", [["name", "Alice"], ["age", 50]], ["obj", [["$", "/name"], ["$", "/age"]]]]
+    json script = json::array({
+        "let",
+        json::array({
+            json::array({"name", "Alice"}),
+            json::array({"age", 50})
+        }),
+        json::array({
+            "obj",
+            json::array({json::array({"$", "/name"}), json::array({"$", "/age"})})
+        })
+    });
+    json expected = json{{"Alice", 50}};
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test obj operator with mixed literal and computed keys
+TEST_F(ComputoTest, ObjOperatorMixedKeys) {
+    // ["let", [["dynamic_key", "computed"]], ["obj", ["literal", "value1"], [["$", "/dynamic_key"], "value2"]]]
+    json script = json::array({
+        "let",
+        json::array({json::array({"dynamic_key", "computed"})}),
+        json::array({
+            "obj",
+            json::array({"literal", "value1"}),
+            json::array({json::array({"$", "/dynamic_key"}), "value2"})
+        })
+    });
+    json expected = json{{"literal", "value1"}, {"computed", "value2"}};
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// Test obj operator with computed key expression
+TEST_F(ComputoTest, ObjOperatorComputedKeyExpression) {
+    // ["let", [["prefix", "user_"], ["id", 123]], ["obj", [["concat", ["$", "/prefix"], ["$", "/id"]], "John"]]]
+    json script = json::array({
+        "let",
+        json::array({
+            json::array({"prefix", "user_"}),
+            json::array({"id", 123})
+        }),
+        json::array({
+            "obj",
+            json::array({
+                json::array({"concat", json::array({"$", "/prefix"}), json::array({"$", "/id"})}),
+                "John"
+            })
+        })
+    });
+    json expected = json{{"user_123", "John"}};
+    EXPECT_EQ(computo::execute(script, input_data), expected);
 }
