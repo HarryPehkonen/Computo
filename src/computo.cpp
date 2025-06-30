@@ -1150,7 +1150,7 @@ nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx) {
             
             std::map<std::string, nlohmann::json> new_vars;
             
-            // Process each binding
+            // Process each binding sequentially, allowing later bindings to reference earlier ones
             for (size_t i = 0; i < expr[1].size(); ++i) {
                 const auto& binding = expr[1][i];
                 ExecutionContext binding_ctx = op_ctx.with_path("bindings[" + std::to_string(i) + "]");
@@ -1171,8 +1171,9 @@ nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx) {
                     binding[1][0].is_string() && binding[1][0].get<std::string>() == "lambda") {
                     var_value = binding[1];  // Store lambda as-is
                 } else {
-                    ExecutionContext value_ctx = binding_ctx.with_path("value");
-                    var_value = evaluate(binding[1], value_ctx);  // Evaluate normally
+                    // FIXED: Include previously bound variables in the evaluation context
+                    ExecutionContext value_ctx = binding_ctx.with_path("value").with_variables(new_vars);
+                    var_value = evaluate(binding[1], value_ctx);  // Evaluate with sequential context
                 }
                 new_vars[var_name] = var_value;
             }
