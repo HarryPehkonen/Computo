@@ -70,16 +70,16 @@ TEST_F(ComputoTest, AdditionNoArguments) {
     EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
 }
 
-// Test addition with one argument
+// Test addition with one argument - now valid (returns the argument)
 TEST_F(ComputoTest, AdditionOneArgument) {
-    json script = json::array({"+", 1});
-    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+    json script = json::array({"+", 5});
+    EXPECT_EQ(computo::execute(script, input_data), 5);
 }
 
-// Test addition with too many arguments
-TEST_F(ComputoTest, AdditionTooManyArguments) {
-    json script = json::array({"+", 1, 2, 3});
-    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+// Test addition with multiple arguments - now valid (n-ary)
+TEST_F(ComputoTest, AdditionMultipleArguments) {
+    json script = json::array({"+", 1, 2, 3, 4});
+    EXPECT_EQ(computo::execute(script, input_data), 10);
 }
 
 // Test addition with string argument
@@ -3646,4 +3646,409 @@ TEST_F(ComputoTest, ObjOperatorComputedKeyExpression) {
     });
     json expected = json{{"user_123", "John"}};
     EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+// === Tests for N-ary Operators ===
+
+// === Addition (n-ary) Tests ===
+
+TEST_F(ComputoTest, AdditionNaryBasic) {
+    // Test 3 arguments
+    json script = json::array({"+", 1, 2, 3});
+    EXPECT_EQ(computo::execute(script, input_data), 6);
+    
+    // Test 4 arguments
+    json script2 = json::array({"+", 10, 20, 30, 40});
+    EXPECT_EQ(computo::execute(script2, input_data), 100);
+    
+    // Test 5 arguments with mixed integers
+    json script3 = json::array({"+", 1, 2, 3, 4, 5});
+    EXPECT_EQ(computo::execute(script3, input_data), 15);
+}
+
+TEST_F(ComputoTest, AdditionNaryFloats) {
+    // Test with floating point numbers
+    json script = json::array({"+", 1.5, 2.5, 3.0});
+    EXPECT_EQ(computo::execute(script, input_data), 7.0);
+    
+    // Test mixed integers and floats
+    json script2 = json::array({"+", 1, 2.5, 3});
+    EXPECT_EQ(computo::execute(script2, input_data), 6.5);
+}
+
+TEST_F(ComputoTest, AdditionNarySingleArgument) {
+    // Single argument should return that argument
+    json script = json::array({"+", 42});
+    EXPECT_EQ(computo::execute(script, input_data), 42);
+    
+    json script2 = json::array({"+", 3.14});
+    EXPECT_EQ(computo::execute(script2, input_data), 3.14);
+}
+
+TEST_F(ComputoTest, AdditionNaryLargeNumber) {
+    // Test with many arguments
+    json script = json::array({"+", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}); // 10 ones
+    EXPECT_EQ(computo::execute(script, input_data), 10);
+}
+
+TEST_F(ComputoTest, AdditionNaryWithExpressions) {
+    // Test with expressions as arguments
+    json script = json::array({
+        "+", 
+        json::array({"+", 1, 2}),  // 3
+        json::array({"*", 2, 3}),  // 6
+        5                          // 5
+    });
+    EXPECT_EQ(computo::execute(script, input_data), 14);
+}
+
+// === Multiplication (n-ary) Tests ===
+
+TEST_F(ComputoTest, MultiplicationNaryBasic) {
+    // Test 3 arguments
+    json script = json::array({"*", 2, 3, 4});
+    EXPECT_EQ(computo::execute(script, input_data), 24);
+    
+    // Test 4 arguments
+    json script2 = json::array({"*", 1, 2, 3, 4});
+    EXPECT_EQ(computo::execute(script2, input_data), 24);
+}
+
+TEST_F(ComputoTest, MultiplicationNaryFloats) {
+    // Test with floating point numbers
+    json script = json::array({"*", 2.0, 3.0, 1.5});
+    EXPECT_EQ(computo::execute(script, input_data), 9.0);
+    
+    // Test mixed integers and floats
+    json script2 = json::array({"*", 2, 2.5, 2});
+    EXPECT_EQ(computo::execute(script2, input_data), 10.0);
+}
+
+TEST_F(ComputoTest, MultiplicationNarySingleArgument) {
+    // Single argument should return that argument
+    json script = json::array({"*", 7});
+    EXPECT_EQ(computo::execute(script, input_data), 7);
+    
+    json script2 = json::array({"*", 2.5});
+    EXPECT_EQ(computo::execute(script2, input_data), 2.5);
+}
+
+TEST_F(ComputoTest, MultiplicationNaryWithZero) {
+    // Test with zero (should result in zero)
+    json script = json::array({"*", 5, 0, 10});
+    EXPECT_EQ(computo::execute(script, input_data), 0);
+}
+
+TEST_F(ComputoTest, MultiplicationNaryWithExpressions) {
+    // Test with expressions as arguments
+    json script = json::array({
+        "*", 
+        json::array({"+", 1, 1}),  // 2
+        json::array({"+", 2, 1}),  // 3
+        json::array({"+", 1, 3})   // 4
+    });
+    EXPECT_EQ(computo::execute(script, input_data), 24);
+}
+
+// === Chained Comparison Tests ===
+
+TEST_F(ComputoTest, ChainedLessThanBasic) {
+    // Test a < b < c (true case)
+    json script = json::array({"<", 1, 2, 3});
+    EXPECT_EQ(computo::execute(script, input_data), true);
+    
+    // Test a < b < c (false case)
+    json script2 = json::array({"<", 1, 3, 2});
+    EXPECT_EQ(computo::execute(script2, input_data), false);
+    
+    // Test longer chain
+    json script3 = json::array({"<", 1, 2, 3, 4, 5});
+    EXPECT_EQ(computo::execute(script3, input_data), true);
+}
+
+TEST_F(ComputoTest, ChainedGreaterThanBasic) {
+    // Test a > b > c (true case)
+    json script = json::array({">", 5, 3, 1});
+    EXPECT_EQ(computo::execute(script, input_data), true);
+    
+    // Test a > b > c (false case)
+    json script2 = json::array({">", 5, 1, 3});
+    EXPECT_EQ(computo::execute(script2, input_data), false);
+    
+    // Test longer chain
+    json script3 = json::array({">", 10, 8, 6, 4, 2});
+    EXPECT_EQ(computo::execute(script3, input_data), true);
+}
+
+TEST_F(ComputoTest, ChainedLessEqualBasic) {
+    // Test a <= b <= c (true case with equality)
+    json script = json::array({"<=", 1, 2, 2});
+    EXPECT_EQ(computo::execute(script, input_data), true);
+    
+    // Test a <= b <= c (true case strictly increasing)
+    json script2 = json::array({"<=", 1, 2, 3});
+    EXPECT_EQ(computo::execute(script2, input_data), true);
+    
+    // Test a <= b <= c (false case)
+    json script3 = json::array({"<=", 3, 2, 4});
+    EXPECT_EQ(computo::execute(script3, input_data), false);
+}
+
+TEST_F(ComputoTest, ChainedGreaterEqualBasic) {
+    // Test a >= b >= c (true case with equality)
+    json script = json::array({">=", 3, 3, 2});
+    EXPECT_EQ(computo::execute(script, input_data), true);
+    
+    // Test a >= b >= c (true case strictly decreasing)
+    json script2 = json::array({">=", 5, 3, 1});
+    EXPECT_EQ(computo::execute(script2, input_data), true);
+    
+    // Test a >= b >= c (false case)
+    json script3 = json::array({">=", 2, 4, 1});
+    EXPECT_EQ(computo::execute(script3, input_data), false);
+}
+
+TEST_F(ComputoTest, ChainedComparisonFloats) {
+    // Test with floating point numbers
+    json script = json::array({"<", 1.1, 2.2, 3.3});
+    EXPECT_EQ(computo::execute(script, input_data), true);
+    
+    json script2 = json::array({">", 5.5, 4.4, 3.3});
+    EXPECT_EQ(computo::execute(script2, input_data), true);
+}
+
+TEST_F(ComputoTest, ChainedComparisonWithExpressions) {
+    // Test with expressions
+    json script = json::array({
+        "<",
+        json::array({"+", 1, 1}),  // 2
+        json::array({"*", 2, 2}),  // 4
+        json::array({"+", 3, 3})   // 6
+    });
+    EXPECT_EQ(computo::execute(script, input_data), true);
+}
+
+TEST_F(ComputoTest, ChainedComparisonMinimal) {
+    // Test with just 2 arguments (should work like binary)
+    json script = json::array({"<", 1, 2});
+    EXPECT_EQ(computo::execute(script, input_data), true);
+    
+    json script2 = json::array({">", 5, 3});
+    EXPECT_EQ(computo::execute(script2, input_data), true);
+}
+
+// === N-ary Equality Tests ===
+
+TEST_F(ComputoTest, EqualityNaryBasic) {
+    // Test all equal (true case)
+    json script = json::array({"==", 5, 5, 5});
+    EXPECT_EQ(computo::execute(script, input_data), true);
+    
+    // Test one different (false case)
+    json script2 = json::array({"==", 5, 5, 6});
+    EXPECT_EQ(computo::execute(script2, input_data), false);
+    
+    // Test longer chain of equal values
+    json script3 = json::array({"==", 42, 42, 42, 42, 42});
+    EXPECT_EQ(computo::execute(script3, input_data), true);
+}
+
+TEST_F(ComputoTest, EqualityNaryStrings) {
+    // Test with strings
+    json script = json::array({"==", "hello", "hello", "hello"});
+    EXPECT_EQ(computo::execute(script, input_data), true);
+    
+    json script2 = json::array({"==", "hello", "hello", "world"});
+    EXPECT_EQ(computo::execute(script2, input_data), false);
+}
+
+TEST_F(ComputoTest, EqualityNaryMixedTypes) {
+    // Test with same value, different types (in JSON, 5 and 5.0 are actually equal)
+    json script = json::array({"==", 5, 5.0});
+    EXPECT_EQ(computo::execute(script, input_data), true);
+    
+    // Test different types that are actually different
+    json script2 = json::array({"==", 5, "5"});
+    EXPECT_EQ(computo::execute(script2, input_data), false);
+}
+
+TEST_F(ComputoTest, EqualityNaryWithExpressions) {
+    // Test with expressions that evaluate to same value
+    json script = json::array({
+        "==",
+        json::array({"+", 2, 3}),  // 5
+        json::array({"*", 1, 5}),  // 5
+        json::array({"-", 7, 2})   // 5
+    });
+    EXPECT_EQ(computo::execute(script, input_data), true);
+}
+
+TEST_F(ComputoTest, EqualityNaryMinimal) {
+    // Test with just 2 arguments (should work like binary)
+    json script = json::array({"==", 5, 5});
+    EXPECT_EQ(computo::execute(script, input_data), true);
+    
+    json script2 = json::array({"==", 5, 6});
+    EXPECT_EQ(computo::execute(script2, input_data), false);
+}
+
+// === Error Cases for N-ary Operators ===
+
+TEST_F(ComputoTest, AdditionNaryNoArguments) {
+    // Should still throw error for no arguments
+    json script = json::array({"+"});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+TEST_F(ComputoTest, MultiplicationNaryNoArguments) {
+    // Should still throw error for no arguments
+    json script = json::array({"*"});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+TEST_F(ComputoTest, AdditionNaryNonNumeric) {
+    // Should throw error for non-numeric arguments
+    json script = json::array({"+", 1, "hello", 3});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+TEST_F(ComputoTest, MultiplicationNaryNonNumeric) {
+    // Should throw error for non-numeric arguments
+    json script = json::array({"*", 2, true, 4});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+TEST_F(ComputoTest, ChainedComparisonTooFewArgs) {
+    // Should throw error for less than 2 arguments
+    json script = json::array({"<", 5});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+    
+    json script2 = json::array({">", 5});
+    EXPECT_THROW(computo::execute(script2, input_data), computo::InvalidArgumentException);
+}
+
+TEST_F(ComputoTest, ChainedComparisonNonNumeric) {
+    // Should throw error for non-numeric arguments
+    json script = json::array({"<", 1, "hello", 3});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+TEST_F(ComputoTest, EqualityNaryTooFewArgs) {
+    // Should throw error for less than 2 arguments
+    json script = json::array({"==", 5});
+    EXPECT_THROW(computo::execute(script, input_data), computo::InvalidArgumentException);
+}
+
+// === Integration Tests for N-ary Operators ===
+
+TEST_F(ComputoTest, NaryOperatorsWithLet) {
+    // Test n-ary operators within let expressions
+    json script = json::array({
+        "let",
+        json::array({
+            json::array({"a", 1}),
+            json::array({"b", 2}),
+            json::array({"c", 3}),
+            json::array({"d", 4})
+        }),
+        json::array({
+            "+",
+            json::array({"$", "/a"}),
+            json::array({"$", "/b"}),
+            json::array({"$", "/c"}),
+            json::array({"$", "/d"})
+        })
+    });
+    EXPECT_EQ(computo::execute(script, input_data), 10);
+}
+
+TEST_F(ComputoTest, NaryOperatorsInArray) {
+    // Test n-ary operators in array construction
+    json script = json::array({
+        "obj",
+        json::array({"sum", json::array({"+", 1, 2, 3, 4})}),
+        json::array({"product", json::array({"*", 2, 3, 4})}),
+        json::array({"chain_check", json::array({"<", 1, 2, 3, 4})})
+    });
+    
+    json result = computo::execute(script, input_data);
+    EXPECT_EQ(result["sum"], 10);
+    EXPECT_EQ(result["product"], 24);
+    EXPECT_EQ(result["chain_check"], true);
+}
+
+TEST_F(ComputoTest, NaryOperatorsWithMap) {
+    // Test n-ary operators with map
+    json script = json::array({
+        "map",
+        json{{"array", json::array({
+            json{{"array", json::array({1, 2, 3})}},
+            json{{"array", json::array({2, 3, 4})}},
+            json{{"array", json::array({5, 6, 7})}}
+        })}},
+        json::array({
+            "lambda",
+            json::array({"arr"}),
+            json::array({
+                "+",
+                json::array({"get", json::array({"$", "/arr"}), "/0"}),
+                json::array({"get", json::array({"$", "/arr"}), "/1"}),
+                json::array({"get", json::array({"$", "/arr"}), "/2"})
+            })
+        })
+    });
+    
+    json expected = json::array({6, 9, 18});
+    EXPECT_EQ(computo::execute(script, input_data), expected);
+}
+
+TEST_F(ComputoTest, NaryOperatorsPerformanceStressTest) {
+    // Test with many arguments to ensure no significant performance degradation
+    nlohmann::json args = json::array({"+"});
+    for (int i = 1; i <= 100; ++i) {
+        args.push_back(i);
+    }
+    
+    json result = computo::execute(args, input_data);
+    EXPECT_EQ(result, 5050); // Sum of 1 to 100
+}
+
+TEST_F(ComputoTest, ChainedComparisonComplexUsage) {
+    // Test chained comparison in realistic scenario
+    json script = json::array({
+        "let",
+        json::array({json::array({"score", 85})}),
+        json::array({
+            "if",
+            json::array({"<", 80, json::array({"$", "/score"}), 90}),  // 80 < score < 90
+            "B grade",
+            "Other grade"
+        })
+    });
+    
+    EXPECT_EQ(computo::execute(script, input_data), "B grade");
+}
+
+// === Edge Cases and Advanced Scenarios ===
+
+TEST_F(ComputoTest, MixedNaryAndBinaryOperators) {
+    // Test mixing n-ary and binary operators
+    json script = json::array({
+        "+",
+        json::array({"*", 2, 3}),      // 6 (binary multiplication)
+        json::array({"*", 1, 2, 3}),   // 6 (n-ary multiplication)
+        json::array({"+", 1, 1})       // 2 (binary addition)
+    });
+    EXPECT_EQ(computo::execute(script, input_data), 14);
+}
+
+TEST_F(ComputoTest, NestedNaryOperators) {
+    // Test deeply nested n-ary operators
+    json script = json::array({
+        "*",
+        json::array({"+", 1, 1, 1}),           // 3
+        json::array({"+", 2, 2}),               // 4
+        json::array({"*", 1, 2, 3})             // 6
+    });
+    EXPECT_EQ(computo::execute(script, input_data), 72); // 3 * 4 * 6
 }
