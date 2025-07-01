@@ -47,6 +47,8 @@ find_package(GTest REQUIRED)
 add_executable(computo_tests 
     tests/test_main.cpp
     tests/test_operators.cpp
+    tests/test_builder.cpp
+    tests/builder_examples.cpp
 )
 target_link_libraries(computo_tests PRIVATE 
     computo 

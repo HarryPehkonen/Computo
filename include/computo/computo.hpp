@@ -6,6 +6,7 @@
 #include <map>
 #include <functional>
 #include <permuto/permuto.hpp>
+#include "builder.hpp"
 
 namespace computo {
 
