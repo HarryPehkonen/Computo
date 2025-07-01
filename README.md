@@ -2945,12 +2945,41 @@ Shows lambda functions containing if-then-else expressions.
 ### Lambda Multiple Parameters
 
 Lambda with multiple parameters in reduce.
-Demonstrates lambda functions with accumulator and item parameters using Permuto for string concatenation.
+Demonstrates lambda functions with accumulator and item parameters for string concatenation.
 
 
 **Script:**
 ```json
-"[\"reduce\",\n\t{\"array\": [\"Hello\", \"World\", \"From\", \"Computo\"]},\n\t[\"lambda\",\n\t\t[\"acc\", \"word\"],\n\t\t[\"concat\", [\"$\", \"/acc\"], [\"$\", \"/word\"]]\n\t],\n\t\"\"\n]\n"
+[
+  "reduce",
+  {
+    "array": [
+      "Hello",
+      "World",
+      "From",
+      "Computo"
+    ]
+  },
+  [
+    "lambda",
+    [
+      "acc",
+      "word"
+    ],
+    [
+      "str_concat",
+      [
+        "$",
+        "/acc"
+      ],
+      [
+        "$",
+        "/word"
+      ]
+    ]
+  ],
+  ""
+]
 ```
 
 **Expected Output:**
@@ -4333,13 +4362,13 @@ Demonstrates creating version control for documents with change tracking.
   "version_info": {
     "from_version": 1,
     "to_version": 2,
-    "change_count": 3
+    "change_count": 4
   },
   "forward_patch": [
     {
       "op": "replace",
-      "path": "/version",
-      "value": 2
+      "path": "/content",
+      "value": "Updated content"
     },
     {
       "op": "replace",
@@ -4348,8 +4377,8 @@ Demonstrates creating version control for documents with change tracking.
     },
     {
       "op": "replace",
-      "path": "/content",
-      "value": "Updated content"
+      "path": "/version",
+      "value": 2
     },
     {
       "op": "add",
@@ -4359,9 +4388,13 @@ Demonstrates creating version control for documents with change tracking.
   ],
   "rollback_patch": [
     {
+      "op": "remove",
+      "path": "/author"
+    },
+    {
       "op": "replace",
-      "path": "/version",
-      "value": 1
+      "path": "/content",
+      "value": "Original content"
     },
     {
       "op": "replace",
@@ -4370,12 +4403,8 @@ Demonstrates creating version control for documents with change tracking.
     },
     {
       "op": "replace",
-      "path": "/content",
-      "value": "Original content"
-    },
-    {
-      "op": "remove",
-      "path": "/author"
+      "path": "/version",
+      "value": 1
     }
   ],
   "can_rollback": true
@@ -4655,9 +4684,9 @@ Demonstrates complex data processing for analytics and reporting.
       ]
     ],
     [
-      "top_regions",
+      "north_sales",
       [
-        "reduce",
+        "filter",
         [
           "$",
           "/sales_data"
@@ -4665,88 +4694,54 @@ Demonstrates complex data processing for analytics and reporting.
         [
           "lambda",
           [
-            "regions",
             "sale"
           ],
           [
-            "let",
+            "==",
             [
+              "get",
               [
-                "region",
-                [
-                  "get",
-                  [
-                    "$",
-                    "/sale"
-                  ],
-                  "/region"
-                ]
+                "$",
+                "/sale"
               ],
-              [
-                "amount",
-                [
-                  "get",
-                  [
-                    "$",
-                    "/sale"
-                  ],
-                  "/amount"
-                ]
-              ]
+              "/region"
+            ],
+            "North"
+          ]
+        ]
+      ]
+    ],
+    [
+      "north_total",
+      [
+        "reduce",
+        [
+          "$",
+          "/north_sales"
+        ],
+        [
+          "lambda",
+          [
+            "sum",
+            "sale"
+          ],
+          [
+            "+",
+            [
+              "$",
+              "/sum"
             ],
             [
-              "if",
+              "get",
               [
-                "get",
-                [
-                  "$",
-                  "/regions"
-                ],
-                [
-                  "$",
-                  "/region"
-                ]
+                "$",
+                "/sale"
               ],
-              [
-                "obj",
-                [
-                  "$",
-                  "/region"
-                ],
-                [
-                  "+",
-                  [
-                    "get",
-                    [
-                      "$",
-                      "/regions"
-                    ],
-                    [
-                      "$",
-                      "/region"
-                    ]
-                  ],
-                  [
-                    "$",
-                    "/amount"
-                  ]
-                ]
-              ],
-              [
-                "obj",
-                [
-                  "$",
-                  "/region"
-                ],
-                [
-                  "$",
-                  "/amount"
-                ]
-              ]
+              "/amount"
             ]
           ]
         ],
-        {}
+        0
       ]
     ]
   ],
@@ -4842,10 +4837,26 @@ Demonstrates complex data processing for analytics and reporting.
       ]
     ],
     [
-      "by_region",
+      "north_region",
       [
-        "$",
-        "/top_regions"
+        "obj",
+        [
+          "sales_count",
+          [
+            "count",
+            [
+              "$",
+              "/north_sales"
+            ]
+          ]
+        ],
+        [
+          "total_revenue",
+          [
+            "$",
+            "/north_total"
+          ]
+        ]
       ]
     ]
   ]
@@ -4892,10 +4903,9 @@ Demonstrates complex data processing for analytics and reporting.
     "count": 3,
     "revenue": 4700
   },
-  "by_region": {
-    "North": 3500,
-    "South": 800,
-    "East": 1200
+  "north_region": {
+    "sales_count": 2,
+    "total_revenue": 3500
   }
 }
 ```
