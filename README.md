@@ -2500,6 +2500,609 @@ Demonstrates building objects using values extracted from input.
 }
 ```
 
+## Debugging Examples
+
+### Debug Basic Tracing
+
+Basic debugging with execution tracing enabled.
+Shows how to enable execution tracing to see operation flow.
+Note: This demonstrates CLI debugging flags - actual trace output goes to stderr.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "result",
+    [
+      "+",
+      [
+        "*",
+        3,
+        4
+      ],
+      [
+        "*",
+        5,
+        6
+      ]
+    ]
+  ],
+  [
+    "computed",
+    true
+  ]
+]
+```
+
+**Expected Output:**
+```json
+{
+  "result": 42,
+  "computed": true
+}
+```
+
+### Debug Performance Profiling
+
+Performance profiling to identify slow operations.
+Demonstrates using profiling to measure execution times and identify bottlenecks.
+Note: Performance reports are sent to stderr, JSON result to stdout.
+
+
+**Script:**
+```json
+[
+  "reduce",
+  {
+    "array": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  [
+    "lambda",
+    [
+      "acc",
+      "x"
+    ],
+    [
+      "+",
+      [
+        "$",
+        "/acc"
+      ],
+      [
+        "*",
+        [
+          "$",
+          "/x"
+        ],
+        [
+          "$",
+          "/x"
+        ]
+      ]
+    ]
+  ],
+  0
+]
+```
+
+**Expected Output:**
+```json
+385
+```
+
+### Debug Slow Operation Detection
+
+Detect and report operations slower than threshold.
+Shows using slow operation detection to find performance issues.
+Note: Operations slower than 5ms will be flagged in the debug output.
+
+
+**Script:**
+```json
+[
+  "map",
+  {
+    "array": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  [
+    "lambda",
+    [
+      "x"
+    ],
+    [
+      "reduce",
+      {
+        "array": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      [
+        "lambda",
+        [
+          "a",
+          "b"
+        ],
+        [
+          "+",
+          [
+            "$",
+            "/a"
+          ],
+          [
+            "*",
+            [
+              "$",
+              "/b"
+            ],
+            [
+              "$",
+              "/x"
+            ]
+          ]
+        ]
+      ],
+      0
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  15,
+  30,
+  45,
+  60,
+  75
+]
+```
+
+### Debug Operator Breakpoints
+
+Set breakpoints on specific operators for debugging.
+Demonstrates halting execution when specific operators are encountered.
+Note: In non-interactive mode, breakpoints log to stderr without stopping.
+
+
+**Script:**
+```json
+[
+  "let",
+  [
+    [
+      "data",
+      {
+        "array": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    ]
+  ],
+  [
+    "map",
+    [
+      "$",
+      "/data"
+    ],
+    [
+      "lambda",
+      [
+        "x"
+      ],
+      [
+        "*",
+        [
+          "$",
+          "/x"
+        ],
+        2
+      ]
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  2,
+  4,
+  6,
+  8,
+  10
+]
+```
+
+### Debug Variable Watching
+
+Watch variable changes during execution.
+Shows tracking specific variables and their value changes throughout execution.
+Note: Variable watch output appears in the execution trace on stderr.
+
+
+**Script:**
+```json
+[
+  "let",
+  [
+    [
+      "multiplier",
+      3
+    ],
+    [
+      "base",
+      14
+    ]
+  ],
+  [
+    "+",
+    [
+      "*",
+      [
+        "$",
+        "/base"
+      ],
+      [
+        "$",
+        "/multiplier"
+      ]
+    ],
+    [
+      "$",
+      "/base"
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+56
+```
+
+### Debug Comprehensive Analysis
+
+Comprehensive debugging with all features enabled.
+Demonstrates using multiple debugging features together for complete analysis.
+Note: Combines tracing, profiling, breakpoints, and variable watching.
+
+
+**Script:**
+```json
+[
+  "let",
+  [
+    [
+      "numbers",
+      {
+        "array": [
+          10,
+          20,
+          30
+        ]
+      }
+    ]
+  ],
+  [
+    "reduce",
+    [
+      "$",
+      "/numbers"
+    ],
+    [
+      "lambda",
+      [
+        "sum",
+        "num"
+      ],
+      [
+        "+",
+        [
+          "$",
+          "/sum"
+        ],
+        [
+          "*",
+          [
+            "$",
+            "/num"
+          ],
+          2
+        ]
+      ]
+    ],
+    0
+  ]
+]
+```
+
+**Expected Output:**
+```json
+120
+```
+
+### Debug Error Diagnosis
+
+Enhanced error reporting with debugging enabled.
+Shows how debugging provides detailed error context and execution history.
+Note: This example would normally cause an error, shown here for documentation.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "safe_result",
+    [
+      "+",
+      20,
+      22
+    ]
+  ],
+  [
+    "info",
+    "This part works fine"
+  ]
+]
+```
+
+**Expected Output:**
+```json
+{
+  "safe_result": 42,
+  "info": "This part works fine"
+}
+```
+
+### Debug Log Levels
+
+Different debug log levels for varying detail amounts.
+Demonstrates controlling the verbosity of debug output.
+Note: Higher levels (verbose) provide more detailed execution information.
+
+
+**Script:**
+```json
+[
+  "map",
+  {
+    "array": [
+      "hello",
+      "world",
+      "debug"
+    ]
+  },
+  [
+    "lambda",
+    [
+      "str"
+    ],
+    [
+      "str_concat",
+      [
+        "$",
+        "/str"
+      ],
+      "!"
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  "hello!",
+  "world!",
+  "debug!"
+]
+```
+
+### Debug Complex Operations
+
+Debugging complex nested operations and data transformations.
+Shows debugging sophisticated scripts with multiple operators and deep nesting.
+Note: Trace output shows the complete execution flow through nested operations.
+
+
+**Script:**
+```json
+[
+  "let",
+  [
+    [
+      "users",
+      {
+        "array": [
+          {
+            "name": "Alice",
+            "score": 85
+          },
+          {
+            "name": "Bob",
+            "score": 92
+          },
+          {
+            "name": "Charlie",
+            "score": 78
+          }
+        ]
+      }
+    ]
+  ],
+  [
+    "obj",
+    [
+      "top_scorer",
+      [
+        "car",
+        [
+          "filter",
+          [
+            "$",
+            "/users"
+          ],
+          [
+            "lambda",
+            [
+              "user"
+            ],
+            [
+              ">",
+              [
+                "get",
+                [
+                  "$",
+                  "/user"
+                ],
+                "/score"
+              ],
+              90
+            ]
+          ]
+        ]
+      ]
+    ],
+    [
+      "average_score",
+      [
+        "/",
+        [
+          "reduce",
+          [
+            "map",
+            [
+              "$",
+              "/users"
+            ],
+            [
+              "lambda",
+              [
+                "user"
+              ],
+              [
+                "get",
+                [
+                  "$",
+                  "/user"
+                ],
+                "/score"
+              ]
+            ]
+          ],
+          [
+            "lambda",
+            [
+              "sum",
+              "score"
+            ],
+            [
+              "+",
+              [
+                "$",
+                "/sum"
+              ],
+              [
+                "$",
+                "/score"
+              ]
+            ]
+          ],
+          0
+        ],
+        [
+          "count",
+          [
+            "$",
+            "/users"
+          ]
+        ]
+      ]
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+{
+  "top_scorer": {
+    "name": "Bob",
+    "score": 92
+  },
+  "average_score": 85
+}
+```
+
+### Debug Interactive Session
+
+Interactive debugging for step-through execution.
+Demonstrates interactive debugging mode for manual script inspection.
+Note: Interactive mode allows step-by-step execution with variable inspection.
+
+
+**Script:**
+```json
+[
+  "let",
+  [
+    [
+      "step1",
+      15
+    ],
+    [
+      "step2",
+      27
+    ]
+  ],
+  [
+    "+",
+    [
+      "$",
+      "/step1"
+    ],
+    [
+      "$",
+      "/step2"
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+42
+```
+
 ## Functional Lists Examples
 
 ### List Car First Element

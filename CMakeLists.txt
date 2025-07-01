@@ -66,6 +66,7 @@ add_executable(computo_tests
     tests/test_nary_operators.cpp
     tests/test_error_handling_edge_cases.cpp
     tests/test_builder_fixes.cpp
+    tests/test_debugging.cpp
 )
 target_link_libraries(computo_tests PRIVATE 
     computo 
