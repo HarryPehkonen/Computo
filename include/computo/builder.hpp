@@ -233,6 +233,60 @@ public:
         return ComputoBuilder(nlohmann::json::array({"count", array_expr}));
     }
     
+    static ComputoBuilder find(const nlohmann::json& array_expr, const nlohmann::json& predicate_expr) {
+        return ComputoBuilder(nlohmann::json::array({"find", array_expr, predicate_expr}));
+    }
+    
+    static ComputoBuilder some(const nlohmann::json& array_expr, const nlohmann::json& predicate_expr) {
+        return ComputoBuilder(nlohmann::json::array({"some", array_expr, predicate_expr}));
+    }
+    
+    static ComputoBuilder every(const nlohmann::json& array_expr, const nlohmann::json& predicate_expr) {
+        return ComputoBuilder(nlohmann::json::array({"every", array_expr, predicate_expr}));
+    }
+    
+    static ComputoBuilder partition(const nlohmann::json& array_expr, const nlohmann::json& size_expr) {
+        return ComputoBuilder(nlohmann::json::array({"partition", array_expr, size_expr}));
+    }
+    
+    static ComputoBuilder flatmap(const nlohmann::json& array_expr, const nlohmann::json& lambda_expr) {
+        return ComputoBuilder(nlohmann::json::array({"flatmap", array_expr, lambda_expr}));
+    }
+    
+    // List operations (Lisp-style)
+    static ComputoBuilder car(const nlohmann::json& array_expr) {
+        return ComputoBuilder(nlohmann::json::array({"car", array_expr}));
+    }
+    
+    static ComputoBuilder cdr(const nlohmann::json& array_expr) {
+        return ComputoBuilder(nlohmann::json::array({"cdr", array_expr}));
+    }
+    
+    static ComputoBuilder cons(const nlohmann::json& item_expr, const nlohmann::json& array_expr) {
+        return ComputoBuilder(nlohmann::json::array({"cons", item_expr, array_expr}));
+    }
+    
+    static ComputoBuilder append(const nlohmann::json& array1_expr, const nlohmann::json& array2_expr) {
+        return ComputoBuilder(nlohmann::json::array({"append", array1_expr, array2_expr}));
+    }
+    
+    static ComputoBuilder chunk(const nlohmann::json& array_expr, const nlohmann::json& size_expr) {
+        return ComputoBuilder(nlohmann::json::array({"chunk", array_expr, size_expr}));
+    }
+    
+    // Extended comparison operators
+    static ComputoBuilder less_equal(const nlohmann::json& a, const nlohmann::json& b) {
+        return ComputoBuilder(nlohmann::json::array({"<=", a, b}));
+    }
+    
+    static ComputoBuilder greater_equal(const nlohmann::json& a, const nlohmann::json& b) {
+        return ComputoBuilder(nlohmann::json::array({">=", a, b}));
+    }
+    
+    static ComputoBuilder approx_equal(const nlohmann::json& a, const nlohmann::json& b, const nlohmann::json& tolerance) {
+        return ComputoBuilder(nlohmann::json::array({"~=", a, b, tolerance}));
+    }
+    
     // Merge objects
     static ComputoBuilder merge(std::initializer_list<nlohmann::json> objects) {
         nlohmann::json result = nlohmann::json::array({"merge"});
@@ -245,6 +299,49 @@ public:
     // Permuto integration
     static ComputoBuilder permuto_apply(const nlohmann::json& template_expr, const nlohmann::json& context_expr) {
         return ComputoBuilder(nlohmann::json::array({"permuto.apply", template_expr, context_expr}));
+    }
+    
+    // JSON Patch operations
+    static ComputoBuilder json_patch_apply(const nlohmann::json& document_expr, const nlohmann::json& patch_expr) {
+        return ComputoBuilder(nlohmann::json::array({"json_patch.apply", document_expr, patch_expr}));
+    }
+    
+    static ComputoBuilder json_patch_diff(const nlohmann::json& from_expr, const nlohmann::json& to_expr) {
+        return ComputoBuilder(nlohmann::json::array({"json_patch.diff", from_expr, to_expr}));
+    }
+    
+    // Multi-parameter lambda (takes vector of parameter names)
+    static ComputoBuilder lambda_multi(const std::vector<std::string>& params, const nlohmann::json& body) {
+        nlohmann::json param_array = nlohmann::json::array();
+        for (const auto& param : params) {
+            param_array.push_back(param);
+        }
+        return ComputoBuilder(nlohmann::json::array({"lambda", param_array, body}));
+    }
+    
+    // Advanced array operations
+    static ComputoBuilder zip(const nlohmann::json& array1_expr, const nlohmann::json& array2_expr) {
+        return ComputoBuilder(nlohmann::json::array({"zip", array1_expr, array2_expr}));
+    }
+    
+    static ComputoBuilder zip_with(const nlohmann::json& lambda_expr, const nlohmann::json& array1_expr, const nlohmann::json& array2_expr) {
+        return ComputoBuilder(nlohmann::json::array({"zipWith", lambda_expr, array1_expr, array2_expr}));
+    }
+    
+    static ComputoBuilder enumerate(const nlohmann::json& array_expr) {
+        return ComputoBuilder(nlohmann::json::array({"enumerate", array_expr}));
+    }
+    
+    static ComputoBuilder map_with_index(const nlohmann::json& array_expr, const nlohmann::json& lambda_expr) {
+        return ComputoBuilder(nlohmann::json::array({"mapWithIndex", array_expr, lambda_expr}));
+    }
+    
+    static ComputoBuilder concat(std::initializer_list<nlohmann::json> arrays) {
+        nlohmann::json result = nlohmann::json::array({"concat"});
+        for (const auto& arr : arrays) {
+            result.push_back(arr);
+        }
+        return ComputoBuilder(result);
     }
     
     // Build the final JSON
