@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+# Generated documentation and test files
+examples/
+build/
