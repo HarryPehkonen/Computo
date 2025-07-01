@@ -79,6 +79,60 @@ cd build && ctest
 ./build/cli/computo script.json input.json
 ```
 
+## Adding New Operators
+
+When implementing a new Computo operator, follow this checklist to ensure complete integration:
+
+### 1. Core Implementation
+- Add operator logic to `src/computo.cpp` in the operator registry
+- Update the operator dispatch map with the new operator name
+- Implement the operator function following existing patterns
+
+### 2. Builder Pattern Integration
+- Add a dedicated method to `include/computo/builder.hpp` in the ComputoBuilder class
+- Follow naming conventions: `snake_case` for multi-word operators
+- Place the method in the appropriate section (arithmetic, logic, array operations, etc.)
+- Example:
+  ```cpp
+  static ComputoBuilder new_operator(const nlohmann::json& arg1, const nlohmann::json& arg2) {
+      return ComputoBuilder(nlohmann::json::array({"new_operator", arg1, arg2}));
+  }
+  ```
+
+### 3. Test Coverage
+- Add tests to the appropriate test file in `tests/` directory:
+  - Basic operators → `test_basic_operators.cpp`
+  - Data access → `test_data_access.cpp`
+  - Logic/conditionals → `test_logic_construction.cpp`
+  - Array operations → `test_array_utilities.cpp` or `test_iteration_lambdas.cpp`
+  - JSON operations → `test_json_patch.cpp`
+  - Advanced features → `test_advanced_features.cpp`
+- Create both positive and negative test cases
+- Use the Builder Pattern in all new tests for consistency
+- Test edge cases (empty arrays, null values, type mismatches)
+
+### 4. Integration Testing
+- Add integration tests that combine the new operator with existing ones
+- Test in realistic scenarios, not just isolated unit tests
+- Verify error handling and exception types
+
+### 5. Build System
+- No changes needed to CMakeLists.txt unless adding new test files
+- Verify the build passes: `cmake --build build`
+- Run full test suite: `cd build && ctest`
+
+### 6. Documentation Notes
+- **Do NOT** update README.md (it's auto-generated and changes will be lost)
+- Document any special behavior or edge cases in code comments
+- Add examples in test files to serve as documentation
+
+### Builder Pattern Guidelines
+- Always provide a descriptive method name that matches the operator
+- Use `const nlohmann::json&` for parameters to allow flexibility
+- Return `ComputoBuilder` for method chaining
+- Group related operators together in the header file
+- Consider both single-argument and multi-argument versions where appropriate
+
 ## Dependencies
 
 - **nlohmann/json**: Core JSON library

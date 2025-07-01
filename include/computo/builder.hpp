@@ -127,6 +127,10 @@ public:
         return ComputoBuilder(nlohmann::json::array({"/", a, b}));
     }
     
+    static ComputoBuilder modulo(const nlohmann::json& a, const nlohmann::json& b) {
+        return ComputoBuilder(nlohmann::json::array({"%", a, b}));
+    }
+    
     // Conditional
     static ComputoBuilder if_then_else(const nlohmann::json& condition, 
                                        const nlohmann::json& then_expr,

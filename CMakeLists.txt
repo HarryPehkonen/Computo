@@ -46,9 +46,20 @@ find_package(GTest REQUIRED)
 # Create test executable
 add_executable(computo_tests 
     tests/test_main.cpp
-    tests/test_operators.cpp
     tests/test_builder.cpp
     tests/builder_examples.cpp
+    tests/test_basic_operators.cpp
+    tests/test_data_access.cpp
+    tests/test_logic_construction.cpp
+    tests/test_iteration_lambdas.cpp
+    tests/test_array_utilities.cpp
+    tests/test_lambda_analysis.cpp
+    tests/test_permuto_integration.cpp
+    tests/test_json_patch.cpp
+    tests/test_logical_operators.cpp
+    tests/test_advanced_arrays.cpp
+    tests/test_nary_operators.cpp
+    tests/test_error_handling_edge_cases.cpp
 )
 target_link_libraries(computo_tests PRIVATE 
     computo 
