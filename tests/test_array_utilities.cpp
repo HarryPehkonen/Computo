@@ -165,7 +165,7 @@ TEST_F(ArrayUtilitiesTest, FlatmapOperator) {
     
     json built = script.build();
     EXPECT_TRUE(built.is_array());
-    EXPECT_EQ(built[0], "flatmap");
+    EXPECT_EQ(built[0], "flatMap");
 }
 
 // Test car operator (first element)

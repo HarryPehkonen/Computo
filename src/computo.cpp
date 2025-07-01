@@ -370,6 +370,32 @@ static void initialize_operators() {
         return left.get<double>() / right_val;
     };
     
+    // Modulo operator
+    operators["%"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("% operator requires exactly 2 arguments");
+        }
+        
+        auto left = evaluate(args[0], ctx);
+        auto right = evaluate(args[1], ctx);
+        
+        if (!left.is_number() || !right.is_number()) {
+            throw InvalidArgumentException("% operator requires numeric arguments");
+        }
+        
+        // For modulo, we need integers
+        if (!left.is_number_integer() || !right.is_number_integer()) {
+            throw InvalidArgumentException("% operator requires integer arguments");
+        }
+        
+        int64_t right_val = right.get<int64_t>();
+        if (right_val == 0) {
+            throw InvalidArgumentException("Modulo by zero");
+        }
+        
+        return left.get<int64_t>() % right_val;
+    };
+    
     // Comparison operators
     operators[">"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
         if (args.size() < 2) {
@@ -602,6 +628,37 @@ static void initialize_operators() {
         return false;
     };
     
+    // Logical not operator
+    operators["not"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        if (args.size() != 1) {
+            throw InvalidArgumentException("not operator requires exactly 1 argument");
+        }
+        
+        auto result = evaluate(args[0], ctx);
+        
+        // Determine truthiness using same logic as other logical operators
+        bool is_true = false;
+        if (result.is_boolean()) {
+            is_true = result.get<bool>();
+        } else if (result.is_number()) {
+            if (result.is_number_integer()) {
+                is_true = result.get<int64_t>() != 0;
+            } else {
+                is_true = result.get<double>() != 0.0;
+            }
+        } else if (result.is_string()) {
+            is_true = !result.get<std::string>().empty();
+        } else if (result.is_null()) {
+            is_true = false;
+        } else if (result.is_array()) {
+            is_true = !result.empty();
+        } else if (result.is_object()) {
+            is_true = !result.empty();
+        }
+        
+        return !is_true;
+    };
+    
     // Array utility operators
     operators["find"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
         if (args.size() != 2) {
@@ -785,10 +842,10 @@ static void initialize_operators() {
         return array_val.size();
     };
     
-    // concat operator - concatenates values as strings
-    operators["concat"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+    // str_concat operator - concatenates values as strings with automatic type conversion
+    operators["str_concat"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
         if (args.size() < 1) {
-            throw InvalidArgumentException("concat operator requires at least 1 argument");
+            throw InvalidArgumentException("str_concat operator requires at least 1 argument");
         }
         
         std::string result;
@@ -1131,6 +1188,27 @@ static void initialize_operators() {
         return result;
     };
     
+    // Lambda operator for creating lambda expressions
+    operators["lambda"] = [](const nlohmann::json& args, ExecutionContext& /* unused */) -> nlohmann::json {
+        if (args.size() != 2) {
+            throw InvalidArgumentException("lambda operator requires exactly 2 arguments: parameters and body");
+        }
+        
+        if (!args[0].is_array()) {
+            throw InvalidArgumentException("lambda operator requires first argument to be parameter array");
+        }
+        
+        // Validate parameter names are strings
+        for (const auto& param : args[0]) {
+            if (!param.is_string()) {
+                throw InvalidArgumentException("lambda parameters must be strings");
+            }
+        }
+        
+        // Return the lambda as-is (it's a data structure)
+        return nlohmann::json::array({"lambda", args[0], args[1]});
+    };
+    
     });
 }
 
@@ -1154,9 +1232,14 @@ nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx) {
             return result;
         }
         
-        // Base case: if expr is not an array or is empty, it's a literal
-        if (!expr.is_array() || expr.empty()) {
+        // Base case: if expr is not an array, it's a literal
+        if (!expr.is_array()) {
             return expr;
+        }
+        
+        // Empty arrays are invalid as scripts
+        if (expr.empty()) {
+            throw InvalidArgumentException("Empty array is not a valid script. For literal arrays, use {\"array\": []} syntax.", ctx.get_path_string());
         }
         
         // Arrays are now always operator calls - no ambiguity!
