@@ -7,6 +7,7 @@
 #include <functional>
 #include <permuto/permuto.hpp>
 #include "builder.hpp"
+// #include "memory_pool.hpp"  // TODO: Re-enable when memory pool is completed
 
 namespace computo {
 
@@ -145,6 +146,9 @@ using OperatorFunc = std::function<nlohmann::json(const nlohmann::json& args, Ex
 // Core evaluation function (now uses pass-by-value for TCO)
 nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx);
 
+// Move-optimized evaluation function for large JSON objects
+nlohmann::json evaluate_move(nlohmann::json&& expr, ExecutionContext ctx);
+
 // Main API functions - existing single input API
 nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input);
 nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input, const permuto::Options& permuto_options);
@@ -152,6 +156,12 @@ nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input
 // New multiple inputs API
 nlohmann::json execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs);
 nlohmann::json execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs, const permuto::Options& permuto_options);
+
+// Memory-optimized execute functions using move semantics
+nlohmann::json execute_move(nlohmann::json&& script, const nlohmann::json& input);
+nlohmann::json execute_move(nlohmann::json&& script, const nlohmann::json& input, const permuto::Options& permuto_options);
+nlohmann::json execute_move(nlohmann::json&& script, const std::vector<nlohmann::json>& inputs);
+nlohmann::json execute_move(nlohmann::json&& script, const std::vector<nlohmann::json>& inputs, const permuto::Options& permuto_options);
 
 // Utility function for consistent truthiness evaluation across operators
 bool is_truthy(const nlohmann::json& value);
