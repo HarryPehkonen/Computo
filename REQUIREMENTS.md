@@ -1,72 +1,305 @@
 # Computo - Requirements Specification
 
-## 1. Introduction
+## Project Overview
 
-Computo is a safe, sandboxed, JSON-native data transformation engine. It provides a Lisp-like language syntax, expressed in JSON, to perform complex logic, mapping, and calculations.
+Computo is a safe, sandboxed, JSON-native data transformation engine that provides a Lisp-like functional programming language expressed entirely in JSON. It operates on the principle of "code is data" where all programs are valid JSON documents.
 
-It is designed to work *on top of* the **Permuto** library. Computo handles complex programmatic logic, while delegating simple, declarative substitutions and whole-structure templating to Permuto. This creates a powerful, two-layer system for sophisticated JSON-to-JSON transformations.
+## Core Design Principles
 
-## 2. Core Concepts
+### 1. Code as Data
+- **All scripts are valid JSON**: Every Computo program must be parseable as standard JSON
+- **Unambiguous syntax**: Clear distinction between operator calls `[op, arg1, arg2]` and literal arrays `{"array": [...]}`
+- **Immutable operations**: All operations are pure functions that don't modify input data
+- **Recursive evaluation**: Expressions are evaluated recursively from the inside out
 
-*   **Code is Data:** All Computo scripts are valid JSON. An operation is represented as a JSON array where the first element is a string representing the operator, and subsequent elements are arguments. Example: `["+", 1, 2]`.
-*   **Immutability:** Operations are pure and do not modify input data. They produce new data as output. Variables, once set via `let`, cannot be changed within their scope.
-*   **Sandboxed Execution:** Scripts cannot perform any I/O (file access, network calls) or interact with the system outside of the provided input data.
-*   **The Input Context:** The initial JSON data provided to the `execute` function is available within the script via the special `"$input"` operator.
+### 2. Safety and Sandboxing
+- **No I/O operations**: No file system access, network operations, or system calls
+- **Memory safe**: No pointer arithmetic or manual memory management
+- **Deterministic**: Same input always produces same output
+- **Exception safety**: Structured error handling with detailed error paths
 
-## 3. Functional Requirements
+### 3. JSON-Native Processing
+- **First-class JSON support**: Native handling of all JSON data types
+- **JSON Pointer integration**: Path-based data access using RFC 6901 JSON Pointer
+- **JSON Patch support**: Document transformation using RFC 6902 JSON Patch
 
-### 3.1. Core Operators
+## Language Syntax
 
-The Computo interpreter MUST implement the following set of operators:
+### Basic Operator Call Syntax
+```json
+[operator_name, argument1, argument2, ...]
+```
 
-#### 3.1.1. Data Access & Scoping
-*   `["get", <object_expr>, <json_pointer_string>]`: Retrieves a value from a JSON object using a JSON Pointer.
-*   `["let", [["var1", <expr1>], ["var2", <expr2>]], <body_expr>]`: Binds the results of expressions to variable names, which are available within the `body_expr`. Variables are accessed using `["$", "/var_name"]`.
+### Literal Data Syntax
+- **Numbers**: `42`, `3.14`
+- **Strings**: `"hello world"`
+- **Booleans**: `true`, `false`
+- **Null**: `null`
+- **Objects**: `{"key": "value"}`
+- **Arrays**: `{"array": [item1, item2, item3]}`
 
-#### 3.1.2. Logic
-*   `["if", <condition_expr>, <then_expr>, <else_expr>]`: If `condition_expr` evaluates to `true`, returns the result of `then_expr`, otherwise returns the result of `else_expr`.
+### Special Syntax Elements
+- **Variable binding**: `["let", [["var1", expr1], ["var2", expr2]], body_expr]`
+- **Variable access**: `["$", "/variable_name"]`
+- **Lambda expressions**: `["lambda", ["param1", "param2"], body_expr]`
 
-#### 3.1.3. Data Construction
-*   `["obj", ["key1", <val_expr1>], ["key2", <val_expr2>], ...]`: Creates a new JSON object.
-*   `["arr", <item_expr1>, <item_expr2>, ...]`: Creates a new JSON array.
+## Data Types
 
-#### 3.1.4. Data Manipulation & Iteration
-*   `["map", <array_expr>, ["lambda", ["item_var"], <transform_expr>]]`: Iterates over `array_expr`, applying the `transform_expr` to each item. Returns a new array of the transformed items. The current item is available via the `item_var`.
-*   `["filter", <array_expr>, ["lambda", ["item_var"], <condition_expr>]]`: Iterates over `array_expr`, returning a new array containing only the items for which `condition_expr` evaluates to `true`.
-*   `["merge", <obj_expr1>, <obj_expr2>, ...]`: Merges multiple objects into a new object. For conflicting keys, the rightmost object's value wins.
-*   `["count", <array_expr>]`: Returns the number of elements in an array.
+### Primitive Types
+- **Numbers**: 64-bit integers and IEEE 754 double-precision floats
+- **Strings**: UTF-8 encoded text
+- **Booleans**: `true` and `false`
+- **Null**: Represents absence of value
 
-#### 3.1.5. Mathematical Operators
-*   `["+", <num_expr1>, <num_expr2>]`
-*   `["-", <num_expr1>, <num_expr2>]`
-*   `["*", <num_expr1>, <num_expr2>]`
-*   `["/", <num_expr1>, <num_expr2>]`
+### Complex Types
+- **Objects**: Unordered collections of key-value pairs with string keys
+- **Arrays**: Ordered sequences of values (using array object syntax)
+- **Lambdas**: First-class functions with parameter lists and lexical scoping
 
-#### 3.1.6. The Permuto Bridge
-*   `["permuto.apply", <template_json_expr>, <context_json_expr>]`: The primary integration point. It invokes `permuto::apply()` with the evaluated template and context, returning the result. This allows for powerful, declarative templating within a logical script.  The permuto options can be passed via computo.execute.
+## Required Operators
 
-### 3.2. C++ Library API
+### Input/Output Operators
+- **`$input`**: Returns the primary input document
+- **`$inputs`**: Returns array of all input documents (for multi-input processing)
 
-*   A library named libcomputo MUST be provided.
-*   A primary function `computo::execute` MUST be provided.
-*   **Signature:** `nlohmann::json computo::execute(const nlohmann::json& script, const nlohmann::json& input);`
-*   A single #include file MUST be sufficient (in addition to nlohmann::json) when using the library in other projects.  The inclusion of Permuto may necessitate the use of an additional #include file.
+### Variable and Scoping Operators
+- **`let`**: Variable binding with lexical scoping
+  - Syntax: `["let", [["var1", expr1], ["var2", expr2]], body_expr]`
+  - Sequential binding: Later bindings can reference earlier ones
+  - Scoping: Variables shadow outer scope
+- **`$`**: Variable lookup using JSON Pointer syntax
+  - Syntax: `["$", "/variable_name"]`
+  - Path format: Must start with `/`
 
-### 3.3. Command-Line Interface (CLI)
+### Data Access Operators
+- **`get`**: JSON Pointer-based data extraction
+  - Syntax: `["get", object_expr, "/path/to/data"]`
+  - Standards compliance: Implements RFC 6901 JSON Pointer
 
-*   A CLI tool named `computo` MUST be provided.
-*   **Usage:** `computo <script_file.json> <input_file.json>`
-*   The tool reads the script and input files, calls `computo::execute`, and prints the resulting JSON to standard output.
-*   Permuto options MUST be accepted by the CLI tool and passed to permuto.apply.
+### Logic and Control Flow Operators
+- **`if`**: Conditional execution with truthiness evaluation
+  - Syntax: `["if", condition, then_expr, else_expr]`
+  - Truthiness rules: `0`, `""`, `null`, `[]`, `{}` are falsy; all others are truthy
+- **`&&`**: Logical AND with short-circuit evaluation
+  - Syntax: `["&&", expr1, expr2, ...]`
+  - Behavior: Returns `false` on first falsy expression, `true` otherwise
+- **`||`**: Logical OR with short-circuit evaluation
+  - Syntax: `["||", expr1, expr2, ...]`
+  - Behavior: Returns `true` on first truthy expression, `false` otherwise
 
-## 4. Non-Functional Requirements
+### Data Construction Operators
+- **`obj`**: Object creation with support for computed keys
+  - Syntax: `["obj", [key1_expr, value1_expr], [key2_expr, value2_expr], ...]`
+  - Keys: Must evaluate to strings
+- **Array objects**: Literal array creation
+  - Syntax: `{"array": [item1, item2, item3]}`
+  - Elements: Each element is evaluated as an expression
 
-*   **Safety:** The interpreter MUST be fully sandboxed. No operator shall permit side effects.
-*   **Error Handling:** The library MUST use a structured exception hierarchy inheriting from `std::exception`. Key exceptions include:
-    *   `ComputoException` (base class)
-    *   `InvalidScriptException`
-    *   `InvalidOperatorException`
-    *   `InvalidArgumentException`
-*   **Debugging:** The library MUST be able to provide the line number where the exception occurred.
-*   **Dependencies:** The core library will depend only on `nlohmann/json` and the `Permuto` library. The test suite will additionally depend on Google Test.
-*   **Progress Documentation:** Document progress, including decisions and changes, into PROGRESS.md in an append-only mode.  It should note "what works", "what didn't work", etc. so that any future re-writes can anticipate anything that is surprising in this iteration.
+### Mathematical Operators
+- **`+`**: N-ary addition (1 or more arguments)
+  - Syntax: `["+", num1, num2, ...]`
+  - Type preservation: Returns integer if all inputs are integers
+- **`-`**: Binary subtraction
+  - Syntax: `["-", minuend, subtrahend]`
+- **`*`**: N-ary multiplication (1 or more arguments)
+  - Syntax: `["*", num1, num2, ...]`
+- **`/`**: Binary division
+  - Syntax: `["/", dividend, divisor]`
+  - Error handling: Throws exception on division by zero
+
+### Comparison Operators
+- **`>`**: N-ary greater than with chained comparisons
+  - Syntax: `[">", num1, num2, ...]`
+  - Behavior: `a > b > c` means `a > b && b > c`
+- **`<`**: N-ary less than with chained comparisons
+- **`>=`**: N-ary greater than or equal with chained comparisons
+- **`<=`**: N-ary less than or equal with chained comparisons
+- **`==`**: N-ary equality (all arguments must be equal)
+  - Syntax: `["==", val1, val2, ...]`
+- **`!=`**: Binary inequality
+  - Syntax: `["!=", val1, val2]`
+- **`approx`**: Epsilon-based floating point comparison
+  - Syntax: `["approx", left, right, epsilon]`
+  - Behavior: Returns `true` if `|left - right| <= epsilon`
+
+### Array/Collection Operators
+- **`map`**: Array transformation with lambda
+  - Syntax: `["map", array_expr, lambda_expr]`
+  - Lambda: `["lambda", ["item"], transform_expr]`
+- **`filter`**: Array filtering with predicate lambda
+  - Syntax: `["filter", array_expr, predicate_lambda]`
+- **`reduce`**: Array reduction with accumulator
+  - Syntax: `["reduce", array_expr, reducer_lambda, initial_value]`
+  - Lambda: `["lambda", ["accumulator", "item"], body_expr]`
+- **`find`**: Find first matching element
+  - Syntax: `["find", array_expr, predicate_lambda]`
+  - Returns: First matching element or `null`
+- **`some`**: Test if any element matches predicate
+- **`every`**: Test if all elements match predicate
+- **`flatMap`**: Map and flatten results
+- **`count`**: Get array length
+- **`car`**: Get first element (head)
+- **`cdr`**: Get all but first element (tail)
+- **`cons`**: Prepend element to array
+- **`append`**: Concatenate multiple arrays
+- **`chunk`**: Split array into chunks of specified size
+- **`partition`**: Split array into truthy/falsy groups based on predicate
+- **`zip`**: Combine two arrays into pairs
+- **`zipWith`**: Combine two arrays with lambda function
+- **`mapWithIndex`**: Map with index as second parameter
+- **`enumerate`**: Convert array to index-value pairs
+
+### String Operations
+- **`concat`**: String concatenation with type coercion
+  - Syntax: `["concat", expr1, expr2, ...]`
+  - Behavior: Converts all arguments to strings and concatenates
+
+### Object Operations
+- **`merge`**: Object merging (right-to-left precedence)
+  - Syntax: `["merge", obj1, obj2, ...]`
+
+### Template Processing (Permuto Integration)
+- **`permuto.apply`**: Bridge to Permuto template engine
+  - Syntax: `["permuto.apply", template_expr, context_expr]`
+  - Behavior: Applies Permuto template processing with given context
+
+### Document Transformation
+- **`diff`**: Generate JSON Patch between two documents
+  - Syntax: `["diff", document_a, document_b]`
+  - Returns: JSON Patch array per RFC 6902
+- **`patch`**: Apply JSON Patch to document
+  - Syntax: `["patch", document, patch_array]`
+  - Returns: Transformed document
+
+## Lambda System
+
+### Lambda Syntax
+```json
+["lambda", ["param1", "param2", ...], body_expression]
+```
+
+### Lambda Features
+- **Multiple parameters**: Support for 0, 1, or more parameters
+- **Lexical scoping**: Lambdas capture variables from their definition context
+- **First-class values**: Lambdas can be stored in variables and passed as arguments
+- **Variable resolution**: Lambda variables can be resolved from let bindings
+
+### Lambda Usage Patterns
+- **Array processing**: Used with `map`, `filter`, `reduce`, etc.
+- **Conditional logic**: Used with `find`, `some`, `every`
+- **Data transformation**: Used with `zipWith`, `mapWithIndex`
+
+## Execution Model
+
+### Evaluation Strategy
+- **Recursive descent**: Expressions evaluated from inside out
+- **Tail call optimization**: Special handling for `let` and `if` to prevent stack overflow
+- **Lazy evaluation**: Short-circuit evaluation for logical operators
+
+### Error Handling
+- **Structured exceptions**: Hierarchy of exception types
+- **Error paths**: Detailed execution context in error messages
+- **Graceful degradation**: Predictable error behavior
+
+### Multi-Input Support
+- **Backward compatibility**: Single input API preserved
+- **Multiple inputs**: Support for processing multiple documents
+- **Input access**: `$input` for primary, `$inputs` for all inputs
+
+## API Requirements
+
+### Core Functions
+```cpp
+// Single input API (backward compatibility)
+nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input);
+nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input, const permuto::Options& options);
+
+// Multiple inputs API
+nlohmann::json execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs);
+nlohmann::json execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs, const permuto::Options& options);
+```
+
+### Exception Hierarchy
+```cpp
+ComputoException (base)
+├── InvalidScriptException
+├── InvalidOperatorException
+├── InvalidArgumentException
+└── PatchFailedException
+```
+
+## Command Line Interface
+
+### Basic Usage
+```bash
+computo script.json input.json
+computo script.json input1.json input2.json
+```
+
+### Options
+- **`--help, -?`**: Show help message
+- **`--interpolation`**: Enable Permuto string interpolation
+- **`--diff`**: Generate JSON patch between input and result
+- **`--pretty=N`**: Pretty-print JSON with N spaces
+- **`--comments`**: Allow comments in script files
+
+### Examples
+```bash
+computo transform.json data.json
+computo --pretty=2 script.json input1.json input2.json
+computo --interpolation --diff transform.json data.json
+```
+
+## Integration Requirements
+
+### Permuto Integration
+- **Template processing**: Bridge to Permuto templating engine
+- **Options passing**: Support for Permuto configuration options
+- **Error handling**: Proper exception translation
+
+### JSON Library Integration
+- **nlohmann/json**: Primary JSON library dependency
+- **JSON Pointer**: Native JSON Pointer support
+- **JSON Patch**: Native JSON Patch support
+
+### Build System
+- **CMake**: Modern CMake configuration
+- **C++17**: Minimum C++ standard
+- **Package management**: Standard CMake package configuration
+
+## Performance Requirements
+
+### Memory Management
+- **Smart pointers**: Use of `std::shared_ptr` for context management
+- **Copy-on-write**: Efficient context copying for scoping
+- **Exception safety**: RAII-compliant resource management
+
+### Execution Efficiency
+- **Tail call optimization**: Prevention of stack overflow in recursive calls
+- **Short-circuit evaluation**: Efficient logical operator evaluation
+- **Operator registry**: O(1) operator lookup via `std::map`
+
+## Testing Requirements
+
+### Test Coverage
+- **Unit tests**: Comprehensive operator testing
+- **Integration tests**: End-to-end script execution
+- **Error cases**: Exception handling validation
+- **Edge cases**: Boundary condition testing
+
+### Test Framework
+- **Google Test**: Primary testing framework
+- **Automated testing**: CMake test integration
+- **Continuous testing**: CTest configuration
+
+## Quality Requirements
+
+### Code Quality
+- **Warnings as errors**: Strict compiler settings
+- **Static analysis**: Comprehensive warning flags
+- **Code style**: Consistent formatting and naming
+
+### Documentation
+- **API documentation**: Comprehensive interface documentation
+- **Examples**: Practical usage examples
+- **Error messages**: Clear, actionable error descriptions
