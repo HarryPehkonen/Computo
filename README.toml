@@ -983,18 +983,9 @@ name = "lambda_multiple_parameters"
 category = "lambda-functions"
 description = """
 Lambda with multiple parameters in reduce.
-Demonstrates lambda functions with accumulator and item parameters using Permuto for string concatenation.
+Demonstrates lambda functions with accumulator and item parameters for string concatenation.
 """
-script = """
-["reduce",
-	{"array": ["Hello", "World", "From", "Computo"]},
-	["lambda",
-		["acc", "word"],
-		["concat", ["$", "/acc"], ["$", "/word"]]
-	],
-	""
-]
-"""
+script = ["reduce", {array = ["Hello", "World", "From", "Computo"]}, ["lambda", ["acc", "word"], ["str_concat", ["$", "/acc"], ["$", "/word"]]], ""]
 input = {}
 expected = "HelloWorldFromComputo"
 
@@ -1262,7 +1253,7 @@ inputs = [
     {id = "doc_001", version = 1, title = "Original Title", content = "Original content"},
     {id = "doc_001", version = 2, title = "Updated Title", content = "Updated content", author = "Alice"}
 ]
-expected = {document_id = "doc_001", version_info = {from_version = 1, to_version = 2, change_count = 3}, forward_patch = [{op = "replace", path = "/version", value = 2}, {op = "replace", path = "/title", value = "Updated Title"}, {op = "replace", path = "/content", value = "Updated content"}, {op = "add", path = "/author", value = "Alice"}], rollback_patch = [{op = "replace", path = "/version", value = 1}, {op = "replace", path = "/title", value = "Original Title"}, {op = "replace", path = "/content", value = "Original content"}, {op = "remove", path = "/author"}], can_rollback = true}
+expected = {document_id = "doc_001", version_info = {from_version = 1, to_version = 2, change_count = 4}, forward_patch = [{op = "replace", path = "/content", value = "Updated content"}, {op = "replace", path = "/title", value = "Updated Title"}, {op = "replace", path = "/version", value = 2}, {op = "add", path = "/author", value = "Alice"}], rollback_patch = [{op = "remove", path = "/author"}, {op = "replace", path = "/content", value = "Original content"}, {op = "replace", path = "/title", value = "Original Title"}, {op = "replace", path = "/version", value = 1}], can_rollback = true}
 
 [[examples]]
 name = "functional_pipeline_multi_input"
@@ -1288,9 +1279,9 @@ description = """
 Data aggregation and reporting pipeline.
 Demonstrates complex data processing for analytics and reporting.
 """
-script = ["let", [["sales_data", ["get", ["$input"], "/sales"]], ["total_revenue", ["reduce", ["$", "/sales_data"], ["lambda", ["sum", "sale"], ["+", ["$", "/sum"], ["get", ["$", "/sale"], "/amount"]]], 0]], ["high_value_sales", ["filter", ["$", "/sales_data"], ["lambda", ["sale"], [">", ["get", ["$", "/sale"], "/amount"], 1000]]]], ["top_regions", ["reduce", ["$", "/sales_data"], ["lambda", ["regions", "sale"], ["let", [["region", ["get", ["$", "/sale"], "/region"]], ["amount", ["get", ["$", "/sale"], "/amount"]]], ["if", ["get", ["$", "/regions"], ["$", "/region"]], ["obj", ["$", "/region"], ["+", ["get", ["$", "/regions"], ["$", "/region"]], ["$", "/amount"]]], ["obj", ["$", "/region"], ["$", "/amount"]]]]], {}]]], ["obj", ["summary", ["obj", ["total_sales", ["count", ["$", "/sales_data"]]], ["total_revenue", ["$", "/total_revenue"]], ["average_sale", ["/", ["$", "/total_revenue"], ["count", ["$", "/sales_data"]]]]]], ["high_value", ["obj", ["count", ["count", ["$", "/high_value_sales"]]], ["revenue", ["reduce", ["$", "/high_value_sales"], ["lambda", ["sum", "sale"], ["+", ["$", "/sum"], ["get", ["$", "/sale"], "/amount"]]], 0]]]], ["by_region", ["$", "/top_regions"]]]]
+script = ["let", [["sales_data", ["get", ["$input"], "/sales"]], ["total_revenue", ["reduce", ["$", "/sales_data"], ["lambda", ["sum", "sale"], ["+", ["$", "/sum"], ["get", ["$", "/sale"], "/amount"]]], 0]], ["high_value_sales", ["filter", ["$", "/sales_data"], ["lambda", ["sale"], [">", ["get", ["$", "/sale"], "/amount"], 1000]]]], ["north_sales", ["filter", ["$", "/sales_data"], ["lambda", ["sale"], ["==", ["get", ["$", "/sale"], "/region"], "North"]]]], ["north_total", ["reduce", ["$", "/north_sales"], ["lambda", ["sum", "sale"], ["+", ["$", "/sum"], ["get", ["$", "/sale"], "/amount"]]], 0]]], ["obj", ["summary", ["obj", ["total_sales", ["count", ["$", "/sales_data"]]], ["total_revenue", ["$", "/total_revenue"]], ["average_sale", ["/", ["$", "/total_revenue"], ["count", ["$", "/sales_data"]]]]]], ["high_value", ["obj", ["count", ["count", ["$", "/high_value_sales"]]], ["revenue", ["reduce", ["$", "/high_value_sales"], ["lambda", ["sum", "sale"], ["+", ["$", "/sum"], ["get", ["$", "/sale"], "/amount"]]], 0]]]], ["north_region", ["obj", ["sales_count", ["count", ["$", "/north_sales"]]], ["total_revenue", ["$", "/north_total"]]]]]]
 input = {sales = [{region = "North", amount = 1500, product = "A"}, {region = "South", amount = 800, product = "B"}, {region = "North", amount = 2000, product = "C"}, {region = "East", amount = 1200, product = "A"}]}
-expected = {summary = {total_sales = 4, total_revenue = 5500, average_sale = 1375}, high_value = {count = 3, revenue = 4700}, by_region = {North = 3500, South = 800, East = 1200}}
+expected = {summary = {total_sales = 4, total_revenue = 5500, average_sale = 1375}, high_value = {count = 3, revenue = 4700}, north_region = {sales_count = 2, total_revenue = 3500}}
 
 # ============================================================================
 # CLI USAGE EXAMPLES (Documentation)

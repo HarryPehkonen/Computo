@@ -1,6 +1,8 @@
 # Computo
 
-A safe, sandboxed JSON transformation engine with Lisp-like syntax expressed in JSON. Features RFC 6902 JSON Patch support for document diffing and patching, plus **Permuto** integration for advanced templating.
+A safe, sandboxed JSON transformation engine with Lisp-like syntax expressed in JSON
+
+Features RFC 6902 JSON Patch support for document diffing and patching, plus **Permuto** integration for advanced templating.
 
 **📖 Human-readable documentation:** [Computo & Permuto Book](https://harrypehkonen.github.io/ComputoPermutoBook/) | [Repository](https://github.com/HarryPehkonen/ComputoPermutoBook)
 
@@ -16,40 +18,49 @@ A safe, sandboxed JSON transformation engine with Lisp-like syntax expressed in 
 - **Sandboxed**: No I/O operations or system access
 - **Enhanced Error Reporting**: Precise path tracking for debugging complex scripts
 
-## Quick Start
+## Installation & Building
 
-### Building
+### Prerequisites
+- C++17 compatible compiler (GCC 7+, Clang 5+, MSVC 2017+)
+- CMake 3.10 or higher
+- nlohmann/json library
+- Permuto library (included as submodule)
+
+### Building from Source
 ```bash
-# Configure and build
+# Clone the repository
+git clone https://github.com/your-org/computo.git
+cd computo
+
+# Initialize submodules
+git submodule init
+git submodule update
+
+# Configure build
 cmake -B build -DCMAKE_BUILD_TYPE=Debug
+
+# Build library and CLI
 cmake --build build
 
 # Run tests (198 tests, 100% passing)
 cd build && ctest --verbose
 ```
 
-### CLI Usage
+### Installation
 ```bash
-# Basic transformation (single input)
-./build/computo script.json input.json
+# Install system-wide
+sudo cmake --install build
 
-# Multiple input files
-./build/computo script.json input1.json input2.json input3.json
-
-# Generate JSON Patch from transformation
-./build/computo --diff transform_script.json original.json
-
-# With Permuto string interpolation
-./build/computo --interpolation script.json input.json
-
-# Allow comments in script files (CLI only)
-./build/computo --comments script_with_comments.json input.json
-
-# Available CLI options
-./build/computo --missing-key=error --max-depth=32 script.json input.json
+# Or install to custom prefix
+cmake --install build --prefix=/usr/local
 ```
 
-### Library Usage
+## Library Usage
+
+### C++ API
+
+Include the header and use the execute function:
+
 ```cpp
 #include <computo/computo.hpp>
 
@@ -70,747 +81,4841 @@ nlohmann::json result = computo::execute(multi_script, inputs);
 // Result: [10, 20, 30]
 ```
 
+### Exception Handling
+```cpp
+try {
+    nlohmann::json result = computo::execute(script, input);
+    std::cout << result.dump(2) << std::endl;
+} catch (const computo::ComputoException& e) {
+    std::cerr << "Computo error: " << e.what() << std::endl;
+}
+```
+
+### CMake Integration
+```cmake
+find_package(computo REQUIRED)
+target_link_libraries(your_target computo::computo)
+```
+
 ## Core Syntax
 
 ### Operator Calls vs Literal Data
-```json
-// Operator call: [operator, arg1, arg2, ...]
-["*", 6, 7]
-
-// Literal array: {"array": [item1, item2, ...]}
-{"array": [6, 7]}
-
-// Objects are standard JSON
-{"key": "value", "number": 42}
-```
+- **Operator call**: `[operator, arg1, arg2, ...]`
+- **Literal array**: `{"array": [item1, item2, ...]}`
+- **Objects**: Standard JSON objects
 
 ### System Variables
-```json
-// Single input access (backward compatible)
-["$input"]
-
-// Multiple inputs access (new)
-["$inputs"]  // Returns array of all input documents
-
-// Variable access
-["$", "/variable_name"]
-```
-
-### Essential Operators
-
-#### Data Access & Input Handling
-```json
-// Access first input (traditional)
-["$input"]
-
-// Access all inputs as array (new)
-["$inputs"]
-
-// Access specific input by index (new)
-["get", ["$inputs"], "/0"]  // First input
-["get", ["$inputs"], "/1"]  // Second input
-
-// Variable binding
-["let", [["x", 10], ["y", 20]], ["*", ["$", "/x"], ["$", "/y"]]]
-
-// Variable access
-["$", "/variable_name"]
-
-// JSON Pointer access
-["get", {"key": {"nested": 42}}, "/key/nested"]
-```
-
-#### JSON Patch Operations (RFC 6902)
-```json
-// Generate diff between two documents
-["diff", original_doc, modified_doc]
-// Returns: [{"op": "replace", "path": "/status", "value": "new"}]
-
-// Apply patch to document
-["patch", document, patch_array]
-// patch_array must be valid RFC 6902 JSON Patch format
-
-// Example patch operations that can be generated/applied:
-// {"op": "add", "path": "/new_field", "value": "new_value"}
-// {"op": "remove", "path": "/old_field"}
-// {"op": "replace", "path": "/field", "value": "updated_value"}
-// {"op": "move", "from": "/old_path", "path": "/new_path"}
-// {"op": "copy", "from": "/source", "path": "/destination"}
-// {"op": "test", "path": "/field", "value": "expected_value"}
-```
-
-#### Logic & Control Flow
-```json
-// Conditional execution
-["if", [">", ["$", "/score"], 80], "Pass", "Fail"]
-
-// Logical operators with short-circuit evaluation
-["&&", true, [">", ["$", "/age"], 18], ["!=", ["$", "/status"], "banned"]]
-["||", ["==", ["$", "/role"], "admin"], ["==", ["$", "/role"], "moderator"]]
-
-// Complex logical conditions
-["if", ["&&", [">", ["$", "/score"], 80], ["<", ["$", "/attempts"], 3]], "Pass", "Fail"]
-
-// Comparison operators
-[">", 10, 5]     // true
-["==", "a", "b"] // false
-["!=", 1, 2]     // true
-```
-
-#### Data Construction
-```json
-// Object creation
-["obj", ["name", "Alice"], ["age", 30], ["active", true]]
-
-// Array creation
-{"array": [1, 2, 3, ["*", 2, 4]]}
-```
-
-#### Array Operations with Lambdas
-```json
-// Transform array elements
-["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]]
-// Result: [2, 4, 6]
-
-// Filter array elements
-["filter", {"array": [1, 2, 3, 4, 5]}, ["lambda", ["x"], [">", ["$", "/x"], 2]]]
-// Result: [3, 4, 5]
-
-// Reduce array to single value
-["reduce", {"array": [1, 2, 3, 4]}, ["lambda", ["acc", "x"], ["+", ["$", "/acc"], ["$", "/x"]]], 0]
-// Result: 10
-```
-
-#### List Processing with car/cdr
-```json
-// Get first element
-["car", {"array": [1, 2, 3, 4]}]
-// Result: 1
-
-// Get remaining elements  
-["cdr", {"array": [1, 2, 3, 4]}]
-// Result: [2, 3, 4]
-
-// Composition: get second element
-["car", ["cdr", {"array": [1, 2, 3, 4]}]]
-// Result: 2
-```
-
-#### List Building and Manipulation
-```json
-// Prepend item to array (cons)
-["cons", "first", {"array": [2, 3, 4]}]
-// Result: ["first", 2, 3, 4]
-
-// Concatenate multiple arrays
-["append", {"array": [1, 2]}, {"array": [3, 4]}, {"array": [5]}]
-// Result: [1, 2, 3, 4, 5]
-
-// Split array into chunks
-["chunk", {"array": [1, 2, 3, 4, 5]}, 2]
-// Result: [[1, 2], [3, 4], [5]]
-
-// Partition array by predicate
-["partition", {"array": [1, 2, 3, 4, 5]}, ["lambda", ["x"], [">", ["$", "/x"], 3]]]
-// Result: [[4, 5], [1, 2, 3]]  // [truthy_items, falsy_items]
-
-// Process multiple inputs functionally
-["reduce", 
-  ["cdr", ["$inputs"]],                    // All patches (skip first input)
-  ["lambda", ["state", "patch"],
-    ["patch", ["$", "/state"], ["$", "/patch"]]
-  ],
-  ["car", ["$inputs"]]                     // Initial state (first input)
-]
-// Applies all patches to initial state
-```
-
-#### Permuto Integration
-```json
-// Apply Permuto templates
-["permuto.apply", 
-  {"greeting": "Hello ${/user/name}!", "id": "${/user/id}"}, 
-  {"user": {"name": "Alice", "id": 123}}
-]
-// Result: {"greeting": "Hello Alice!", "id": 123}
-```
-
-## Complete Operator Reference
-
-### Mathematical
-- `["+", num1, num2]` - Addition
-- `["-", num1, num2]` - Subtraction  
-- `["*", num1, num2]` - Multiplication
-- `["/", num1, num2]` - Division
-
-### Logical & Comparison
-- `["if", condition, then_value, else_value]` - Conditional
-- `["&&", expr1, expr2, ...]` - Logical AND with short-circuit evaluation
-- `["||", expr1, expr2, ...]` - Logical OR with short-circuit evaluation
-- `[">", a, b]`, `["<", a, b]`, `[">=", a, b]`, `["<=", a, b]` - Comparisons
-- `["==", a, b]`, `["!=", a, b]` - Equality checks
-- `["approx", a, b, epsilon]` - Approximate equality for floats
-
-### Data Access & Input
 - `["$input"]` - Access entire input data (first input if multiple)
 - `["$inputs"]` - Access all input documents as array
-- `["$", "/path"]` - Access variable by path
-- `["get", object, "/json/pointer"]` - Extract data using JSON Pointer
-- `["let", bindings, body]` - Create variable scope
+- `["$", "/variable_name"]` - Access variable by path
 
-### JSON Patch Operations (RFC 6902)
-- `["diff", doc_a, doc_b]` - Generate JSON Patch between documents
-- `["patch", document, patch_array]` - Apply JSON Patch to document
+### Unambiguous Syntax
+The key insight of Computo is that **code is data** - all scripts are valid JSON with zero ambiguity between operator calls and literal data.
 
-### Data Construction  
-- `["obj", ["key1", val1], ["key2", val2], ...]` - Create object
-- `{"array": [item1, item2, ...]}` - Create array (literal syntax)
-- `["count", array]` - Get array length
-
-### Array Operations
-- `["map", array, lambda]` - Transform each element
-- `["filter", array, lambda]` - Keep elements matching condition
-- `["reduce", array, lambda, initial]` - Reduce to single value
-- `["find", array, lambda]` - Find first matching element
-- `["some", array, lambda]` - Test if any element matches
-- `["every", array, lambda]` - Test if all elements match
-- `["flatMap", array, lambda]` - Map and flatten results
-- `["partition", array, lambda]` - Split array into [truthy, falsy] based on predicate
-
-### List Processing (Functional)
-- `["car", array]` - Get first element of array
-- `["cdr", array]` - Get all but first element of array
-- `["cons", item, array]` - Prepend item to array (list building primitive)
-- `["append", array1, array2, ...]` - Concatenate multiple arrays
-- `["chunk", array, size]` - Split array into chunks of specified size
-
-### Lambda Syntax
-```json
-["lambda", ["param1", "param2"], body_expression]
-```
-
-### Lambda Variables (Reusable Functions)
-```json
-// Store lambda in variable for reuse
-["let", [["double", ["lambda", ["x"], ["*", ["$", "/x"], 2]]]],
-  ["obj",
-    ["list1", ["map", {"array": [1, 2, 3]}, ["$", "/double"]]],
-    ["list2", ["map", {"array": [4, 5, 6]}, ["$", "/double"]]]
-  ]
-]
-// Result: {"list1": [2, 4, 6], "list2": [8, 10, 12]}
-
-// Multiple lambda variables
-["let", [
-    ["increment", ["lambda", ["x"], ["+", ["$", "/x"], 1]]],
-    ["gt_three", ["lambda", ["x"], [">", ["$", "/x"], 3]]]
-  ],
-  ["map", 
-    ["filter", {"array": [1, 2, 3, 4, 5]}, ["$", "/gt_three"]], 
-    ["$", "/increment"]
-  ]
-]
-// Result: [5, 6] (filter >3: [4,5], then increment: [5,6])
-```
-
-### Templates
-- `["permuto.apply", template, context]` - Process Permuto templates
-
-## Enhanced Error Reporting
-
-Computo provides **precise path tracking** for debugging complex scripts, showing exactly where errors occur in your JSON structure:
-
-### Error Message Format
-```
-Computo error: [Error Description] at [Evaluation Path]
-```
-
-### Example Error Messages
-
-**Variable not found:**
-```bash
-# Script with error:
-["let", [["x", 5]], ["obj", ["result", ["*", ["$", "/missing"], 2]]]]
-
-# Error output:
-Computo error: Invalid argument: Variable not found: /missing at /let/body/obj/*/$
-```
-
-**Array syntax error:**
-```bash
-# Script with error:
-["let", [["data", [1, 2, 3]]], ["map", ["$", "/data"], "invalid"]]
-
-# Error output:  
-Computo error: Invalid argument: Array must start with operator name (string). For literal arrays, use {"array": [...]} syntax. at /let/body/map
-```
-
-**Lambda execution error:**
-```bash
-# Script with error:
-["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["$", "/undefined"]]]
-
-# Error output:
-Computo error: Invalid argument: Variable not found: /undefined at /map/lambda[1]/$
-```
-
-### Path Interpretation
-
-Path segments show the **logical execution flow**:
-- `/let/body` - Inside let expression body
-- `/map/array` - In map operator's array argument  
-- `/lambda[2]` - In lambda applied to 3rd array element
-- `/obj/key` - In object constructor for specific key
-- `/*` - In multiplication operator
-- `/$` - In variable lookup operator
-
-### Benefits
-
-- **Format Independent**: Works with minified or formatted JSON
-- **Zero Performance Impact**: Path tracking only during errors
-- **Thread-Safe**: No shared state between evaluations
-- **Precise Location**: Shows logical structure, not just syntax position
-
-## JSON Patch Workflow Examples
-
-### Basic Diff and Patch
-```bash
-# Step 1: Create transformation script
-echo '["obj", ["id", ["get", ["$input"], "/id"]], ["status", "archived"]]' > transform.json
-
-# Step 2: Generate patch from transformation
-echo '{"id": 123, "status": "active"}' > original.json
-./build/computo --diff transform.json original.json > patch.json
-
-# Generated patch.json contains:
-# [{"op": "replace", "path": "/status", "value": "archived"}]
-
-# Step 3: Create reusable patch application script
-echo '["patch", ["get", ["$inputs"], "/0"], ["get", ["$inputs"], "/1"]]' > apply_patch.json
-
-# Step 4: Apply patch to any document
-./build/computo apply_patch.json original.json patch.json
-# Result: {"id": 123, "status": "archived"}
-```
-
-### Advanced Multi-Document Processing
-```json
-// Script to merge updates from multiple sources
-["let", [
-    ["original", ["get", ["$inputs"], "/0"]],
-    ["updates", ["get", ["$inputs"], "/1"]],
-    ["patch_ops", ["diff", ["$", "/original"], ["$", "/updates"]]]
-  ],
-  ["obj",
-    ["original_document", ["$", "/original"]],
-    ["updated_document", ["$", "/updates"]],
-    ["patch_operations", ["$", "/patch_ops"]],
-    ["can_apply_safely", ["==", ["count", ["$", "/patch_ops"]], 1]]
-  ]
-]
-```
-
-### Document Versioning and Rollback
-```json
-// Generate rollback patch (reverse diff)
-["diff", 
-  ["get", ["$inputs"], "/1"],  // new version
-  ["get", ["$inputs"], "/0"]   // original version
-]
-// This creates a patch that rolls back from new to original
-```
-
-## Multiple Input Processing
-
-### Accessing Multiple Inputs
-```json
-// Working with multiple data sources
-["obj",
-  ["user_data", ["get", ["$inputs"], "/0"]],
-  ["preferences", ["get", ["$inputs"], "/1"]],
-  ["session_info", ["get", ["$inputs"], "/2"]],
-  ["total_inputs", ["count", ["$inputs"]]]
-]
-```
-
-### Data Merging from Multiple Sources
-```json
-// Merge user profiles from different systems
-["let", [
-    ["profile1", ["get", ["$inputs"], "/0"]],
-    ["profile2", ["get", ["$inputs"], "/1"]]
-  ],
-  ["obj",
-    ["user_id", ["get", ["$", "/profile1"], "/id"]],
-    ["name", ["get", ["$", "/profile1"], "/name"]],
-    ["email", ["get", ["$", "/profile2"], "/email"]],
-    ["preferences", ["get", ["$", "/profile2"], "/settings"]],
-    ["last_login", ["get", ["$", "/profile1"], "/last_seen"]]
-  ]
-]
-```
-
-### Cross-Document Validation
-```json
-// Compare documents for consistency
-["let", [
-    ["doc1", ["get", ["$inputs"], "/0"]],
-    ["doc2", ["get", ["$inputs"], "/1"]],
-    ["differences", ["diff", ["$", "/doc1"], ["$", "/doc2"]]]
-  ],
-  ["obj",
-    ["are_identical", ["==", ["count", ["$", "/differences"]], 0]],
-    ["difference_count", ["count", ["$", "/differences"]]],
-    ["changes_summary", ["$", "/differences"]]
-  ]
-]
-```
-
-### Logical Operators
-```json
-// Logical AND - short-circuit evaluation, all must be true
-["&&", expr1, expr2, ...]
-
-// Logical OR - short-circuit evaluation, any must be true  
-["||", expr1, expr2, ...]
-
-// Examples
-["&&", true, [">", 5, 3], ["!=", "hello", ""]]  // true
-["||", false, ["==", 2, 2]]                     // true (stops at second)
-["&&", false, ["/", 1, 0]]                      // false (division not evaluated)
-```
-
-## Real-World Examples
-
-### API Response Transformation
-```json
-// Transform API response structure
-["obj",
-  ["users", ["map", 
-    ["get", ["$input"], "/data/users"],
-    ["lambda", ["user"], 
-      ["obj",
-        ["id", ["get", ["$", "/user"], "/user_id"]],
-        ["name", ["get", ["$", "/user"], "/full_name"]],
-        ["active", ["==", ["get", ["$", "/user"], "/status"], "active"]]
-      ]
-    ]
-  ]],
-  ["total", ["count", ["get", ["$input"], "/data/users"]]],
-  ["timestamp", ["get", ["$input"], "/metadata/generated_at"]]
-]
-```
-
-### Configuration Synchronization
-```json
-// Sync configuration changes between environments
-["let", [
-    ["prod_config", ["get", ["$inputs"], "/0"]],
-    ["staging_config", ["get", ["$inputs"], "/1"]],
-    ["sync_patch", ["diff", ["$", "/prod_config"], ["$", "/staging_config"]]]
-  ],
-  ["obj",
-    ["requires_sync", [">", ["count", ["$", "/sync_patch"]], 0]],
-    ["patch_operations", ["$", "/sync_patch"]],
-    ["staging_after_sync", ["if", 
-      ["$", "/requires_sync"],
-      ["patch", ["$", "/staging_config"], ["$", "/sync_patch"]],
-      ["$", "/staging_config"]
-    ]]
-  ]
-]
-```
-
-### Data Migration Pipeline
-```json
-// Transform data format between versions
-["let", [
-    ["old_format", ["get", ["$inputs"], "/0"]],
-    ["migration_rules", ["get", ["$inputs"], "/1"]]
-  ],
-  ["permuto.apply",
-    {
-      "version": "2.0",
-      "user_id": "${/old_format/id}",
-      "profile": {
-        "full_name": "${/old_format/name}",
-        "contact": {
-          "email": "${/old_format/email_address}",
-          "phone": "${/old_format/phone_number}"
-        }
-      },
-      "settings": "${/migration_rules/default_settings}",
-      "migrated_at": "${/migration_rules/timestamp}"
-    },
-    ["obj",
-      ["old_format", ["$", "/old_format"]],
-      ["migration_rules", ["$", "/migration_rules"]]
-    ]
-  ]
-]
-```
-
-### Conversation Diff Processing (with car/cdr)
-```json
-// Process conversation updates using functional list operations
-["let", [
-    ["initial_state", ["car", ["$inputs"]]],           // First input: initial conversation
-    ["all_patches", ["cdr", ["$inputs"]]],             // Remaining inputs: patches
-    ["final_state", ["reduce",
-      ["$", "/all_patches"],
-      ["lambda", ["conversation", "patch"],
-        ["patch", ["$", "/conversation"], ["$", "/patch"]]
-      ],
-      ["$", "/initial_state"]
-    ]],
-    ["patch_count", ["count", ["$", "/all_patches"]]]
-  ],
-  ["obj",
-    ["conversation_id", ["get", ["$", "/final_state"], "/id"]],
-    ["message_count", ["count", ["get", ["$", "/final_state"], "/messages"]]],
-    ["patches_applied", ["$", "/patch_count"]],
-    ["final_conversation", ["$", "/final_state"]]
-  ]
-]
-// Input: initial_conversation.json patch1.json patch2.json patch3.json
-// Output: {"conversation_id": "conv_001", "message_count": 3, "patches_applied": 3, "final_conversation": {...}}
-```
-
-## Error Handling
-
-Computo provides structured exceptions with debugging information:
-
-- `ComputoException` - Base exception class
-- `InvalidScriptException` - Malformed JSON scripts
-- `InvalidOperatorException` - Unknown operators
-- `InvalidArgumentException` - Wrong argument types/counts
-- `PatchFailedException` - JSON Patch application failures
-
-### JSON Patch Error Scenarios
-```json
-// These operations may throw PatchFailedException:
-
-// 1. Invalid patch format
-["patch", {"a": 1}, "not_an_array"]  // Throws: patch must be array
-
-// 2. Failed test operation
-["patch", {"value": 42}, {"array": [
-  {"op": "test", "path": "/value", "value": 99},  // This will fail
-  {"op": "replace", "path": "/value", "value": 100}
-]}]
-
-// 3. Invalid path in patch
-["patch", {"a": 1}, {"array": [
-  {"op": "replace", "path": "/nonexistent", "value": 2}
-]}]
-
-// 4. Malformed patch operation
-["patch", {"a": 1}, {"array": [
-  {"op": "invalid_operation", "path": "/a", "value": 2}
-]}]
-```
-
-### List Processing Error Scenarios
-```json
-// These operations may throw InvalidArgumentException:
-
-// 1. car on empty array
-["car", {"array": []}]  // Throws: car cannot be applied to empty array
-
-// 2. car on non-array
-["car", "not_an_array"]  // Throws: car expects an array
-
-// 3. cdr on non-array
-["cdr", 42]  // Throws: cdr expects an array
-
-// 4. Wrong argument count
-["car", {"array": [1, 2]}, {"array": [3, 4]}]  // Throws: car expects exactly 1 argument
-
-// Note: cdr on empty array returns [] (empty array), does not throw
-["cdr", {"array": []}]  // Returns: []
-```
-
-## CLI Reference
+## CLI Usage
 
 ### Basic Usage
 ```bash
 # Single input transformation
-computo script.json input.json
+./build/computo script.json input.json
 
 # Multiple input processing  
-computo script.json input1.json input2.json input3.json
+./build/computo script.json input1.json input2.json input3.json
 
 # No input (script only)
-computo script.json
+./build/computo script.json
 ```
 
 ### Diff Mode
 ```bash
 # Generate patch from transformation
-computo --diff transform_script.json original.json
-
-# Error: --diff requires exactly one input
-computo --diff script.json input1.json input2.json  # ❌ Fails
+./build/computo --diff transform_script.json original.json
 ```
 
 ### Permuto Integration
 ```bash
 # Enable string interpolation
-computo --interpolation script.json input.json
-
-# Permuto options
-computo --missing-key=error script.json input.json
-computo --max-depth=32 script.json input.json
-computo --start="{{{" --end="}}}" script.json input.json
+./build/computo --interpolation script.json input.json
 ```
 
 ### Output Formatting
 ```bash
-# Pretty print with indentation (N spaces)
-computo --pretty=2 script.json input.json
-computo --pretty=4 script.json input.json
-
-# Compact output (default)
-computo script.json input.json
+# Pretty print with indentation
+./build/computo --pretty=2 script.json input.json
 ```
 
 ### Comment Support (CLI Only)
 ```bash
-# Allow comments in script files (/* */ and // style)
-computo --comments script_with_comments.json input.json
-
-# Comments are ONLY supported in script files, not input files
-# This feature is CLI-only and not available in the library API
+# Allow comments in script files
+./build/computo --comments script_with_comments.json input.json
 ```
 
-**Important**: The `--comments` flag only enables comment parsing for **script files**. Input files are never parsed with comment support, regardless of this flag. This feature is exclusive to the CLI tool and is not exposed in the C++ library API.
 
-Example commented script:
+## Quick Start
+
+### Building
+```bash
+# Configure and build
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+
+# Run tests
+cd build && ctest --verbose
+```
+
+### CLI Usage
+```bash
+# Basic transformation (single input)
+./build/computo script.json input.json
+
+# Multiple input files
+./build/computo script.json input1.json input2.json input3.json
+
+# With flags
+./build/computo --interpolation script.json input.json
+```
+
+## Arithmetic Examples
+
+### Basic Addition
+
+Basic addition of two numbers.
+Computo supports standard arithmetic operations on numbers.
+
+
+**Script:**
 ```json
 [
-  // This is a transformation script with comments
-  "obj", // Create an object
-  /* Multi-line comment explaining the transformation:
-     This extracts the user's name and creates a greeting */
-  ["name", ["get", ["$input"], "/user/name"]],
-  ["greeting", "Hello World!"]
+  "+",
+  15,
+  27
 ]
 ```
 
-### Combined Options
+**Expected Output:**
+```json
+42
+```
+
+### Basic Subtraction
+
+Basic subtraction operation.
+Demonstrates numeric subtraction with integer operands.
+
+
+**Script:**
+```json
+[
+  "-",
+  50,
+  8
+]
+```
+
+**Expected Output:**
+```json
+42
+```
+
+### Basic Multiplication
+
+Basic multiplication of two numbers.
+This is the simplest form of Computo operation.
+
+
+**Script:**
+```json
+[
+  "*",
+  6,
+  7
+]
+```
+
+**Expected Output:**
+```json
+42
+```
+
+### Basic Division
+
+Basic division operation.
+Demonstrates numeric division with precise results.
+
+
+**Script:**
+```json
+[
+  "/",
+  84,
+  2
+]
+```
+
+**Expected Output:**
+```json
+42
+```
+
+### Nested Arithmetic
+
+Nested arithmetic operations showing operator composition.
+Demonstrates how operators can be nested to create complex expressions.
+
+
+**Script:**
+```json
+[
+  "+",
+  [
+    "*",
+    3,
+    4
+  ],
+  [
+    "*",
+    5,
+    6
+  ]
+]
+```
+
+**Expected Output:**
+```json
+42
+```
+
+## Array Operations Examples
+
+### Array Map Double
+
+Array transformation using map to double values.
+Demonstrates applying a function to each array element.
+
+
+**Script:**
+```json
+[
+  "map",
+  {
+    "array": [
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  [
+    "lambda",
+    [
+      "x"
+    ],
+    [
+      "*",
+      [
+        "$",
+        "/x"
+      ],
+      2
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  2,
+  4,
+  6,
+  8
+]
+```
+
+### Array Map From Input
+
+Map operation on array from input data.
+Shows transforming arrays that come from input documents.
+
+
+**Script:**
+```json
+[
+  "map",
+  [
+    "get",
+    [
+      "$input"
+    ],
+    "/numbers"
+  ],
+  [
+    "lambda",
+    [
+      "n"
+    ],
+    [
+      "+",
+      [
+        "$",
+        "/n"
+      ],
+      10
+    ]
+  ]
+]
+```
+
+**Input:**
+```json
+{
+  "numbers": [
+    1,
+    2,
+    3
+  ]
+}
+```
+
+**Expected Output:**
+```json
+[
+  11,
+  12,
+  13
+]
+```
+
+### Array Filter Greater Than
+
+Array filtering based on numeric condition.
+Shows keeping only elements that satisfy a predicate.
+
+
+**Script:**
+```json
+[
+  "filter",
+  {
+    "array": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  [
+    "lambda",
+    [
+      "x"
+    ],
+    [
+      ">",
+      [
+        "$",
+        "/x"
+      ],
+      3
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  4,
+  5,
+  6
+]
+```
+
+### Array Filter Greater Than Two
+
+Filter array to keep numbers greater than 2.
+Demonstrates filtering arrays based on numeric conditions.
+
+
+**Script:**
+```json
+[
+  "filter",
+  {
+    "array": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ]
+  },
+  [
+    "lambda",
+    [
+      "x"
+    ],
+    [
+      ">",
+      [
+        "$",
+        "/x"
+      ],
+      2
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  3,
+  4,
+  5,
+  6,
+  7,
+  8
+]
+```
+
+### Array Reduce Sum
+
+Array reduction to sum all elements.
+Demonstrates aggregating an array to a single value.
+
+
+**Script:**
+```json
+[
+  "reduce",
+  {
+    "array": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  [
+    "lambda",
+    [
+      "acc",
+      "x"
+    ],
+    [
+      "+",
+      [
+        "$",
+        "/acc"
+      ],
+      [
+        "$",
+        "/x"
+      ]
+    ]
+  ],
+  0
+]
+```
+
+**Expected Output:**
+```json
+15
+```
+
+### Array Reduce Product
+
+Array reduction to multiply all elements.
+Shows calculating the product using reduce with different initial value.
+
+
+**Script:**
+```json
+[
+  "reduce",
+  {
+    "array": [
+      2,
+      3,
+      4
+    ]
+  },
+  [
+    "lambda",
+    [
+      "acc",
+      "x"
+    ],
+    [
+      "*",
+      [
+        "$",
+        "/acc"
+      ],
+      [
+        "$",
+        "/x"
+      ]
+    ]
+  ],
+  1
+]
+```
+
+**Expected Output:**
+```json
+24
+```
+
+### Array Find First Match
+
+Find first element matching condition.
+Shows locating the first element that satisfies a predicate.
+
+
+**Script:**
+```json
+[
+  "find",
+  {
+    "array": [
+      1,
+      2,
+      5,
+      8,
+      10
+    ]
+  },
+  [
+    "lambda",
+    [
+      "x"
+    ],
+    [
+      ">",
+      [
+        "$",
+        "/x"
+      ],
+      4
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+5
+```
+
+### Array Some Has Match
+
+Test if some elements match condition.
+Demonstrates checking if any element satisfies a condition.
+
+
+**Script:**
+```json
+[
+  "some",
+  {
+    "array": [
+      1,
+      2,
+      3,
+      8
+    ]
+  },
+  [
+    "lambda",
+    [
+      "x"
+    ],
+    [
+      ">",
+      [
+        "$",
+        "/x"
+      ],
+      5
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+true
+```
+
+### Array Some No Match
+
+Test if some elements match condition - no matches.
+Shows some operator returning false when no elements match.
+
+
+**Script:**
+```json
+[
+  "some",
+  {
+    "array": [
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  [
+    "lambda",
+    [
+      "x"
+    ],
+    [
+      ">",
+      [
+        "$",
+        "/x"
+      ],
+      10
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+false
+```
+
+### Array Every All Match
+
+Test if all elements match condition - all match.
+Shows every operator returning true when all elements satisfy condition.
+
+
+**Script:**
+```json
+[
+  "every",
+  {
+    "array": [
+      4,
+      6,
+      8,
+      10
+    ]
+  },
+  [
+    "lambda",
+    [
+      "x"
+    ],
+    [
+      ">",
+      [
+        "$",
+        "/x"
+      ],
+      3
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+true
+```
+
+### Array Every Not All
+
+Test if all elements match condition - not all match.
+Demonstrates every operator returning false when some elements don't match.
+
+
+**Script:**
+```json
+[
+  "every",
+  {
+    "array": [
+      2,
+      4,
+      6,
+      8
+    ]
+  },
+  [
+    "lambda",
+    [
+      "x"
+    ],
+    [
+      ">",
+      [
+        "$",
+        "/x"
+      ],
+      3
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+false
+```
+
+### Array Flatmap Expand
+
+Map and flatten array results.
+Demonstrates mapping over an array and flattening nested results.
+
+
+**Script:**
+```json
+[
+  "flatMap",
+  {
+    "array": [
+      1,
+      2,
+      3
+    ]
+  },
+  [
+    "lambda",
+    [
+      "x"
+    ],
+    {
+      "array": [
+        [
+          "$",
+          "/x"
+        ],
+        [
+          "*",
+          [
+            "$",
+            "/x"
+          ],
+          2
+        ]
+      ]
+    }
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  1,
+  2,
+  2,
+  4,
+  3,
+  6
+]
+```
+
+### Array Partition By Size
+
+Partition array into large and small numbers.
+Shows splitting an array based on a predicate into [matching, non-matching].
+
+
+**Script:**
+```json
+[
+  "partition",
+  {
+    "array": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  [
+    "lambda",
+    [
+      "x"
+    ],
+    [
+      ">",
+      [
+        "$",
+        "/x"
+      ],
+      3
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  [
+    4,
+    5,
+    6
+  ],
+  [
+    1,
+    2,
+    3
+  ]
+]
+```
+
+### Array Count Length
+
+Get array length using count.
+Demonstrates measuring the size of arrays.
+
+
+**Script:**
+```json
+[
+  "count",
+  {
+    "array": [
+      "apple",
+      "banana",
+      "cherry",
+      "date"
+    ]
+  }
+]
+```
+
+**Expected Output:**
+```json
+4
+```
+
+## Cli Usage Examples
+
+### Cli Basic Transformation
+
+Basic CLI usage for single input transformation.
+This demonstrates the standard command-line interface pattern.
+Note: This is a documentation example showing CLI usage patterns.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "greeting",
+    [
+      "get",
+      [
+        "$input"
+      ],
+      "/message"
+    ]
+  ],
+  [
+    "timestamp",
+    "2024-01-01"
+  ]
+]
+```
+
+**Input:**
+```json
+{
+  "message": "Hello from CLI",
+  "user": "Alice"
+}
+```
+
+**Expected Output:**
+```json
+{
+  "greeting": "Hello from CLI",
+  "timestamp": "2024-01-01"
+}
+```
+
+### Cli Multiple Inputs Merge
+
+CLI usage with multiple input files for data merging.
+Shows processing multiple input files from the command line.
+Note: This is a documentation example showing multi-input CLI patterns.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "combined_data",
+    [
+      "append",
+      [
+        "get",
+        [
+          "$inputs"
+        ],
+        "/0/items"
+      ],
+      [
+        "get",
+        [
+          "$inputs"
+        ],
+        "/1/items"
+      ]
+    ]
+  ],
+  [
+    "sources",
+    [
+      "count",
+      [
+        "$inputs"
+      ]
+    ]
+  ]
+]
+```
+
+**Multiple Inputs:**
+
+*Input 0:*
+```json
+{
+  "items": [
+    "from_file_1",
+    "data_1"
+  ]
+}
+```
+
+*Input 1:*
+```json
+{
+  "items": [
+    "from_file_2",
+    "data_2"
+  ]
+}
+```
+**Expected Output:**
+```json
+{
+  "combined_data": [
+    "from_file_1",
+    "data_1",
+    "from_file_2",
+    "data_2"
+  ],
+  "sources": 2
+}
+```
+
+### Cli Permuto Interpolation
+
+CLI with Permuto interpolation for template processing.
+Shows using --interpolation flag for string template processing.
+Note: This is a documentation example showing Permuto integration.
+
+
+**Script:**
+```json
+[
+  "permuto.apply",
+  {
+    "welcome": "Welcome ${/user/name}!",
+    "summary": "You have ${/user/points} points."
+  },
+  [
+    "$input"
+  ]
+]
+```
+
+**Input:**
+```json
+{
+  "user": {
+    "name": "Bob",
+    "points": 250
+  }
+}
+```
+
+**Flags:** `--interpolation`
+
+**Expected Output:**
+```json
+{
+  "welcome": "Welcome Bob!",
+  "summary": "You have 250 points."
+}
+```
+
+### Cli Pretty Output Formatting
+
+CLI with pretty-printed output formatting.
+Demonstrates using --pretty flag for readable JSON output.
+Note: This is a documentation example showing output formatting.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "data",
+    [
+      "map",
+      {
+        "array": [
+          1,
+          2,
+          3
+        ]
+      },
+      [
+        "lambda",
+        [
+          "x"
+        ],
+        [
+          "obj",
+          [
+            "value",
+            [
+              "$",
+              "/x"
+            ]
+          ],
+          [
+            "squared",
+            [
+              "*",
+              [
+                "$",
+                "/x"
+              ],
+              [
+                "$",
+                "/x"
+              ]
+            ]
+          ]
+        ]
+      ]
+    ]
+  ],
+  [
+    "timestamp",
+    "2024-01-01"
+  ]
+]
+```
+
+**Expected Output:**
+```json
+{
+  "data": [
+    {
+      "value": 1,
+      "squared": 1
+    },
+    {
+      "value": 2,
+      "squared": 4
+    },
+    {
+      "value": 3,
+      "squared": 9
+    }
+  ],
+  "timestamp": "2024-01-01"
+}
+```
+
+### Cli Comments In Scripts
+
+CLI with comment support in script files.
+Shows using --comments flag to allow comments in JSON scripts.
+Note: This is a documentation example showing comment parsing.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "message",
+    "Hello World"
+  ],
+  [
+    "computed",
+    [
+      "*",
+      6,
+      7
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+{
+  "message": "Hello World",
+  "computed": 42
+}
+```
+
+## Comparison Examples
+
+### Greater Than True
+
+Greater than comparison returning true.
+Demonstrates numeric comparison operations.
+
+
+**Script:**
+```json
+[
+  ">",
+  10,
+  5
+]
+```
+
+**Expected Output:**
+```json
+true
+```
+
+### Greater Than False
+
+Greater than comparison returning false.
+Shows how comparison operators work with different outcomes.
+
+
+**Script:**
+```json
+[
+  ">",
+  3,
+  8
+]
+```
+
+**Expected Output:**
+```json
+false
+```
+
+### Less Than True
+
+Less than comparison returning true.
+Demonstrates the less than operator.
+
+
+**Script:**
+```json
+[
+  "<",
+  5,
+  10
+]
+```
+
+**Expected Output:**
+```json
+true
+```
+
+### Greater Equal True
+
+Greater than or equal comparison with equality.
+Shows boundary condition handling.
+
+
+**Script:**
+```json
+[
+  ">=",
+  5,
+  5
+]
+```
+
+**Expected Output:**
+```json
+true
+```
+
+### Less Equal False
+
+Less than or equal comparison returning false.
+Demonstrates boundary condition failure.
+
+
+**Script:**
+```json
+[
+  "<=",
+  10,
+  5
+]
+```
+
+**Expected Output:**
+```json
+false
+```
+
+### Equality Strings True
+
+String equality comparison returning true.
+Demonstrates exact string matching.
+
+
+**Script:**
+```json
+[
+  "==",
+  "hello",
+  "hello"
+]
+```
+
+**Expected Output:**
+```json
+true
+```
+
+### Equality Strings False
+
+String equality comparison returning false.
+Shows string inequality detection.
+
+
+**Script:**
+```json
+[
+  "==",
+  "hello",
+  "world"
+]
+```
+
+**Expected Output:**
+```json
+false
+```
+
+### Not Equal Numbers
+
+Not equal comparison with numbers.
+Demonstrates inequality operator with numeric values.
+
+
+**Script:**
+```json
+[
+  "!=",
+  1,
+  2
+]
+```
+
+**Expected Output:**
+```json
+true
+```
+
+### Approximate Equality
+
+Approximate equality for floating point numbers.
+Uses epsilon tolerance for float comparison to handle precision issues.
+
+
+**Script:**
+```json
+[
+  "approx",
+  0.1,
+  0.10000001,
+  0.001
+]
+```
+
+**Expected Output:**
+```json
+true
+```
+
+## Conditional Examples
+
+### If Condition True
+
+Conditional execution with true condition.
+Demonstrates basic if-then-else control flow executing the then branch.
+
+
+**Script:**
+```json
+[
+  "if",
+  [
+    ">",
+    10,
+    5
+  ],
+  "condition_was_true",
+  "condition_was_false"
+]
+```
+
+**Expected Output:**
+```json
+"condition_was_true"
+```
+
+### If Condition False
+
+Conditional execution with false condition.
+Shows else branch execution when condition is false.
+
+
+**Script:**
+```json
+[
+  "if",
+  [
+    "<",
+    10,
+    5
+  ],
+  "condition_was_true",
+  "condition_was_false"
+]
+```
+
+**Expected Output:**
+```json
+"condition_was_false"
+```
+
+### If Nested Conditions
+
+Nested conditional expressions.
+Demonstrates how if statements can be nested for complex decision logic.
+
+
+**Script:**
+```json
+[
+  "if",
+  [
+    ">",
+    15,
+    10
+  ],
+  [
+    "if",
+    [
+      "<",
+      15,
+      20
+    ],
+    "both_conditions_true",
+    "only_first_true"
+  ],
+  "first_condition_false"
+]
+```
+
+**Expected Output:**
+```json
+"both_conditions_true"
+```
+
+### If With Complex Condition
+
+Conditional with complex logical expression.
+Shows combining logical operators in if conditions.
+
+
+**Script:**
+```json
+[
+  "if",
+  [
+    "&&",
+    [
+      ">",
+      20,
+      10
+    ],
+    [
+      "<",
+      20,
+      30
+    ]
+  ],
+  "in_range",
+  "out_of_range"
+]
+```
+
+**Expected Output:**
+```json
+"in_range"
+```
+
+## Data Access Examples
+
+### Input Access Whole
+
+Access entire input document.
+Demonstrates using $input to access the complete input data.
+
+
+**Script:**
+```json
+[
+  "$input"
+]
+```
+
+**Input:**
+```json
+{
+  "message": "Hello World",
+  "number": 42
+}
+```
+
+**Expected Output:**
+```json
+{
+  "message": "Hello World",
+  "number": 42
+}
+```
+
+### Json Pointer Simple
+
+Simple JSON Pointer data extraction.
+Shows extracting a specific field using JSON Pointer syntax.
+
+
+**Script:**
+```json
+[
+  "get",
+  [
+    "$input"
+  ],
+  "/message"
+]
+```
+
+**Input:**
+```json
+{
+  "message": "Hello Computo",
+  "status": "active"
+}
+```
+
+**Expected Output:**
+```json
+"Hello Computo"
+```
+
+### Json Pointer Nested
+
+Nested JSON Pointer access.
+Demonstrates accessing deeply nested data structures.
+
+
+**Script:**
+```json
+[
+  "get",
+  [
+    "$input"
+  ],
+  "/user/profile/name"
+]
+```
+
+**Input:**
+```json
+{
+  "user": {
+    "profile": {
+      "name": "Alice",
+      "age": 30
+    },
+    "id": 123
+  }
+}
+```
+
+**Expected Output:**
+```json
+"Alice"
+```
+
+### Json Pointer Array Index
+
+JSON Pointer array element access.
+Shows accessing specific array elements by index.
+
+
+**Script:**
+```json
+[
+  "get",
+  [
+    "$input"
+  ],
+  "/items/1"
+]
+```
+
+**Input:**
+```json
+{
+  "items": [
+    "first",
+    "second",
+    "third"
+  ]
+}
+```
+
+**Expected Output:**
+```json
+"second"
+```
+
+### Variable Binding Simple
+
+Simple variable binding with let.
+Demonstrates creating local variables for reuse in expressions.
+
+
+**Script:**
+```json
+[
+  "let",
+  [
+    [
+      "x",
+      25
+    ],
+    [
+      "y",
+      17
+    ]
+  ],
+  [
+    "+",
+    [
+      "$",
+      "/x"
+    ],
+    [
+      "$",
+      "/y"
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+42
+```
+
+### Variable Binding From Input
+
+Variable binding using input data.
+Shows extracting input values into variables for cleaner expressions.
+
+
+**Script:**
+```json
+[
+  "let",
+  [
+    [
+      "user_name",
+      [
+        "get",
+        [
+          "$input"
+        ],
+        "/user/name"
+      ]
+    ],
+    [
+      "user_age",
+      [
+        "get",
+        [
+          "$input"
+        ],
+        "/user/age"
+      ]
+    ]
+  ],
+  [
+    "obj",
+    [
+      "greeting",
+      [
+        "$",
+        "/user_name"
+      ]
+    ],
+    [
+      "next_age",
+      [
+        "+",
+        [
+          "$",
+          "/user_age"
+        ],
+        1
+      ]
+    ]
+  ]
+]
+```
+
+**Input:**
+```json
+{
+  "user": {
+    "name": "Bob",
+    "age": 25
+  }
+}
+```
+
+**Expected Output:**
+```json
+{
+  "greeting": "Bob",
+  "next_age": 26
+}
+```
+
+### Variable Binding Nested
+
+Nested variable bindings.
+Demonstrates creating multiple variable scopes with let expressions.
+
+
+**Script:**
+```json
+[
+  "let",
+  [
+    [
+      "outer",
+      10
+    ]
+  ],
+  [
+    "let",
+    [
+      [
+        "inner",
+        32
+      ]
+    ],
+    [
+      "+",
+      [
+        "$",
+        "/outer"
+      ],
+      [
+        "$",
+        "/inner"
+      ]
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+42
+```
+
+## Data Construction Examples
+
+### Object Construction Simple
+
+Simple object construction using obj operator.
+Shows creating JSON objects with literal values.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "name",
+    "Alice"
+  ],
+  [
+    "age",
+    30
+  ],
+  [
+    "active",
+    true
+  ]
+]
+```
+
+**Expected Output:**
+```json
+{
+  "name": "Alice",
+  "age": 30,
+  "active": true
+}
+```
+
+### Object Construction Computed
+
+Object construction with computed values.
+Demonstrates creating objects with calculated fields.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "name",
+    "Bob"
+  ],
+  [
+    "birth_year",
+    [
+      "-",
+      2024,
+      25
+    ]
+  ],
+  [
+    "score",
+    [
+      "*",
+      6,
+      7
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+{
+  "name": "Bob",
+  "birth_year": 1999,
+  "score": 42
+}
+```
+
+### Array Construction Literal
+
+Array construction using literal syntax.
+Shows creating arrays with the {"array": [...]} syntax.
+
+
+**Script:**
+```json
+{
+  "array": [
+    1,
+    2,
+    3,
+    "hello",
+    true
+  ]
+}
+```
+
+**Expected Output:**
+```json
+[
+  1,
+  2,
+  3,
+  "hello",
+  true
+]
+```
+
+### Array Construction Mixed
+
+Array construction with mixed literal and computed values.
+Demonstrates arrays containing both static and calculated elements.
+
+
+**Script:**
+```json
+{
+  "array": [
+    1,
+    [
+      "*",
+      2,
+      3
+    ],
+    [
+      "+",
+      4,
+      3
+    ],
+    "mixed"
+  ]
+}
+```
+
+**Expected Output:**
+```json
+[
+  1,
+  6,
+  7,
+  "mixed"
+]
+```
+
+### Nested Object Construction
+
+Nested object and array construction.
+Shows creating complex nested data structures.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "user",
+    [
+      "obj",
+      [
+        "name",
+        "Charlie"
+      ],
+      [
+        "hobbies",
+        {
+          "array": [
+            "reading",
+            "coding"
+          ]
+        }
+      ]
+    ]
+  ],
+  [
+    "metadata",
+    [
+      "obj",
+      [
+        "created",
+        "2024-01-01"
+      ],
+      [
+        "version",
+        1
+      ]
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+{
+  "user": {
+    "name": "Charlie",
+    "hobbies": [
+      "reading",
+      "coding"
+    ]
+  },
+  "metadata": {
+    "created": "2024-01-01",
+    "version": 1
+  }
+}
+```
+
+### Object From Input Data
+
+Dynamic object construction from input data.
+Demonstrates building objects using values extracted from input.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "full_name",
+    [
+      "get",
+      [
+        "$input"
+      ],
+      "/first_name"
+    ]
+  ],
+  [
+    "age_category",
+    [
+      "if",
+      [
+        ">",
+        [
+          "get",
+          [
+            "$input"
+          ],
+          "/age"
+        ],
+        18
+      ],
+      "adult",
+      "minor"
+    ]
+  ]
+]
+```
+
+**Input:**
+```json
+{
+  "first_name": "Diana",
+  "age": 25
+}
+```
+
+**Expected Output:**
+```json
+{
+  "full_name": "Diana",
+  "age_category": "adult"
+}
+```
+
+## Functional Lists Examples
+
+### List Car First Element
+
+Get first element using car.
+Demonstrates the car operation from functional programming.
+
+
+**Script:**
+```json
+[
+  "car",
+  {
+    "array": [
+      "first",
+      "second",
+      "third"
+    ]
+  }
+]
+```
+
+**Expected Output:**
+```json
+"first"
+```
+
+### List Car Single Element
+
+Car operation on single-element array.
+Shows car behavior with minimal arrays.
+
+
+**Script:**
+```json
+[
+  "car",
+  {
+    "array": [
+      42
+    ]
+  }
+]
+```
+
+**Expected Output:**
+```json
+42
+```
+
+### List Cdr Rest Elements
+
+Get all but first element using cdr.
+Shows the cdr operation for accessing the tail of a list.
+
+
+**Script:**
+```json
+[
+  "cdr",
+  {
+    "array": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  }
+]
+```
+
+**Expected Output:**
+```json
+[
+  2,
+  3,
+  4,
+  5
+]
+```
+
+### List Cdr Single Element
+
+Cdr operation on single-element array.
+Shows cdr returning empty array for single-element lists.
+
+
+**Script:**
+```json
+[
+  "cdr",
+  {
+    "array": [
+      "only"
+    ]
+  }
+]
+```
+
+**Expected Output:**
+```json
+[]
+```
+
+### List Cons Prepend
+
+Prepend element using cons.
+Demonstrates list construction by adding element to front.
+
+
+**Script:**
+```json
+[
+  "cons",
+  "new_first",
+  {
+    "array": [
+      "second",
+      "third"
+    ]
+  }
+]
+```
+
+**Expected Output:**
+```json
+[
+  "new_first",
+  "second",
+  "third"
+]
+```
+
+### List Cons Empty Array
+
+Cons operation with empty array.
+Shows creating single-element array using cons.
+
+
+**Script:**
+```json
+[
+  "cons",
+  "only_element",
+  {
+    "array": []
+  }
+]
+```
+
+**Expected Output:**
+```json
+[
+  "only_element"
+]
+```
+
+### List Append Two Arrays
+
+Concatenate two arrays using append.
+Shows basic array concatenation functionality.
+
+
+**Script:**
+```json
+[
+  "append",
+  {
+    "array": [
+      1,
+      2
+    ]
+  },
+  {
+    "array": [
+      3,
+      4
+    ]
+  }
+]
+```
+
+**Expected Output:**
+```json
+[
+  1,
+  2,
+  3,
+  4
+]
+```
+
+### List Append Multiple Arrays
+
+Concatenate multiple arrays using append.
+Demonstrates joining several arrays together.
+
+
+**Script:**
+```json
+[
+  "append",
+  {
+    "array": [
+      "a"
+    ]
+  },
+  {
+    "array": [
+      "b",
+      "c"
+    ]
+  },
+  {
+    "array": [
+      "d",
+      "e",
+      "f"
+    ]
+  }
+]
+```
+
+**Expected Output:**
+```json
+[
+  "a",
+  "b",
+  "c",
+  "d",
+  "e",
+  "f"
+]
+```
+
+### List Chunk Even Split
+
+Split array into even chunks.
+Shows breaking an array into equal-sized smaller arrays.
+
+
+**Script:**
+```json
+[
+  "chunk",
+  {
+    "array": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  2
+]
+```
+
+**Expected Output:**
+```json
+[
+  [
+    1,
+    2
+  ],
+  [
+    3,
+    4
+  ],
+  [
+    5,
+    6
+  ]
+]
+```
+
+### List Chunk Uneven Split
+
+Split array into chunks with remainder.
+Demonstrates chunking when array size isn't divisible by chunk size.
+
+
+**Script:**
+```json
+[
+  "chunk",
+  {
+    "array": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ]
+  },
+  3
+]
+```
+
+**Expected Output:**
+```json
+[
+  [
+    1,
+    2,
+    3
+  ],
+  [
+    4,
+    5,
+    6
+  ],
+  [
+    7
+  ]
+]
+```
+
+### List Car Cdr Composition
+
+Compose car and cdr to get second element.
+Shows how functional operations can be composed for complex access.
+
+
+**Script:**
+```json
+[
+  "car",
+  [
+    "cdr",
+    {
+      "array": [
+        "first",
+        "second",
+        "third",
+        "fourth"
+      ]
+    }
+  ]
+]
+```
+
+**Expected Output:**
+```json
+"second"
+```
+
+### List Functional Pipeline
+
+Complex functional composition pipeline.
+Demonstrates chaining multiple functional operations together.
+
+
+**Script:**
+```json
+[
+  "cons",
+  "new_head",
+  [
+    "cdr",
+    [
+      "cdr",
+      {
+        "array": [
+          "remove1",
+          "remove2",
+          "keep1",
+          "keep2"
+        ]
+      }
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  "new_head",
+  "keep1",
+  "keep2"
+]
+```
+
+## Json Patch Examples
+
+### Json Patch Diff Replace
+
+Generate JSON Patch diff with replace operation.
+Demonstrates creating RFC 6902 compliant patches for field changes.
+
+
+**Script:**
+```json
+[
+  "diff",
+  {
+    "name": "Alice",
+    "status": "active"
+  },
+  {
+    "name": "Alice",
+    "status": "inactive"
+  }
+]
+```
+
+**Expected Output:**
+```json
+[
+  {
+    "op": "replace",
+    "path": "/status",
+    "value": "inactive"
+  }
+]
+```
+
+### Json Patch Diff Add Field
+
+Generate JSON Patch diff with add operation.
+Shows patch generation when new fields are added.
+
+
+**Script:**
+```json
+[
+  "diff",
+  {
+    "name": "Bob"
+  },
+  {
+    "name": "Bob",
+    "age": 30
+  }
+]
+```
+
+**Expected Output:**
+```json
+[
+  {
+    "op": "add",
+    "path": "/age",
+    "value": 30
+  }
+]
+```
+
+### Json Patch Diff Remove Field
+
+Generate JSON Patch diff with remove operation.
+Demonstrates patch creation when fields are deleted.
+
+
+**Script:**
+```json
+[
+  "diff",
+  {
+    "name": "Charlie",
+    "temp": "remove_me"
+  },
+  {
+    "name": "Charlie"
+  }
+]
+```
+
+**Expected Output:**
+```json
+[
+  {
+    "op": "remove",
+    "path": "/temp"
+  }
+]
+```
+
+### Json Patch Apply Replace
+
+Apply JSON Patch replace operation.
+Shows applying RFC 6902 patches to modify documents.
+
+
+**Script:**
+```json
+[
+  "patch",
+  {
+    "name": "David",
+    "status": "pending"
+  },
+  {
+    "array": [
+      {
+        "op": "replace",
+        "path": "/status",
+        "value": "completed"
+      }
+    ]
+  }
+]
+```
+
+**Expected Output:**
+```json
+{
+  "name": "David",
+  "status": "completed"
+}
+```
+
+### Json Patch Apply Add
+
+Apply JSON Patch add operation.
+Demonstrates adding new fields to documents via patches.
+
+
+**Script:**
+```json
+[
+  "patch",
+  {
+    "name": "Eve"
+  },
+  {
+    "array": [
+      {
+        "op": "add",
+        "path": "/role",
+        "value": "admin"
+      }
+    ]
+  }
+]
+```
+
+**Expected Output:**
+```json
+{
+  "name": "Eve",
+  "role": "admin"
+}
+```
+
+### Json Patch Apply Remove
+
+Apply JSON Patch remove operation.
+Shows removing fields from documents using patches.
+
+
+**Script:**
+```json
+[
+  "patch",
+  {
+    "name": "Frank",
+    "temp_field": "delete_this",
+    "role": "user"
+  },
+  {
+    "array": [
+      {
+        "op": "remove",
+        "path": "/temp_field"
+      }
+    ]
+  }
+]
+```
+
+**Expected Output:**
+```json
+{
+  "name": "Frank",
+  "role": "user"
+}
+```
+
+### Json Patch Apply Move
+
+Apply JSON Patch move operation.
+Demonstrates moving fields within documents.
+
+
+**Script:**
+```json
+[
+  "patch",
+  {
+    "user_name": "Grace",
+    "profile": {}
+  },
+  {
+    "array": [
+      {
+        "op": "move",
+        "from": "/user_name",
+        "path": "/profile/name"
+      }
+    ]
+  }
+]
+```
+
+**Expected Output:**
+```json
+{
+  "profile": {
+    "name": "Grace"
+  }
+}
+```
+
+### Json Patch Apply Copy
+
+Apply JSON Patch copy operation.
+Shows copying values to new locations in documents.
+
+
+**Script:**
+```json
+[
+  "patch",
+  {
+    "id": 12345,
+    "data": {
+      "important": "value"
+    }
+  },
+  {
+    "array": [
+      {
+        "op": "copy",
+        "from": "/data/important",
+        "path": "/backup_value"
+      }
+    ]
+  }
+]
+```
+
+**Expected Output:**
+```json
+{
+  "id": 12345,
+  "data": {
+    "important": "value"
+  },
+  "backup_value": "value"
+}
+```
+
+### Json Patch Apply Test Success
+
+Apply JSON Patch with successful test operation.
+Demonstrates conditional patching using test operations.
+
+
+**Script:**
+```json
+[
+  "patch",
+  {
+    "version": 1,
+    "data": "current"
+  },
+  {
+    "array": [
+      {
+        "op": "test",
+        "path": "/version",
+        "value": 1
+      },
+      {
+        "op": "replace",
+        "path": "/data",
+        "value": "updated"
+      }
+    ]
+  }
+]
+```
+
+**Expected Output:**
+```json
+{
+  "version": 1,
+  "data": "updated"
+}
+```
+
+### Json Patch Multiple Operations
+
+Apply multiple JSON Patch operations in sequence.
+Shows complex document transformations with multiple patch operations.
+
+
+**Script:**
+```json
+[
+  "patch",
+  {
+    "name": "Henry",
+    "status": "draft",
+    "temp": "remove"
+  },
+  {
+    "array": [
+      {
+        "op": "replace",
+        "path": "/status",
+        "value": "published"
+      },
+      {
+        "op": "remove",
+        "path": "/temp"
+      },
+      {
+        "op": "add",
+        "path": "/published_date",
+        "value": "2024-01-01"
+      }
+    ]
+  }
+]
+```
+
+**Expected Output:**
+```json
+{
+  "name": "Henry",
+  "status": "published",
+  "published_date": "2024-01-01"
+}
+```
+
+### Diff Generation Example
+
+Generate JSON Patch between transformed and original documents.
+Demonstrates diff generation for document transformation.
+
+
+**Script:**
+```json
+[
+  "diff",
+  {
+    "id": 123,
+    "status": "pending",
+    "created": "2023-12-01"
+  },
+  [
+    "obj",
+    [
+      "id",
+      123
+    ],
+    [
+      "status",
+      "completed"
+    ],
+    [
+      "created",
+      "2023-12-01"
+    ],
+    [
+      "completed_date",
+      "2024-01-01"
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  {
+    "op": "replace",
+    "path": "/status",
+    "value": "completed"
+  },
+  {
+    "op": "add",
+    "path": "/completed_date",
+    "value": "2024-01-01"
+  }
+]
+```
+
+## Lambda Functions Examples
+
+### Lambda Simple Transform
+
+Simple lambda function for array transformation.
+Demonstrates basic lambda syntax with single parameter.
+
+
+**Script:**
+```json
+[
+  "map",
+  {
+    "array": [
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  [
+    "lambda",
+    [
+      "x"
+    ],
+    [
+      "+",
+      [
+        "$",
+        "/x"
+      ],
+      100
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  101,
+  102,
+  103,
+  104
+]
+```
+
+### Lambda Conditional Logic
+
+Lambda with conditional logic.
+Shows lambda functions containing if-then-else expressions.
+
+
+**Script:**
+```json
+[
+  "map",
+  {
+    "array": [
+      1,
+      5,
+      10,
+      15
+    ]
+  },
+  [
+    "lambda",
+    [
+      "x"
+    ],
+    [
+      "if",
+      [
+        ">",
+        [
+          "$",
+          "/x"
+        ],
+        5
+      ],
+      [
+        "*",
+        [
+          "$",
+          "/x"
+        ],
+        2
+      ],
+      [
+        "$",
+        "/x"
+      ]
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  1,
+  5,
+  20,
+  30
+]
+```
+
+### Lambda Multiple Parameters
+
+Lambda with multiple parameters in reduce.
+Demonstrates lambda functions with accumulator and item parameters using Permuto for string concatenation.
+
+
+**Script:**
+```json
+"[\"reduce\",\n\t{\"array\": [\"Hello\", \"World\", \"From\", \"Computo\"]},\n\t[\"lambda\",\n\t\t[\"acc\", \"word\"],\n\t\t[\"concat\", [\"$\", \"/acc\"], [\"$\", \"/word\"]]\n\t],\n\t\"\"\n]\n"
+```
+
+**Expected Output:**
+```json
+"HelloWorldFromComputo"
+```
+
+### Lambda Nested Operations
+
+Lambda with nested arithmetic operations.
+Shows complex expressions within lambda bodies.
+
+
+**Script:**
+```json
+[
+  "map",
+  {
+    "array": [
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  [
+    "lambda",
+    [
+      "x"
+    ],
+    [
+      "+",
+      [
+        "*",
+        [
+          "$",
+          "/x"
+        ],
+        [
+          "$",
+          "/x"
+        ]
+      ],
+      [
+        "*",
+        2,
+        [
+          "$",
+          "/x"
+        ]
+      ]
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  3,
+  8,
+  15,
+  24
+]
+```
+
+### Lambda Variables For Reuse
+
+Reusable lambda functions stored in variables.
+Demonstrates storing lambda functions in let variables for reuse.
+
+
+**Script:**
+```json
+[
+  "let",
+  [
+    [
+      "doubler",
+      [
+        "lambda",
+        [
+          "x"
+        ],
+        [
+          "*",
+          [
+            "$",
+            "/x"
+          ],
+          2
+        ]
+      ]
+    ]
+  ],
+  [
+    "obj",
+    [
+      "first_list",
+      [
+        "map",
+        {
+          "array": [
+            1,
+            2,
+            3
+          ]
+        },
+        [
+          "$",
+          "/doubler"
+        ]
+      ]
+    ],
+    [
+      "second_list",
+      [
+        "map",
+        {
+          "array": [
+            10,
+            20,
+            30
+          ]
+        },
+        [
+          "$",
+          "/doubler"
+        ]
+      ]
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+{
+  "first_list": [
+    2,
+    4,
+    6
+  ],
+  "second_list": [
+    20,
+    40,
+    60
+  ]
+}
+```
+
+### Lambda Multiple Reusable Functions
+
+Multiple lambda variables for different operations.
+Shows storing and reusing multiple lambda functions.
+
+
+**Script:**
+```json
+[
+  "let",
+  [
+    [
+      "add_ten",
+      [
+        "lambda",
+        [
+          "x"
+        ],
+        [
+          "+",
+          [
+            "$",
+            "/x"
+          ],
+          10
+        ]
+      ]
+    ],
+    [
+      "gt_three",
+      [
+        "lambda",
+        [
+          "x"
+        ],
+        [
+          ">",
+          [
+            "$",
+            "/x"
+          ],
+          3
+        ]
+      ]
+    ]
+  ],
+  [
+    "map",
+    [
+      "filter",
+      {
+        "array": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ]
+      },
+      [
+        "$",
+        "/gt_three"
+      ]
+    ],
+    [
+      "$",
+      "/add_ten"
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  14,
+  15,
+  16
+]
+```
+
+### Lambda Closure Behavior
+
+Lambda function accessing outer scope variables.
+Demonstrates variable capture in lambda expressions.
+
+
+**Script:**
+```json
+[
+  "let",
+  [
+    [
+      "multiplier",
+      3
+    ]
+  ],
+  [
+    "map",
+    {
+      "array": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    [
+      "lambda",
+      [
+        "x"
+      ],
+      [
+        "*",
+        [
+          "$",
+          "/x"
+        ],
+        [
+          "$",
+          "/multiplier"
+        ]
+      ]
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  3,
+  6,
+  9,
+  12
+]
+```
+
+## Logical Examples
+
+### Logical And All True
+
+Logical AND with all true conditions.
+Demonstrates short-circuit evaluation - all expressions must be true.
+
+
+**Script:**
+```json
+[
+  "&&",
+  true,
+  [
+    ">",
+    10,
+    5
+  ],
+  [
+    "==",
+    2,
+    2
+  ]
+]
+```
+
+**Expected Output:**
+```json
+true
+```
+
+### Logical And Short Circuit
+
+Logical AND with short-circuit evaluation.
+Shows how AND stops at first false condition, preventing division by zero.
+
+
+**Script:**
+```json
+[
+  "&&",
+  false,
+  [
+    "/",
+    1,
+    0
+  ]
+]
+```
+
+**Expected Output:**
+```json
+false
+```
+
+### Logical Or First True
+
+Logical OR with short-circuit evaluation.
+Demonstrates that OR returns true when first condition is true.
+
+
+**Script:**
+```json
+[
+  "||",
+  true,
+  [
+    "/",
+    1,
+    0
+  ]
+]
+```
+
+**Expected Output:**
+```json
+true
+```
+
+### Logical Or Second True
+
+Logical OR with second condition true.
+Shows OR continuing evaluation until it finds a true condition.
+
+
+**Script:**
+```json
+[
+  "||",
+  false,
+  [
+    "==",
+    3,
+    3
+  ],
+  [
+    "!=",
+    1,
+    1
+  ]
+]
+```
+
+**Expected Output:**
+```json
+true
+```
+
+### Logical Or All False
+
+Logical OR with all false conditions.
+Shows OR behavior when all conditions are false.
+
+
+**Script:**
+```json
+[
+  "||",
+  false,
+  [
+    ">",
+    2,
+    5
+  ],
+  [
+    "==",
+    "a",
+    "b"
+  ]
+]
+```
+
+**Expected Output:**
+```json
+false
+```
+
+## Multiple Inputs Examples
+
+### Multiple Inputs Access All
+
+Access all input documents using $inputs.
+Demonstrates the new system variable for multiple input handling.
+
+
+**Script:**
+```json
+[
+  "$inputs"
+]
+```
+
+**Multiple Inputs:**
+
+*Input 0:*
+```json
+{
+  "type": "user",
+  "name": "Alice"
+}
+```
+
+*Input 1:*
+```json
+{
+  "type": "config",
+  "theme": "dark"
+}
+```
+
+*Input 2:*
+```json
+{
+  "type": "metadata",
+  "version": "1.0"
+}
+```
+**Expected Output:**
+```json
+[
+  {
+    "type": "user",
+    "name": "Alice"
+  },
+  {
+    "type": "config",
+    "theme": "dark"
+  },
+  {
+    "type": "metadata",
+    "version": "1.0"
+  }
+]
+```
+
+### Multiple Inputs By Index
+
+Access specific inputs by index.
+Shows extracting individual documents from multiple inputs.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "first_name",
+    [
+      "get",
+      [
+        "$inputs"
+      ],
+      "/0/name"
+    ]
+  ],
+  [
+    "second_name",
+    [
+      "get",
+      [
+        "$inputs"
+      ],
+      "/1/name"
+    ]
+  ]
+]
+```
+
+**Multiple Inputs:**
+
+*Input 0:*
+```json
+{
+  "name": "Alice",
+  "role": "admin"
+}
+```
+
+*Input 1:*
+```json
+{
+  "name": "Bob",
+  "role": "user"
+}
+```
+**Expected Output:**
+```json
+{
+  "first_name": "Alice",
+  "second_name": "Bob"
+}
+```
+
+### Multi Input Merge
+
+Merge data from multiple inputs using $inputs.
+Shows how to access different input files and combine them.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "user",
+    [
+      "get",
+      [
+        "$inputs"
+      ],
+      "/0"
+    ]
+  ],
+  [
+    "config",
+    [
+      "get",
+      [
+        "$inputs"
+      ],
+      "/1"
+    ]
+  ]
+]
+```
+
+**Multiple Inputs:**
+
+*Input 0:*
+```json
+{
+  "name": "Alice",
+  "id": 123
+}
+```
+
+*Input 1:*
+```json
+{
+  "theme": "dark",
+  "lang": "en"
+}
+```
+**Expected Output:**
+```json
+{
+  "user": {
+    "name": "Alice",
+    "id": 123
+  },
+  "config": {
+    "theme": "dark",
+    "lang": "en"
+  }
+}
+```
+
+### Input Count
+
+Count the number of input documents.
+Demonstrates using count operator with the $inputs array.
+
+
+**Script:**
+```json
+[
+  "count",
+  [
+    "$inputs"
+  ]
+]
+```
+
+**Multiple Inputs:**
+
+*Input 0:*
+```json
+{
+  "data": "first"
+}
+```
+
+*Input 1:*
+```json
+{
+  "data": "second"
+}
+```
+
+*Input 2:*
+```json
+{
+  "data": "third"
+}
+```
+**Expected Output:**
+```json
+3
+```
+
+### Backward Compatibility
+
+Backward compatibility - $input equals first input.
+Shows that existing scripts still work with multiple inputs.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "old_way",
+    [
+      "$input"
+    ]
+  ],
+  [
+    "new_way",
+    [
+      "get",
+      [
+        "$inputs"
+      ],
+      "/0"
+    ]
+  ]
+]
+```
+
+**Multiple Inputs:**
+
+*Input 0:*
+```json
+{
+  "message": "Hello World"
+}
+```
+**Expected Output:**
+```json
+{
+  "old_way": {
+    "message": "Hello World"
+  },
+  "new_way": {
+    "message": "Hello World"
+  }
+}
+```
+
+## Permuto Examples
+
+### Permuto Simple Interpolation
+
+Simple Permuto template with string interpolation.
+Demonstrates basic variable substitution in strings.
+
+
+**Script:**
+```json
+[
+  "permuto.apply",
+  {
+    "greeting": "Hello ${/name}!",
+    "role": "User: ${/role}"
+  },
+  {
+    "name": "Alice",
+    "role": "Administrator"
+  }
+]
+```
+
+**Flags:** `--interpolation`
+
+**Expected Output:**
+```json
+{
+  "greeting": "Hello Alice!",
+  "role": "User: Administrator"
+}
+```
+
+### Permuto With Input Data
+
+Permuto template using input data as context.
+Shows using input document as the template context.
+
+
+**Script:**
+```json
+[
+  "permuto.apply",
+  {
+    "summary": "Profile: ${/profile/name} (${/profile/email})",
+    "status": "Active: ${/active}"
+  },
+  [
+    "$input"
+  ]
+]
+```
+
+**Input:**
+```json
+{
+  "profile": {
+    "name": "Bob",
+    "email": "bob@example.com"
+  },
+  "active": true
+}
+```
+
+**Flags:** `--interpolation`
+
+**Expected Output:**
+```json
+{
+  "summary": "Profile: Bob (bob@example.com)",
+  "status": "Active: true"
+}
+```
+
+### Permuto Nested Object Access
+
+Permuto templates with deep object access.
+Demonstrates accessing nested data in template interpolation.
+
+
+**Script:**
+```json
+[
+  "permuto.apply",
+  {
+    "message": "User ${/user/profile/firstName} ${/user/profile/lastName} has ${/user/stats/points} points"
+  },
+  {
+    "user": {
+      "profile": {
+        "firstName": "Charlie",
+        "lastName": "Brown"
+      },
+      "stats": {
+        "points": 1500
+      }
+    }
+  }
+]
+```
+
+**Flags:** `--interpolation`
+
+**Expected Output:**
+```json
+{
+  "message": "User Charlie Brown has 1500 points"
+}
+```
+
+### Permuto Array Access
+
+Permuto templates accessing array elements.
+Shows using array indices in template paths.
+
+
+**Script:**
+```json
+[
+  "permuto.apply",
+  {
+    "first_item": "First: ${/items/0}",
+    "last_item": "Last: ${/items/2}"
+  },
+  {
+    "items": [
+      "apple",
+      "banana",
+      "cherry"
+    ]
+  }
+]
+```
+
+**Flags:** `--interpolation`
+
+**Expected Output:**
+```json
+{
+  "first_item": "First: apple",
+  "last_item": "Last: cherry"
+}
+```
+
+### Permuto Computed Context
+
+Permuto with computed template context.
+Demonstrates building template context using Computo operations.
+
+
+**Script:**
+```json
+[
+  "permuto.apply",
+  {
+    "report": "Total: ${/sum}, Average: ${/avg}"
+  },
+  [
+    "obj",
+    [
+      "sum",
+      [
+        "reduce",
+        {
+          "array": [
+            10,
+            20,
+            30
+          ]
+        },
+        [
+          "lambda",
+          [
+            "a",
+            "b"
+          ],
+          [
+            "+",
+            [
+              "$",
+              "/a"
+            ],
+            [
+              "$",
+              "/b"
+            ]
+          ]
+        ],
+        0
+      ]
+    ],
+    [
+      "avg",
+      [
+        "/",
+        60,
+        3
+      ]
+    ]
+  ]
+]
+```
+
+**Flags:** `--interpolation`
+
+**Expected Output:**
+```json
+{
+  "report": "Total: 60, Average: 20.000000"
+}
+```
+
+## Real World Examples
+
+### Api Response Transform
+
+Transform API response structure.
+Demonstrates typical API data transformation patterns in real applications.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "users",
+    [
+      "map",
+      [
+        "get",
+        [
+          "$input"
+        ],
+        "/data"
+      ],
+      [
+        "lambda",
+        [
+          "user"
+        ],
+        [
+          "obj",
+          [
+            "id",
+            [
+              "get",
+              [
+                "$",
+                "/user"
+              ],
+              "/userId"
+            ]
+          ],
+          [
+            "name",
+            [
+              "get",
+              [
+                "$",
+                "/user"
+              ],
+              "/fullName"
+            ]
+          ],
+          [
+            "active",
+            [
+              "==",
+              [
+                "get",
+                [
+                  "$",
+                  "/user"
+                ],
+                "/status"
+              ],
+              "active"
+            ]
+          ]
+        ]
+      ]
+    ]
+  ],
+  [
+    "metadata",
+    [
+      "obj",
+      [
+        "total",
+        [
+          "count",
+          [
+            "get",
+            [
+              "$input"
+            ],
+            "/data"
+          ]
+        ]
+      ],
+      [
+        "processed_at",
+        "2024-01-01"
+      ]
+    ]
+  ]
+]
+```
+
+**Input:**
+```json
+{
+  "data": [
+    {
+      "userId": 1,
+      "fullName": "Alice Smith",
+      "status": "active"
+    },
+    {
+      "userId": 2,
+      "fullName": "Bob Jones",
+      "status": "inactive"
+    }
+  ]
+}
+```
+
+**Expected Output:**
+```json
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Alice Smith",
+      "active": true
+    },
+    {
+      "id": 2,
+      "name": "Bob Jones",
+      "active": false
+    }
+  ],
+  "metadata": {
+    "total": 2,
+    "processed_at": "2024-01-01"
+  }
+}
+```
+
+### Configuration Merge Multiple Sources
+
+Merge configuration from multiple input sources.
+Shows practical configuration management with precedence rules.
+
+
+**Script:**
+```json
+[
+  "let",
+  [
+    [
+      "defaults",
+      [
+        "get",
+        [
+          "$inputs"
+        ],
+        "/0"
+      ]
+    ],
+    [
+      "environment",
+      [
+        "get",
+        [
+          "$inputs"
+        ],
+        "/1"
+      ]
+    ],
+    [
+      "user_prefs",
+      [
+        "get",
+        [
+          "$inputs"
+        ],
+        "/2"
+      ]
+    ]
+  ],
+  [
+    "obj",
+    [
+      "database",
+      [
+        "obj",
+        [
+          "host",
+          [
+            "get",
+            [
+              "$",
+              "/user_prefs"
+            ],
+            "/database/host"
+          ]
+        ],
+        [
+          "port",
+          [
+            "get",
+            [
+              "$",
+              "/defaults"
+            ],
+            "/database/port"
+          ]
+        ],
+        [
+          "ssl",
+          [
+            "get",
+            [
+              "$",
+              "/environment"
+            ],
+            "/database/ssl"
+          ]
+        ]
+      ]
+    ],
+    [
+      "logging",
+      [
+        "get",
+        [
+          "$",
+          "/environment"
+        ],
+        "/logging"
+      ]
+    ],
+    [
+      "theme",
+      [
+        "get",
+        [
+          "$",
+          "/user_prefs"
+        ],
+        "/ui/theme"
+      ]
+    ]
+  ]
+]
+```
+
+**Multiple Inputs:**
+
+*Input 0:*
+```json
+{
+  "database": {
+    "host": "localhost",
+    "port": 5432
+  },
+  "logging": {
+    "level": "info"
+  }
+}
+```
+
+*Input 1:*
+```json
+{
+  "database": {
+    "ssl": true
+  },
+  "logging": {
+    "level": "debug"
+  }
+}
+```
+
+*Input 2:*
+```json
+{
+  "database": {
+    "host": "prod.example.com"
+  },
+  "ui": {
+    "theme": "dark"
+  }
+}
+```
+**Expected Output:**
+```json
+{
+  "database": {
+    "host": "prod.example.com",
+    "port": 5432,
+    "ssl": true
+  },
+  "logging": {
+    "level": "debug"
+  },
+  "theme": "dark"
+}
+```
+
+### Document Versioning Workflow
+
+Document versioning with patch generation and rollback capability.
+Demonstrates creating version control for documents with change tracking.
+
+
+**Script:**
+```json
+[
+  "let",
+  [
+    [
+      "original",
+      [
+        "get",
+        [
+          "$inputs"
+        ],
+        "/0"
+      ]
+    ],
+    [
+      "modified",
+      [
+        "get",
+        [
+          "$inputs"
+        ],
+        "/1"
+      ]
+    ],
+    [
+      "changes",
+      [
+        "diff",
+        [
+          "$",
+          "/original"
+        ],
+        [
+          "$",
+          "/modified"
+        ]
+      ]
+    ],
+    [
+      "rollback_patch",
+      [
+        "diff",
+        [
+          "$",
+          "/modified"
+        ],
+        [
+          "$",
+          "/original"
+        ]
+      ]
+    ]
+  ],
+  [
+    "obj",
+    [
+      "document_id",
+      [
+        "get",
+        [
+          "$",
+          "/original"
+        ],
+        "/id"
+      ]
+    ],
+    [
+      "version_info",
+      [
+        "obj",
+        [
+          "from_version",
+          [
+            "get",
+            [
+              "$",
+              "/original"
+            ],
+            "/version"
+          ]
+        ],
+        [
+          "to_version",
+          [
+            "get",
+            [
+              "$",
+              "/modified"
+            ],
+            "/version"
+          ]
+        ],
+        [
+          "change_count",
+          [
+            "count",
+            [
+              "$",
+              "/changes"
+            ]
+          ]
+        ]
+      ]
+    ],
+    [
+      "forward_patch",
+      [
+        "$",
+        "/changes"
+      ]
+    ],
+    [
+      "rollback_patch",
+      [
+        "$",
+        "/rollback_patch"
+      ]
+    ],
+    [
+      "can_rollback",
+      [
+        ">",
+        [
+          "count",
+          [
+            "$",
+            "/rollback_patch"
+          ]
+        ],
+        0
+      ]
+    ]
+  ]
+]
+```
+
+**Multiple Inputs:**
+
+*Input 0:*
+```json
+{
+  "id": "doc_001",
+  "version": 1,
+  "title": "Original Title",
+  "content": "Original content"
+}
+```
+
+*Input 1:*
+```json
+{
+  "id": "doc_001",
+  "version": 2,
+  "title": "Updated Title",
+  "content": "Updated content",
+  "author": "Alice"
+}
+```
+**Expected Output:**
+```json
+{
+  "document_id": "doc_001",
+  "version_info": {
+    "from_version": 1,
+    "to_version": 2,
+    "change_count": 3
+  },
+  "forward_patch": [
+    {
+      "op": "replace",
+      "path": "/version",
+      "value": 2
+    },
+    {
+      "op": "replace",
+      "path": "/title",
+      "value": "Updated Title"
+    },
+    {
+      "op": "replace",
+      "path": "/content",
+      "value": "Updated content"
+    },
+    {
+      "op": "add",
+      "path": "/author",
+      "value": "Alice"
+    }
+  ],
+  "rollback_patch": [
+    {
+      "op": "replace",
+      "path": "/version",
+      "value": 1
+    },
+    {
+      "op": "replace",
+      "path": "/title",
+      "value": "Original Title"
+    },
+    {
+      "op": "replace",
+      "path": "/content",
+      "value": "Original content"
+    },
+    {
+      "op": "remove",
+      "path": "/author"
+    }
+  ],
+  "can_rollback": true
+}
+```
+
+### Functional Pipeline Multi Input
+
+Functional pipeline processing using car/cdr for multiple inputs.
+Shows advanced functional programming patterns for processing input sequences.
+
+
+**Script:**
+```json
+[
+  "let",
+  [
+    [
+      "initial_doc",
+      [
+        "car",
+        [
+          "$inputs"
+        ]
+      ]
+    ],
+    [
+      "patch_sequence",
+      [
+        "cdr",
+        [
+          "$inputs"
+        ]
+      ]
+    ],
+    [
+      "final_doc",
+      [
+        "reduce",
+        [
+          "$",
+          "/patch_sequence"
+        ],
+        [
+          "lambda",
+          [
+            "doc",
+            "patch"
+          ],
+          [
+            "patch",
+            [
+              "$",
+              "/doc"
+            ],
+            [
+              "$",
+              "/patch"
+            ]
+          ]
+        ],
+        [
+          "$",
+          "/initial_doc"
+        ]
+      ]
+    ]
+  ],
+  [
+    "obj",
+    [
+      "initial_state",
+      [
+        "$",
+        "/initial_doc"
+      ]
+    ],
+    [
+      "final_state",
+      [
+        "$",
+        "/final_doc"
+      ]
+    ],
+    [
+      "transformations_applied",
+      [
+        "count",
+        [
+          "$",
+          "/patch_sequence"
+        ]
+      ]
+    ],
+    [
+      "title_changed",
+      [
+        "!=",
+        [
+          "get",
+          [
+            "$",
+            "/initial_doc"
+          ],
+          "/title"
+        ],
+        [
+          "get",
+          [
+            "$",
+            "/final_doc"
+          ],
+          "/title"
+        ]
+      ]
+    ]
+  ]
+]
+```
+
+**Multiple Inputs:**
+
+*Input 0:*
+```json
+{
+  "id": "doc_123",
+  "title": "Draft",
+  "status": "draft",
+  "content": "Initial content"
+}
+```
+
+*Input 1:*
+```json
+[
+  {
+    "op": "replace",
+    "path": "/status",
+    "value": "review"
+  }
+]
+```
+
+*Input 2:*
+```json
+[
+  {
+    "op": "replace",
+    "path": "/title",
+    "value": "Final Document"
+  }
+]
+```
+
+*Input 3:*
+```json
+[
+  {
+    "op": "add",
+    "path": "/reviewed_by",
+    "value": "Editor"
+  }
+]
+```
+
+*Input 4:*
+```json
+[
+  {
+    "op": "replace",
+    "path": "/status",
+    "value": "published"
+  }
+]
+```
+**Expected Output:**
+```json
+{
+  "initial_state": {
+    "id": "doc_123",
+    "title": "Draft",
+    "status": "draft",
+    "content": "Initial content"
+  },
+  "final_state": {
+    "id": "doc_123",
+    "title": "Final Document",
+    "status": "published",
+    "content": "Initial content",
+    "reviewed_by": "Editor"
+  },
+  "transformations_applied": 4,
+  "title_changed": true
+}
+```
+
+### Data Aggregation Report
+
+Data aggregation and reporting pipeline.
+Demonstrates complex data processing for analytics and reporting.
+
+
+**Script:**
+```json
+[
+  "let",
+  [
+    [
+      "sales_data",
+      [
+        "get",
+        [
+          "$input"
+        ],
+        "/sales"
+      ]
+    ],
+    [
+      "total_revenue",
+      [
+        "reduce",
+        [
+          "$",
+          "/sales_data"
+        ],
+        [
+          "lambda",
+          [
+            "sum",
+            "sale"
+          ],
+          [
+            "+",
+            [
+              "$",
+              "/sum"
+            ],
+            [
+              "get",
+              [
+                "$",
+                "/sale"
+              ],
+              "/amount"
+            ]
+          ]
+        ],
+        0
+      ]
+    ],
+    [
+      "high_value_sales",
+      [
+        "filter",
+        [
+          "$",
+          "/sales_data"
+        ],
+        [
+          "lambda",
+          [
+            "sale"
+          ],
+          [
+            ">",
+            [
+              "get",
+              [
+                "$",
+                "/sale"
+              ],
+              "/amount"
+            ],
+            1000
+          ]
+        ]
+      ]
+    ],
+    [
+      "top_regions",
+      [
+        "reduce",
+        [
+          "$",
+          "/sales_data"
+        ],
+        [
+          "lambda",
+          [
+            "regions",
+            "sale"
+          ],
+          [
+            "let",
+            [
+              [
+                "region",
+                [
+                  "get",
+                  [
+                    "$",
+                    "/sale"
+                  ],
+                  "/region"
+                ]
+              ],
+              [
+                "amount",
+                [
+                  "get",
+                  [
+                    "$",
+                    "/sale"
+                  ],
+                  "/amount"
+                ]
+              ]
+            ],
+            [
+              "if",
+              [
+                "get",
+                [
+                  "$",
+                  "/regions"
+                ],
+                [
+                  "$",
+                  "/region"
+                ]
+              ],
+              [
+                "obj",
+                [
+                  "$",
+                  "/region"
+                ],
+                [
+                  "+",
+                  [
+                    "get",
+                    [
+                      "$",
+                      "/regions"
+                    ],
+                    [
+                      "$",
+                      "/region"
+                    ]
+                  ],
+                  [
+                    "$",
+                    "/amount"
+                  ]
+                ]
+              ],
+              [
+                "obj",
+                [
+                  "$",
+                  "/region"
+                ],
+                [
+                  "$",
+                  "/amount"
+                ]
+              ]
+            ]
+          ]
+        ],
+        {}
+      ]
+    ]
+  ],
+  [
+    "obj",
+    [
+      "summary",
+      [
+        "obj",
+        [
+          "total_sales",
+          [
+            "count",
+            [
+              "$",
+              "/sales_data"
+            ]
+          ]
+        ],
+        [
+          "total_revenue",
+          [
+            "$",
+            "/total_revenue"
+          ]
+        ],
+        [
+          "average_sale",
+          [
+            "/",
+            [
+              "$",
+              "/total_revenue"
+            ],
+            [
+              "count",
+              [
+                "$",
+                "/sales_data"
+              ]
+            ]
+          ]
+        ]
+      ]
+    ],
+    [
+      "high_value",
+      [
+        "obj",
+        [
+          "count",
+          [
+            "count",
+            [
+              "$",
+              "/high_value_sales"
+            ]
+          ]
+        ],
+        [
+          "revenue",
+          [
+            "reduce",
+            [
+              "$",
+              "/high_value_sales"
+            ],
+            [
+              "lambda",
+              [
+                "sum",
+                "sale"
+              ],
+              [
+                "+",
+                [
+                  "$",
+                  "/sum"
+                ],
+                [
+                  "get",
+                  [
+                    "$",
+                    "/sale"
+                  ],
+                  "/amount"
+                ]
+              ]
+            ],
+            0
+          ]
+        ]
+      ]
+    ],
+    [
+      "by_region",
+      [
+        "$",
+        "/top_regions"
+      ]
+    ]
+  ]
+]
+```
+
+**Input:**
+```json
+{
+  "sales": [
+    {
+      "region": "North",
+      "amount": 1500,
+      "product": "A"
+    },
+    {
+      "region": "South",
+      "amount": 800,
+      "product": "B"
+    },
+    {
+      "region": "North",
+      "amount": 2000,
+      "product": "C"
+    },
+    {
+      "region": "East",
+      "amount": 1200,
+      "product": "A"
+    }
+  ]
+}
+```
+
+**Expected Output:**
+```json
+{
+  "summary": {
+    "total_sales": 4,
+    "total_revenue": 5500,
+    "average_sale": 1375
+  },
+  "high_value": {
+    "count": 3,
+    "revenue": 4700
+  },
+  "by_region": {
+    "North": 3500,
+    "South": 800,
+    "East": 1200
+  }
+}
+```
+
+
+
+## Running the Examples
+
+Each example can be tested using the extracted test files:
+
 ```bash
-# Interpolation + diff mode
-computo --interpolation --diff transform.json input.json
+# Generate test files from this documentation
+python generate_examples.py
 
-# Comments with other flags
-computo --comments --interpolation --pretty=2 script.json input.json
+# Run all tests
+cd examples && ./run_all.sh
 
-# Multiple flags
-computo --comments --interpolation --missing-key=error --max-depth=16 script.json input.json
-
-# Pretty printing with other options
-computo --pretty=2 --interpolation script.json input.json
+# Run specific example
+cd examples/arithmetic/basic_multiplication && ./test.sh
 ```
 
-## Performance & Limits
-
-- **Input Size**: No hard limits, bounded by available memory
-- **Nesting Depth**: No stack overflow limits due to tail call optimization (TCO)
-- **Recursion Depth**: Configurable via Permuto options (default: 100)
-- **Array Operations**: Optimized for large datasets
-- **JSON Patch**: Supports all RFC 6902 operations
-- **Memory Usage**: Immutable operations create new objects, original data unchanged
-
-### Tail Call Optimization
-
-Computo uses tail call optimization to handle deeply nested control flow without stack overflow. This enables safe execution of scripts with arbitrary levels of `if` and `let` nesting, making the engine suitable for complex, programmatically-generated transformations.
-
-## Dependencies
-
-- **nlohmann/json** - Core JSON library with JSON Patch support
-- **Permuto** - Template processing library  
-- **Google Test** - Testing framework (for development)
-
-## Project Structure
-
-```
-computo/
-├── CMakeLists.txt           # Build configuration
-├── README.md               # This documentation
-├── CLAUDE.md                # AI development guidance
-├── TECHNICAL_DETAILS.md     # Implementation details
-├── PermutoREADME.md        # Permuto documentation
-├── book/                   # Learning guide
-│   └── 00_index.md
-├── cli/                    # Command-line tool
-├── include/computo/        # Public headers
-├── src/                    # Library implementation
-└── tests/                  # Test suite (153 tests, 100% passing)
-```
-
-## Development & Testing
-
-- **Test Coverage**: 153 comprehensive tests covering all operators and edge cases
-- **JSON Patch Compliance**: Full RFC 6902 implementation with round-trip testing
-- **Error Handling**: Comprehensive exception testing for all failure modes
-- **Multi-Input Support**: Extensive testing of multiple input scenarios
-- **Backward Compatibility**: All existing scripts work unchanged
-
-## Safety & Security
-
-- **Sandboxed execution**: No file system or network access
-- **Memory safe**: Built-in recursion limits and cycle detection
-- **Input validation**: All operator arguments are validated
-- **Type preservation**: Maintains JSON data types throughout transformations
-- **Immutable operations**: Original data never modified
-- **RFC Compliance**: JSON Patch operations follow standard specifications
-
-## Migration Guide
-
-### From Single Input to Multiple Inputs
-```json
-// Old way (still works)
-["get", ["$input"], "/field"]
-
-// New way for multiple inputs
-["get", ["$inputs"], "/0/field"]  // First input
-["get", ["$inputs"], "/1/field"]  // Second input
-
-// Backward compatibility guaranteed
-// $input is equivalent to: ["get", ["$inputs"], "/0"]
-```
-
-### Adding Diff/Patch to Existing Workflows
-```json
-// Before: Direct transformation
-["obj", ["status", "processed"]]
-
-// After: Generate patch for the same transformation
-["diff", ["$input"], ["obj", ["status", "processed"]]]
-
-// Or apply external patches
-["patch", ["$input"], ["get", ["$inputs"], "/1"]]  // Apply patch from second input
-```
-
-### Using car/cdr for Cleaner Multiple Input Processing
-```json
-// Old way: Manual indexing
-["let", [
-    ["initial", ["get", ["$inputs"], "/0"]],
-    ["patch1", ["get", ["$inputs"], "/1"]],
-    ["patch2", ["get", ["$inputs"], "/2"]]
-  ],
-  ["patch", ["patch", ["$", "/initial"], ["$", "/patch1"]], ["$", "/patch2"]]
-]
-
-// New way: Functional with car/cdr
-["reduce", 
-  ["cdr", ["$inputs"]],                    // All patches (skip first input)
-  ["lambda", ["state", "patch"],
-    ["patch", ["$", "/state"], ["$", "/patch"]]
-  ],
-  ["car", ["$inputs"]]                     // Initial state (first input)
-]
-
-// Benefits: Works with any number of inputs, more readable, functional style
-```
+---
+*This README.md was generated from README.toml - edit that file instead.*
