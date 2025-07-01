@@ -1949,6 +1949,408 @@ Shows combining logical operators in if conditions.
 "in_range"
 ```
 
+## Cpp Builder Examples
+
+### Builder Basic Vs Manual
+
+ComputoBuilder vs manual JSON construction comparison.
+Shows how the builder pattern eliminates verbose JSON syntax in C++ tests.
+Note: This is C++ API documentation - builder creates the JSON shown in 'script'.
+
+
+**Script:**
+```json
+[
+  "+",
+  15,
+  27
+]
+```
+
+**Expected Output:**
+```json
+42
+```
+
+### Builder Array Construction
+
+Builder pattern for array construction.
+Demonstrates how builder eliminates the painful array wrapper syntax.
+Note: CB::array creates the JSON array structure shown in 'script'.
+
+
+**Script:**
+```json
+{
+  "array": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ]
+}
+```
+
+**Expected Output:**
+```json
+[
+  1,
+  2,
+  3,
+  4,
+  5
+]
+```
+
+### Builder Complex Nesting
+
+Builder pattern for complex nested operations.
+Shows how builder makes deeply nested expressions readable and maintainable.
+Note: This C++ builder code produces the JSON script shown.
+
+
+**Script:**
+```json
+[
+  "map",
+  {
+    "array": [
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  [
+    "lambda",
+    [
+      "x"
+    ],
+    [
+      "+",
+      [
+        "$",
+        "/x"
+      ],
+      10
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  11,
+  12,
+  13,
+  14
+]
+```
+
+### Builder Object Construction
+
+Fluent object construction with builder pattern.
+Demonstrates chaining methods for building complex objects.
+Note: Shows C++ fluent API that generates the JSON object structure.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "name",
+    "Alice"
+  ],
+  [
+    "age",
+    30
+  ],
+  [
+    "score",
+    [
+      "+",
+      85,
+      15
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+{
+  "name": "Alice",
+  "age": 30,
+  "score": 100
+}
+```
+
+### Builder Variables And Let
+
+Variable binding with builder pattern.
+Shows clean syntax for let expressions and variable references.
+Note: Builder provides type-safe variable handling in C++.
+
+
+**Script:**
+```json
+[
+  "let",
+  [
+    [
+      "multiplier",
+      3
+    ],
+    [
+      "base",
+      14
+    ]
+  ],
+  [
+    "+",
+    [
+      "*",
+      [
+        "$",
+        "/base"
+      ],
+      [
+        "$",
+        "/multiplier"
+      ]
+    ],
+    [
+      "$",
+      "/base"
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+56
+```
+
+### Builder Conditional Logic
+
+Conditional expressions with builder pattern.
+Demonstrates readable if-then-else construction in C++.
+Note: Builder methods provide compile-time safety for conditional logic.
+
+
+**Script:**
+```json
+[
+  "if",
+  [
+    ">",
+    [
+      "get",
+      [
+        "$input"
+      ],
+      "/value"
+    ],
+    50
+  ],
+  "high",
+  "low"
+]
+```
+
+**Input:**
+```json
+{
+  "value": 75
+}
+```
+
+**Expected Output:**
+```json
+"high"
+```
+
+### Builder Data Access Patterns
+
+Data access patterns with builder.
+Shows input access, JSON pointer usage, and data extraction.
+Note: Type-safe data access with compile-time path validation.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "user",
+    [
+      "get",
+      [
+        "$input"
+      ],
+      "/user/name"
+    ]
+  ],
+  [
+    "processed",
+    true
+  ]
+]
+```
+
+**Input:**
+```json
+{
+  "user": {
+    "name": "Bob",
+    "email": "bob@test.com"
+  }
+}
+```
+
+**Expected Output:**
+```json
+{
+  "user": "Bob",
+  "processed": true
+}
+```
+
+### Builder Functional Operations
+
+Functional array operations with builder.
+Demonstrates map, filter, and reduce operations with readable syntax.
+Note: Builder makes functional programming patterns accessible in C++.
+
+
+**Script:**
+```json
+[
+  "map",
+  [
+    "filter",
+    {
+      "array": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    [
+      "lambda",
+      [
+        "x"
+      ],
+      [
+        ">",
+        [
+          "$",
+          "/x"
+        ],
+        3
+      ]
+    ]
+  ],
+  [
+    "lambda",
+    [
+      "x"
+    ],
+    [
+      "*",
+      [
+        "$",
+        "/x"
+      ],
+      2
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  8,
+  10,
+  12
+]
+```
+
+### Builder Generic Operators
+
+Generic operator construction with builder.
+Shows fallback syntax for any operator using the generic builder pattern.
+Note: Provides escape hatch for operators without dedicated builder methods.
+
+
+**Script:**
+```json
+[
+  "reduce",
+  {
+    "array": [
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  [
+    "lambda",
+    [
+      "acc",
+      "x"
+    ],
+    [
+      "+",
+      [
+        "$",
+        "/acc"
+      ],
+      [
+        "$",
+        "/x"
+      ]
+    ]
+  ],
+  0
+]
+```
+
+**Expected Output:**
+```json
+10
+```
+
+### Builder Type Safety Benefits
+
+Type safety and IDE benefits of builder pattern.
+Demonstrates compile-time error checking and development experience improvements.
+Note: Builder prevents common JSON construction errors at compile time.
+
+
+**Script:**
+```json
+[
+  "*",
+  6,
+  7
+]
+```
+
+**Expected Output:**
+```json
+42
+```
+
 ## Data Access Examples
 
 ### Input Access Whole

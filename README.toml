@@ -1544,6 +1544,252 @@ expected = {message = "Hello World", computed = 42}
 cli_example = "./build/computo --comments script_with_comments.json input.json"
 
 # ============================================================================
+# COMPUTO BUILDER PATTERN (C++ API)
+# ============================================================================
+
+[[examples]]
+name = "builder_basic_vs_manual"
+category = "cpp-builder"
+description = """
+ComputoBuilder vs manual JSON construction comparison.
+Shows how the builder pattern eliminates verbose JSON syntax in C++ tests.
+Note: This is C++ API documentation - builder creates the JSON shown in 'script'.
+"""
+script = ["+", 15, 27]
+input = {}
+expected = 42
+cpp_example = """
+// Manual JSON (old way)
+json manual = json::array({"+", 15, 27});
+
+// ComputoBuilder (new way)  
+auto builder = CB::add(15, 27);
+
+// Both produce the same JSON script shown above
+EXPECT_EQ(computo::execute(builder, input), 42);
+"""
+
+[[examples]]
+name = "builder_array_construction"
+category = "cpp-builder"
+description = """
+Builder pattern for array construction.
+Demonstrates how builder eliminates the painful array wrapper syntax.
+Note: CB::array creates the JSON array structure shown in 'script'.
+"""
+script = {array = [1, 2, 3, 4, 5]}
+input = {}
+expected = [1, 2, 3, 4, 5]
+cpp_example = """
+// Manual JSON (painful)
+json manual = json{{"array", json::array({1, 2, 3, 4, 5})}};
+
+// ComputoBuilder (clean)
+auto builder = CB::array({1, 2, 3, 4, 5});
+
+// Much more readable and type-safe!
+"""
+
+[[examples]]
+name = "builder_complex_nesting"
+category = "cpp-builder"
+description = """
+Builder pattern for complex nested operations.
+Shows how builder makes deeply nested expressions readable and maintainable.
+Note: This C++ builder code produces the JSON script shown.
+"""
+script = ["map", {array = [1, 2, 3, 4]}, ["lambda", ["x"], ["+", ["$", "/x"], 10]]]
+input = {}
+expected = [11, 12, 13, 14]
+cpp_example = """
+// Manual JSON (unreadable)
+json manual = json::array({
+    "map",
+    json{{"array", json::array({1, 2, 3, 4})}},
+    json::array({"lambda", json::array({"x"}), 
+                json::array({"+", json::array({"$", "/x"}), 10})})
+});
+
+// ComputoBuilder (self-documenting)
+auto builder = CB::map(
+    CB::array({1, 2, 3, 4}),
+    CB::lambda("x", CB::add(CB::var("x"), 10))
+);
+"""
+
+[[examples]]
+name = "builder_object_construction"
+category = "cpp-builder"
+description = """
+Fluent object construction with builder pattern.
+Demonstrates chaining methods for building complex objects.
+Note: Shows C++ fluent API that generates the JSON object structure.
+"""
+script = ["obj", ["name", "Alice"], ["age", 30], ["score", ["+", 85, 15]]]
+input = {}
+expected = {name = "Alice", age = 30, score = 100}
+cpp_example = """
+// ComputoBuilder fluent object construction
+auto builder = CB::obj()
+    .add_field("name", "Alice")
+    .add_field("age", 30)
+    .add_field("score", CB::add(85, 15));
+
+// Type-safe and IDE-friendly with autocomplete
+"""
+
+[[examples]]
+name = "builder_variables_and_let"
+category = "cpp-builder"
+description = """
+Variable binding with builder pattern.
+Shows clean syntax for let expressions and variable references.
+Note: Builder provides type-safe variable handling in C++.
+"""
+script = ["let", [["multiplier", 3], ["base", 14]], ["+", ["*", ["$", "/base"], ["$", "/multiplier"]], ["$", "/base"]]]
+input = {}
+expected = 56
+cpp_example = """
+// Manual JSON (error-prone)
+json manual = json::array({
+    "let",
+    json::array({json::array({"multiplier", 3}), json::array({"base", 14})}),
+    json::array({"+", 
+        json::array({"*", json::array({"$", "/base"}), json::array({"$", "/multiplier"})}),
+        json::array({"$", "/base"})})
+});
+
+// ComputoBuilder (clean and safe)
+auto builder = CB::let({
+    {"multiplier", 3},
+    {"base", 14}
+}, CB::add(
+    CB::multiply(CB::var("base"), CB::var("multiplier")),
+    CB::var("base")
+));
+"""
+
+[[examples]]
+name = "builder_conditional_logic"
+category = "cpp-builder"
+description = """
+Conditional expressions with builder pattern.
+Demonstrates readable if-then-else construction in C++.
+Note: Builder methods provide compile-time safety for conditional logic.
+"""
+script = ["if", [">", ["get", ["$input"], "/value"], 50], "high", "low"]
+input = {value = 75}
+expected = "high"
+cpp_example = """
+// ComputoBuilder conditional logic
+auto builder = CB::if_(
+    CB::greater_than(CB::get(CB::input(), "/value"), 50),
+    "high",
+    "low"
+);
+
+// Note: CB::if_() avoids C++ 'if' keyword conflict
+"""
+
+[[examples]]
+name = "builder_data_access_patterns"
+category = "cpp-builder"
+description = """
+Data access patterns with builder.
+Shows input access, JSON pointer usage, and data extraction.
+Note: Type-safe data access with compile-time path validation.
+"""
+script = ["obj", ["user", ["get", ["$input"], "/user/name"]], ["processed", true]]
+input = {user = {name = "Bob", email = "bob@test.com"}}
+expected = {user = "Bob", processed = true}
+cpp_example = """
+// ComputoBuilder data access
+auto builder = CB::obj()
+    .add_field("user", CB::get(CB::input(), "/user/name"))
+    .add_field("processed", true);
+
+// JSON Pointer paths are validated and autocompleted
+"""
+
+[[examples]]
+name = "builder_functional_operations"
+category = "cpp-builder"
+description = """
+Functional array operations with builder.
+Demonstrates map, filter, and reduce operations with readable syntax.
+Note: Builder makes functional programming patterns accessible in C++.
+"""
+script = ["map", ["filter", {array = [1, 2, 3, 4, 5, 6]}, ["lambda", ["x"], [">", ["$", "/x"], 3]]], ["lambda", ["x"], ["*", ["$", "/x"], 2]]]
+input = {}
+expected = [8, 10, 12]
+cpp_example = """
+// ComputoBuilder functional pipeline
+auto builder = CB::map(
+    CB::filter(
+        CB::array({1, 2, 3, 4, 5, 6}),
+        CB::lambda("x", CB::greater_than(CB::var("x"), 3))
+    ),
+    CB::lambda("x", CB::multiply(CB::var("x"), 2))
+);
+
+// Readable functional programming pipeline
+"""
+
+[[examples]]
+name = "builder_generic_operators"
+category = "cpp-builder"
+description = """
+Generic operator construction with builder.
+Shows fallback syntax for any operator using the generic builder pattern.
+Note: Provides escape hatch for operators without dedicated builder methods.
+"""
+script = ["reduce", {array = [1, 2, 3, 4]}, ["lambda", ["acc", "x"], ["+", ["$", "/acc"], ["$", "/x"]]], 0]
+input = {}
+expected = 10
+cpp_example = """
+// Generic operator when no specific method exists
+auto builder = CB::op("reduce")
+    .arg(CB::array({1, 2, 3, 4}))
+    .arg(CB::lambda({"acc", "x"}, CB::add(CB::var("acc"), CB::var("x"))))
+    .arg(0);
+
+// Fluent chaining also works:
+auto alt = CB::op("reduce") 
+    << CB::array({1, 2, 3, 4})
+    << CB::lambda({"acc", "x"}, CB::add(CB::var("acc"), CB::var("x")))
+    << 0;
+"""
+
+[[examples]]
+name = "builder_type_safety_benefits"
+category = "cpp-builder"
+description = """
+Type safety and IDE benefits of builder pattern.
+Demonstrates compile-time error checking and development experience improvements.
+Note: Builder prevents common JSON construction errors at compile time.
+"""
+script = ["*", 6, 7]
+input = {}
+expected = 42
+cpp_example = """
+// Type safety examples
+
+// ✅ GOOD: Type-safe builder
+auto correct = CB::multiply(6, 7);
+
+// ❌ BAD: Manual JSON prone to errors
+// json error1 = json::array({"*", 6, 7, 8});  // Wrong arity
+// json error2 = json::array({"multiply", 6, 7}); // Wrong operator name  
+// json error3 = json({"+", 6, 7});  // Missing array wrapper
+
+// Builder provides:
+// - Compile-time arity checking
+// - IDE autocomplete for operators
+// - Automatic JSON structure generation
+// - Template argument deduction
+"""
+
+# ============================================================================
 # ENHANCED DEBUGGING SUPPORT
 # ============================================================================
 
