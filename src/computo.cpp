@@ -1,5 +1,6 @@
 #include <computo/computo.hpp>
 #include <computo/operators.hpp>
+#include <computo/debugger.hpp>
 #include <permuto/permuto.hpp>
 #include <iostream>
 #include <mutex>
@@ -12,6 +13,21 @@ const nlohmann::json ExecutionContext::null_input = nlohmann::json(nullptr);
 // Operator registry
 static std::map<std::string, OperatorFunc> operators;
 static std::once_flag operators_init_flag;
+
+// Global debugger instance
+static std::unique_ptr<Debugger> global_debugger = nullptr;
+
+// Debugger management functions
+void set_debugger(std::unique_ptr<Debugger> debugger) {
+    global_debugger = std::move(debugger);
+    if (global_debugger) {
+        global_debugger->start_execution();
+    }
+}
+
+Debugger* get_debugger() {
+    return global_debugger.get();
+}
 
 // Helper function for evaluating lambda expressions with multiple parameters
 static nlohmann::json evaluate_lambda(const nlohmann::json& lambda_expr, const std::vector<nlohmann::json>& param_values, ExecutionContext& ctx) {
@@ -66,6 +82,17 @@ static nlohmann::json evaluate_lambda(const nlohmann::json& lambda_expr, const s
 // Convenience function for single-parameter lambdas
 static nlohmann::json evaluate_lambda(const nlohmann::json& lambda_expr, const nlohmann::json& item_value, ExecutionContext& ctx) {
     return evaluate_lambda(lambda_expr, std::vector<nlohmann::json>{item_value}, ctx);
+}
+
+// Helper function to create debug context from execution context
+static DebugContext create_debug_context(const std::string& operator_name, const nlohmann::json& args, const ExecutionContext& ctx) {
+    DebugContext debug_ctx;
+    debug_ctx.operator_name = operator_name;
+    debug_ctx.execution_path = ctx.get_path_string();
+    debug_ctx.arguments = args;
+    debug_ctx.variables_in_scope = ctx.get_all_variables();
+    debug_ctx.start_time = std::chrono::high_resolution_clock::now();
+    return debug_ctx;
 }
 
 // Helper function for consistent truthiness evaluation across all operators
@@ -1220,8 +1247,31 @@ nlohmann::json evaluate_move(nlohmann::json&& expr, ExecutionContext ctx) {
             args.push_back(std::move(expr[i]));
         }
         
-        // Call the operator function and return (exits the loop)
-        return it->second(args, op_ctx);
+        // Debugging integration
+        if (global_debugger) {
+            DebugContext debug_ctx = create_debug_context(op, args, op_ctx);
+            global_debugger->on_operator_enter(debug_ctx);
+            
+            try {
+                auto start_time = std::chrono::high_resolution_clock::now();
+                
+                // Call the operator function
+                nlohmann::json result = it->second(args, op_ctx);
+                
+                auto end_time = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(end_time - start_time);
+                
+                global_debugger->on_operator_exit(debug_ctx, result, duration);
+                return result;
+                
+            } catch (const std::exception& e) {
+                global_debugger->on_error(e, debug_ctx);
+                throw;
+            }
+        } else {
+            // Call the operator function and return (exits the loop)
+            return it->second(args, op_ctx);
+        }
     }
 }
 
@@ -1358,8 +1408,31 @@ nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx) {
             args.push_back(expr[i]);
         }
         
-        // Call the operator function and return (exits the loop)
-        return it->second(args, op_ctx);
+        // Debugging integration
+        if (global_debugger) {
+            DebugContext debug_ctx = create_debug_context(op, args, op_ctx);
+            global_debugger->on_operator_enter(debug_ctx);
+            
+            try {
+                auto start_time = std::chrono::high_resolution_clock::now();
+                
+                // Call the operator function
+                nlohmann::json result = it->second(args, op_ctx);
+                
+                auto end_time = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(end_time - start_time);
+                
+                global_debugger->on_operator_exit(debug_ctx, result, duration);
+                return result;
+                
+            } catch (const std::exception& e) {
+                global_debugger->on_error(e, debug_ctx);
+                throw;
+            }
+        } else {
+            // Call the operator function and return (exits the loop)
+            return it->second(args, op_ctx);
+        }
     }
 }
 

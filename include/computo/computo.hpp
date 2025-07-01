@@ -5,6 +5,7 @@
 #include <string>
 #include <map>
 #include <functional>
+#include <memory>
 #include <permuto/permuto.hpp>
 #include "builder.hpp"
 // #include "memory_pool.hpp"  // TODO: Re-enable when memory pool is completed
@@ -133,6 +134,11 @@ public:
         return it->second;
     }
     
+    // Get all variables (for debugging)
+    const std::map<std::string, nlohmann::json>& get_all_variables() const {
+        return variables;
+    }
+    
     // Now assignable for TCO!
     ExecutionContext& operator=(const ExecutionContext&) = default;
     ExecutionContext(const ExecutionContext&) = default;
@@ -162,6 +168,11 @@ nlohmann::json execute_move(nlohmann::json&& script, const nlohmann::json& input
 nlohmann::json execute_move(nlohmann::json&& script, const nlohmann::json& input, const permuto::Options& permuto_options);
 nlohmann::json execute_move(nlohmann::json&& script, const std::vector<nlohmann::json>& inputs);
 nlohmann::json execute_move(nlohmann::json&& script, const std::vector<nlohmann::json>& inputs, const permuto::Options& permuto_options);
+
+// Debugging support
+class Debugger;
+void set_debugger(std::unique_ptr<Debugger> debugger);
+Debugger* get_debugger();
 
 // Utility function for consistent truthiness evaluation across operators
 bool is_truthy(const nlohmann::json& value);

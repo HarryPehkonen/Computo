@@ -37,7 +37,7 @@ target_link_libraries(computo PUBLIC nlohmann_json::nlohmann_json)
 target_link_libraries(computo PRIVATE ${PERMUTO_LIBRARY})
 target_include_directories(computo PRIVATE ${PERMUTO_INCLUDE_DIR})
 
-# Create CLI executable
+# Create CLI executable with complete debugging support
 add_executable(computo_cli cli/main.cpp)
 target_link_libraries(computo_cli PRIVATE computo)
 set_target_properties(computo_cli PROPERTIES OUTPUT_NAME computo)
