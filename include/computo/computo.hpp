@@ -153,4 +153,7 @@ nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input
 nlohmann::json execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs);
 nlohmann::json execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs, const permuto::Options& permuto_options);
 
+// Utility function for consistent truthiness evaluation across operators
+bool is_truthy(const nlohmann::json& value);
+
 } // namespace computo

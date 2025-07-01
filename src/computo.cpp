@@ -1,4 +1,5 @@
 #include <computo/computo.hpp>
+#include <computo/operators.hpp>
 #include <permuto/permuto.hpp>
 #include <iostream>
 #include <mutex>
@@ -67,12 +68,41 @@ static nlohmann::json evaluate_lambda(const nlohmann::json& lambda_expr, const n
     return evaluate_lambda(lambda_expr, std::vector<nlohmann::json>{item_value}, ctx);
 }
 
-// Initialize operators - thread-safe version
+// Helper function for consistent truthiness evaluation across all operators
+bool is_truthy(const nlohmann::json& value) {
+    if (value.is_boolean()) {
+        return value.get<bool>();
+    } else if (value.is_number()) {
+        if (value.is_number_integer()) {
+            return value.get<int64_t>() != 0;
+        } else {
+            return value.get<double>() != 0.0;
+        }
+    } else if (value.is_string()) {
+        return !value.get<std::string>().empty();
+    } else if (value.is_null()) {
+        return false;
+    } else if (value.is_array()) {
+        return !value.empty();
+    } else if (value.is_object()) {
+        return !value.empty();
+    }
+    return false; // Default case
+}
+
+// Initialize operators - thread-safe version with modular approach
 static void initialize_operators() {
     std::call_once(operators_init_flag, []() {
-    
-    // Addition operator - n-ary
-    operators["+"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+        // Initialize operators from separate modules
+        operator_modules::init_arithmetic_operators(operators);
+        operator_modules::init_logical_operators(operators);  
+        operator_modules::init_comparison_operators(operators);
+        
+        // TODO: Migrate remaining operators to separate modules
+        // For now, keep the remaining operators inline until full migration
+        
+        // Variable lookup operator
+        operators["$"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
         if (args.size() < 1) {
             throw InvalidArgumentException("+ operator requires at least 1 argument");
         }
@@ -241,27 +271,7 @@ static void initialize_operators() {
         for (const auto& item : array) {
             nlohmann::json condition_result = evaluate_lambda(lambda_expr, item, ctx);
             
-            // Use the same truthiness logic as the if operator
-            bool is_true = false;
-            if (condition_result.is_boolean()) {
-                is_true = condition_result.get<bool>();
-            } else if (condition_result.is_number()) {
-                if (condition_result.is_number_integer()) {
-                    is_true = condition_result.get<int64_t>() != 0;
-                } else {
-                    is_true = condition_result.get<double>() != 0.0;
-                }
-            } else if (condition_result.is_string()) {
-                is_true = !condition_result.get<std::string>().empty();
-            } else if (condition_result.is_null()) {
-                is_true = false;
-            } else if (condition_result.is_array()) {
-                is_true = !condition_result.empty();
-            } else if (condition_result.is_object()) {
-                is_true = !condition_result.empty();
-            }
-            
-            if (is_true) {
+            if (is_truthy(condition_result)) {
                 result.push_back(item);
             }
         }
@@ -565,27 +575,7 @@ static void initialize_operators() {
         for (const auto& expr : args) {
             auto result = evaluate(expr, ctx);
             
-            // Determine truthiness using same logic as if operator
-            bool is_true = false;
-            if (result.is_boolean()) {
-                is_true = result.get<bool>();
-            } else if (result.is_number()) {
-                if (result.is_number_integer()) {
-                    is_true = result.get<int64_t>() != 0;
-                } else {
-                    is_true = result.get<double>() != 0.0;
-                }
-            } else if (result.is_string()) {
-                is_true = !result.get<std::string>().empty();
-            } else if (result.is_null()) {
-                is_true = false;
-            } else if (result.is_array()) {
-                is_true = !result.empty();
-            } else if (result.is_object()) {
-                is_true = !result.empty();
-            }
-            
-            if (!is_true) {
+            if (!is_truthy(result)) {
                 return false;
             }
         }
@@ -602,25 +592,7 @@ static void initialize_operators() {
         for (const auto& expr : args) {
             auto result = evaluate(expr, ctx);
             
-            // Determine truthiness using same logic as if operator
-            bool is_true = false;
-            if (result.is_boolean()) {
-                is_true = result.get<bool>();
-            } else if (result.is_number()) {
-                if (result.is_number_integer()) {
-                    is_true = result.get<int64_t>() != 0;
-                } else {
-                    is_true = result.get<double>() != 0.0;
-                }
-            } else if (result.is_string()) {
-                is_true = !result.get<std::string>().empty();
-            } else if (result.is_array()) {
-                is_true = !result.empty();
-            } else if (result.is_object()) {
-                is_true = !result.empty();
-            }
-            
-            if (is_true) {
+            if (is_truthy(result)) {
                 return true;
             }
         }
@@ -636,27 +608,7 @@ static void initialize_operators() {
         
         auto result = evaluate(args[0], ctx);
         
-        // Determine truthiness using same logic as other logical operators
-        bool is_true = false;
-        if (result.is_boolean()) {
-            is_true = result.get<bool>();
-        } else if (result.is_number()) {
-            if (result.is_number_integer()) {
-                is_true = result.get<int64_t>() != 0;
-            } else {
-                is_true = result.get<double>() != 0.0;
-            }
-        } else if (result.is_string()) {
-            is_true = !result.get<std::string>().empty();
-        } else if (result.is_null()) {
-            is_true = false;
-        } else if (result.is_array()) {
-            is_true = !result.empty();
-        } else if (result.is_object()) {
-            is_true = !result.empty();
-        }
-        
-        return !is_true;
+        return !is_truthy(result);
     };
     
     // Array utility operators
@@ -677,27 +629,7 @@ static void initialize_operators() {
         for (const auto& item : array) {
             nlohmann::json condition_result = evaluate_lambda(lambda_expr, item, ctx);
             
-            // Use same truthiness logic as filter
-            bool is_true = false;
-            if (condition_result.is_boolean()) {
-                is_true = condition_result.get<bool>();
-            } else if (condition_result.is_number()) {
-                if (condition_result.is_number_integer()) {
-                    is_true = condition_result.get<int64_t>() != 0;
-                } else {
-                    is_true = condition_result.get<double>() != 0.0;
-                }
-            } else if (condition_result.is_string()) {
-                is_true = !condition_result.get<std::string>().empty();
-            } else if (condition_result.is_null()) {
-                is_true = false;
-            } else if (condition_result.is_array()) {
-                is_true = !condition_result.empty();
-            } else if (condition_result.is_object()) {
-                is_true = !condition_result.empty();
-            }
-            
-            if (is_true) {
+            if (is_truthy(condition_result)) {
                 return item;
             }
         }
@@ -723,27 +655,7 @@ static void initialize_operators() {
         for (const auto& item : array) {
             nlohmann::json condition_result = evaluate_lambda(lambda_expr, item, ctx);
             
-            // Use same truthiness logic as filter
-            bool is_true = false;
-            if (condition_result.is_boolean()) {
-                is_true = condition_result.get<bool>();
-            } else if (condition_result.is_number()) {
-                if (condition_result.is_number_integer()) {
-                    is_true = condition_result.get<int64_t>() != 0;
-                } else {
-                    is_true = condition_result.get<double>() != 0.0;
-                }
-            } else if (condition_result.is_string()) {
-                is_true = !condition_result.get<std::string>().empty();
-            } else if (condition_result.is_null()) {
-                is_true = false;
-            } else if (condition_result.is_array()) {
-                is_true = !condition_result.empty();
-            } else if (condition_result.is_object()) {
-                is_true = !condition_result.empty();
-            }
-            
-            if (is_true) {
+            if (is_truthy(condition_result)) {
                 return true;
             }
         }
@@ -768,27 +680,7 @@ static void initialize_operators() {
         for (const auto& item : array) {
             nlohmann::json condition_result = evaluate_lambda(lambda_expr, item, ctx);
             
-            // Use same truthiness logic as filter
-            bool is_true = false;
-            if (condition_result.is_boolean()) {
-                is_true = condition_result.get<bool>();
-            } else if (condition_result.is_number()) {
-                if (condition_result.is_number_integer()) {
-                    is_true = condition_result.get<int64_t>() != 0;
-                } else {
-                    is_true = condition_result.get<double>() != 0.0;
-                }
-            } else if (condition_result.is_string()) {
-                is_true = !condition_result.get<std::string>().empty();
-            } else if (condition_result.is_null()) {
-                is_true = false;
-            } else if (condition_result.is_array()) {
-                is_true = !condition_result.empty();
-            } else if (condition_result.is_object()) {
-                is_true = !condition_result.empty();
-            }
-            
-            if (!is_true) {
+            if (!is_truthy(condition_result)) {
                 return false;
             }
         }
@@ -1153,27 +1045,7 @@ static void initialize_operators() {
         for (const auto& item : array) {
             nlohmann::json condition_result = evaluate_lambda(lambda_expr, item, ctx);
             
-            // Use same truthiness logic as filter
-            bool is_true = false;
-            if (condition_result.is_boolean()) {
-                is_true = condition_result.get<bool>();
-            } else if (condition_result.is_number()) {
-                if (condition_result.is_number_integer()) {
-                    is_true = condition_result.get<int64_t>() != 0;
-                } else {
-                    is_true = condition_result.get<double>() != 0.0;
-                }
-            } else if (condition_result.is_string()) {
-                is_true = !condition_result.get<std::string>().empty();
-            } else if (condition_result.is_null()) {
-                is_true = false;
-            } else if (condition_result.is_array()) {
-                is_true = !condition_result.empty();
-            } else if (condition_result.is_object()) {
-                is_true = !condition_result.empty();
-            }
-            
-            if (is_true) {
+            if (is_truthy(condition_result)) {
                 truthy_items.push_back(item);
             } else {
                 falsy_items.push_back(item);
@@ -1276,29 +1148,12 @@ nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx) {
             ExecutionContext condition_ctx = op_ctx.with_path("condition");
             auto condition = evaluate(expr[1], condition_ctx);
             
-            // Determine truthiness (same logic as current implementation)
-            bool is_true = false;
-            if (condition.is_boolean()) {
-                is_true = condition.get<bool>();
-            } else if (condition.is_number()) {
-                if (condition.is_number_integer()) {
-                    is_true = condition.get<int64_t>() != 0;
-                } else {
-                    is_true = condition.get<double>() != 0.0;
-                }
-            } else if (condition.is_string()) {
-                is_true = !condition.get<std::string>().empty();
-            } else if (condition.is_null()) {
-                is_true = false;
-            } else if (condition.is_array()) {
-                is_true = !condition.empty();
-            } else if (condition.is_object()) {
-                is_true = !condition.empty();
-            }
+            // Determine truthiness using helper function
+            bool condition_is_true = is_truthy(condition);
             
             // TCO: Replace current expression with chosen branch and continue
-            ctx = op_ctx.with_path(is_true ? "then" : "else");
-            expr = is_true ? expr[2] : expr[3];
+            ctx = op_ctx.with_path(condition_is_true ? "then" : "else");
+            expr = condition_is_true ? expr[2] : expr[3];
             continue;
         }
         

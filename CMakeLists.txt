@@ -23,7 +23,12 @@ if(NOT PERMUTO_LIBRARY OR NOT PERMUTO_INCLUDE_DIR)
 endif()
 
 # Create computo library
-add_library(computo src/computo.cpp)
+add_library(computo 
+    src/computo.cpp
+    src/operators/arithmetic.cpp
+    src/operators/logical.cpp
+    src/operators/comparison.cpp
+)
 target_include_directories(computo PUBLIC 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
