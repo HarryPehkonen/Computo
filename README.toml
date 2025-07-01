@@ -218,6 +218,28 @@ script = ["+", ["*", 3, 4], ["*", 5, 6]]
 input = {}
 expected = 42
 
+[[examples]]
+name = "basic_modulo"
+category = "arithmetic"
+description = """
+Basic modulo operation for remainder calculation.
+Demonstrates integer remainder operation using the % operator.
+"""
+script = ["%", 17, 5]
+input = {}
+expected = 2
+
+[[examples]]
+name = "modulo_even_odd_check"
+category = "arithmetic"
+description = """
+Modulo operation for checking even/odd numbers.
+Shows practical use of modulo for determining if a number is even.
+"""
+script = ["%", 42, 2]
+input = {}
+expected = 0
+
 # ============================================================================
 # COMPARISON OPERATORS
 # ============================================================================
@@ -377,6 +399,72 @@ Logical OR with all false conditions.
 Shows OR behavior when all conditions are false.
 """
 script = ["||", false, [">", 2, 5], ["==", "a", "b"]]
+input = {}
+expected = false
+
+[[examples]]
+name = "logical_not_true"
+category = "logical"
+description = """
+Logical NOT operator with true input.
+Demonstrates boolean negation returning false for true input.
+"""
+script = ["not", true]
+input = {}
+expected = false
+
+[[examples]]
+name = "logical_not_false"
+category = "logical"
+description = """
+Logical NOT operator with false input.
+Shows boolean negation returning true for false input.
+"""
+script = ["not", false]
+input = {}
+expected = true
+
+[[examples]]
+name = "logical_not_complex_condition"
+category = "logical"
+description = """
+Logical NOT with complex boolean expression.
+Demonstrates negating the result of a comparison operation.
+"""
+script = ["not", [">", 5, 10]]
+input = {}
+expected = true
+
+[[examples]]
+name = "logical_not_with_string"
+category = "logical"
+description = """
+Logical NOT with non-empty string.
+Shows that non-empty strings are truthy, so NOT returns false.
+"""
+script = ["not", "hello"]
+input = {}
+expected = false
+
+[[examples]]
+name = "logical_not_with_zero"
+category = "logical"
+description = """
+Logical NOT with zero value.
+Demonstrates that zero is falsy, so NOT returns true.
+"""
+script = ["not", 0]
+input = {}
+expected = true
+
+[[examples]]
+name = "logical_not_with_array"
+category = "logical"
+description = """
+Logical NOT with non-empty array.
+Shows that non-empty arrays are truthy, so NOT returns false.
+"""
+script = ["not", {array = [1, 2]}]
 input = {}
 expected = false
 
@@ -815,6 +903,94 @@ Demonstrates measuring the size of arrays.
 script = ["count", {array = ["apple", "banana", "cherry", "date"]}]
 input = {}
 expected = 4
+
+[[examples]]
+name = "array_zip_combine_pairs"
+category = "array-operations"
+description = """
+Zip two arrays into element pairs.
+Demonstrates combining corresponding elements from two arrays into pairs.
+"""
+script = ["zip", {array = ["a", "b", "c"]}, {array = [1, 2, 3]}]
+input = {}
+expected = [["a", 1], ["b", 2], ["c", 3]]
+
+[[examples]]
+name = "array_zip_different_lengths"
+category = "array-operations"
+description = """
+Zip arrays of different lengths.
+Shows that zip stops at the shorter array's length.
+"""
+script = ["zip", {array = [1, 2, 3, 4, 5]}, {array = ["x", "y"]}]
+input = {}
+expected = [[1, "x"], [2, "y"]]
+
+[[examples]]
+name = "array_zipWith_custom_combination"
+category = "array-operations"
+description = """
+Zip two arrays with custom combination function.
+Demonstrates combining arrays element-wise using a lambda function.
+"""
+script = ["zipWith", {array = [1, 2, 3]}, {array = [10, 20, 30]}, ["lambda", ["a", "b"], ["+", ["$", "/a"], ["$", "/b"]]]]
+input = {}
+expected = [11, 22, 33]
+
+[[examples]]
+name = "array_zipWith_string_formatting"
+category = "array-operations"
+description = """
+ZipWith for string formatting and concatenation.
+Shows practical use of zipWith for combining data from parallel arrays.
+"""
+script = ["zipWith", {array = ["Alice", "Bob", "Charlie"]}, {array = [25, 30, 35]}, ["lambda", ["name", "age"], ["str_concat", ["$", "/name"], " is ", ["$", "/age"], " years old"]]]
+input = {}
+expected = ["Alice is 25 years old", "Bob is 30 years old", "Charlie is 35 years old"]
+
+[[examples]]
+name = "array_mapWithIndex_element_position"
+category = "array-operations"
+description = """
+Map over array with element indices.
+Demonstrates accessing both element value and position during transformation.
+"""
+script = ["mapWithIndex", {array = ["apple", "banana", "cherry"]}, ["lambda", ["item", "index"], ["obj", ["position", ["$", "/index"]], ["fruit", ["$", "/item"]]]]]
+input = {}
+expected = [{position = 0, fruit = "apple"}, {position = 1, fruit = "banana"}, {position = 2, fruit = "cherry"}]
+
+[[examples]]
+name = "array_mapWithIndex_conditional_processing"
+category = "array-operations"
+description = """
+Map with index for conditional processing based on position.
+Shows using index information to apply different logic to even/odd positions.
+"""
+script = ["mapWithIndex", {array = [10, 20, 30, 40]}, ["lambda", ["value", "index"], ["if", ["==", ["%", ["$", "/index"], 2], 0], ["*", ["$", "/value"], 2], ["$", "/value"]]]]
+input = {}
+expected = [20, 20, 60, 40]
+
+[[examples]]
+name = "array_enumerate_index_value_pairs"
+category = "array-operations"
+description = """
+Convert array to [index, value] pairs.
+Demonstrates creating enumerated pairs for processing with indices.
+"""
+script = ["enumerate", {array = ["red", "green", "blue"]}]
+input = {}
+expected = [[0, "red"], [1, "green"], [2, "blue"]]
+
+[[examples]]
+name = "array_enumerate_for_processing"
+category = "array-operations"
+description = """
+Use enumerate for indexed processing.
+Shows practical use of enumerate to create numbered lists or process with position awareness.
+"""
+script = ["map", ["enumerate", {array = ["Task A", "Task B", "Task C"]}], ["lambda", ["pair"], ["str_concat", ["get", ["$", "/pair"], "/0"], ". ", ["get", ["$", "/pair"], "/1"]]]]
+input = {}
+expected = ["0. Task A", "1. Task B", "2. Task C"]
 
 # ============================================================================
 # FUNCTIONAL LIST OPERATIONS

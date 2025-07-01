@@ -285,6 +285,46 @@ Demonstrates how operators can be nested to create complex expressions.
 42
 ```
 
+### Basic Modulo
+
+Basic modulo operation for remainder calculation.
+Demonstrates integer remainder operation using the % operator.
+
+
+**Script:**
+```json
+[
+  "%",
+  17,
+  5
+]
+```
+
+**Expected Output:**
+```json
+2
+```
+
+### Modulo Even Odd Check
+
+Modulo operation for checking even/odd numbers.
+Shows practical use of modulo for determining if a number is even.
+
+
+**Script:**
+```json
+[
+  "%",
+  42,
+  2
+]
+```
+
+**Expected Output:**
+```json
+0
+```
+
 ## Array Operations Examples
 
 ### Array Map Double
@@ -905,6 +945,426 @@ Demonstrates measuring the size of arrays.
 **Expected Output:**
 ```json
 4
+```
+
+### Array Zip Combine Pairs
+
+Zip two arrays into element pairs.
+Demonstrates combining corresponding elements from two arrays into pairs.
+
+
+**Script:**
+```json
+[
+  "zip",
+  {
+    "array": [
+      "a",
+      "b",
+      "c"
+    ]
+  },
+  {
+    "array": [
+      1,
+      2,
+      3
+    ]
+  }
+]
+```
+
+**Expected Output:**
+```json
+[
+  [
+    "a",
+    1
+  ],
+  [
+    "b",
+    2
+  ],
+  [
+    "c",
+    3
+  ]
+]
+```
+
+### Array Zip Different Lengths
+
+Zip arrays of different lengths.
+Shows that zip stops at the shorter array's length.
+
+
+**Script:**
+```json
+[
+  "zip",
+  {
+    "array": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  {
+    "array": [
+      "x",
+      "y"
+    ]
+  }
+]
+```
+
+**Expected Output:**
+```json
+[
+  [
+    1,
+    "x"
+  ],
+  [
+    2,
+    "y"
+  ]
+]
+```
+
+### Array Zipwith Custom Combination
+
+Zip two arrays with custom combination function.
+Demonstrates combining arrays element-wise using a lambda function.
+
+
+**Script:**
+```json
+[
+  "zipWith",
+  {
+    "array": [
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "array": [
+      10,
+      20,
+      30
+    ]
+  },
+  [
+    "lambda",
+    [
+      "a",
+      "b"
+    ],
+    [
+      "+",
+      [
+        "$",
+        "/a"
+      ],
+      [
+        "$",
+        "/b"
+      ]
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  11,
+  22,
+  33
+]
+```
+
+### Array Zipwith String Formatting
+
+ZipWith for string formatting and concatenation.
+Shows practical use of zipWith for combining data from parallel arrays.
+
+
+**Script:**
+```json
+[
+  "zipWith",
+  {
+    "array": [
+      "Alice",
+      "Bob",
+      "Charlie"
+    ]
+  },
+  {
+    "array": [
+      25,
+      30,
+      35
+    ]
+  },
+  [
+    "lambda",
+    [
+      "name",
+      "age"
+    ],
+    [
+      "str_concat",
+      [
+        "$",
+        "/name"
+      ],
+      " is ",
+      [
+        "$",
+        "/age"
+      ],
+      " years old"
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  "Alice is 25 years old",
+  "Bob is 30 years old",
+  "Charlie is 35 years old"
+]
+```
+
+### Array Mapwithindex Element Position
+
+Map over array with element indices.
+Demonstrates accessing both element value and position during transformation.
+
+
+**Script:**
+```json
+[
+  "mapWithIndex",
+  {
+    "array": [
+      "apple",
+      "banana",
+      "cherry"
+    ]
+  },
+  [
+    "lambda",
+    [
+      "item",
+      "index"
+    ],
+    [
+      "obj",
+      [
+        "position",
+        [
+          "$",
+          "/index"
+        ]
+      ],
+      [
+        "fruit",
+        [
+          "$",
+          "/item"
+        ]
+      ]
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  {
+    "position": 0,
+    "fruit": "apple"
+  },
+  {
+    "position": 1,
+    "fruit": "banana"
+  },
+  {
+    "position": 2,
+    "fruit": "cherry"
+  }
+]
+```
+
+### Array Mapwithindex Conditional Processing
+
+Map with index for conditional processing based on position.
+Shows using index information to apply different logic to even/odd positions.
+
+
+**Script:**
+```json
+[
+  "mapWithIndex",
+  {
+    "array": [
+      10,
+      20,
+      30,
+      40
+    ]
+  },
+  [
+    "lambda",
+    [
+      "value",
+      "index"
+    ],
+    [
+      "if",
+      [
+        "==",
+        [
+          "%",
+          [
+            "$",
+            "/index"
+          ],
+          2
+        ],
+        0
+      ],
+      [
+        "*",
+        [
+          "$",
+          "/value"
+        ],
+        2
+      ],
+      [
+        "$",
+        "/value"
+      ]
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  20,
+  20,
+  60,
+  40
+]
+```
+
+### Array Enumerate Index Value Pairs
+
+Convert array to [index, value] pairs.
+Demonstrates creating enumerated pairs for processing with indices.
+
+
+**Script:**
+```json
+[
+  "enumerate",
+  {
+    "array": [
+      "red",
+      "green",
+      "blue"
+    ]
+  }
+]
+```
+
+**Expected Output:**
+```json
+[
+  [
+    0,
+    "red"
+  ],
+  [
+    1,
+    "green"
+  ],
+  [
+    2,
+    "blue"
+  ]
+]
+```
+
+### Array Enumerate For Processing
+
+Use enumerate for indexed processing.
+Shows practical use of enumerate to create numbered lists or process with position awareness.
+
+
+**Script:**
+```json
+[
+  "map",
+  [
+    "enumerate",
+    {
+      "array": [
+        "Task A",
+        "Task B",
+        "Task C"
+      ]
+    }
+  ],
+  [
+    "lambda",
+    [
+      "pair"
+    ],
+    [
+      "str_concat",
+      [
+        "get",
+        [
+          "$",
+          "/pair"
+        ],
+        "/0"
+      ],
+      ". ",
+      [
+        "get",
+        [
+          "$",
+          "/pair"
+        ],
+        "/1"
+      ]
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  "0. Task A",
+  "1. Task B",
+  "2. Task C"
+]
 ```
 
 ## Cli Usage Examples
@@ -3399,6 +3859,129 @@ Shows OR behavior when all conditions are false.
     "a",
     "b"
   ]
+]
+```
+
+**Expected Output:**
+```json
+false
+```
+
+### Logical Not True
+
+Logical NOT operator with true input.
+Demonstrates boolean negation returning false for true input.
+
+
+**Script:**
+```json
+[
+  "not",
+  true
+]
+```
+
+**Expected Output:**
+```json
+false
+```
+
+### Logical Not False
+
+Logical NOT operator with false input.
+Shows boolean negation returning true for false input.
+
+
+**Script:**
+```json
+[
+  "not",
+  false
+]
+```
+
+**Expected Output:**
+```json
+true
+```
+
+### Logical Not Complex Condition
+
+Logical NOT with complex boolean expression.
+Demonstrates negating the result of a comparison operation.
+
+
+**Script:**
+```json
+[
+  "not",
+  [
+    ">",
+    5,
+    10
+  ]
+]
+```
+
+**Expected Output:**
+```json
+true
+```
+
+### Logical Not With String
+
+Logical NOT with non-empty string.
+Shows that non-empty strings are truthy, so NOT returns false.
+
+
+**Script:**
+```json
+[
+  "not",
+  "hello"
+]
+```
+
+**Expected Output:**
+```json
+false
+```
+
+### Logical Not With Zero
+
+Logical NOT with zero value.
+Demonstrates that zero is falsy, so NOT returns true.
+
+
+**Script:**
+```json
+[
+  "not",
+  0
+]
+```
+
+**Expected Output:**
+```json
+true
+```
+
+### Logical Not With Array
+
+Logical NOT with non-empty array.
+Shows that non-empty arrays are truthy, so NOT returns false.
+
+
+**Script:**
+```json
+[
+  "not",
+  {
+    "array": [
+      1,
+      2
+    ]
+  }
 ]
 ```
 
