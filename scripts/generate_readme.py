@@ -52,6 +52,42 @@ def generate_example_section(example: dict) -> str:
     if 'flags' in example:
         flags_section = f"**Flags:** `{' '.join(example['flags'])}`\n\n"
     
+    # CLI example
+    cli_section = ""
+    if 'cli_example' in example:
+        cli_section = f"**CLI Example:**\n```bash\n{example['cli_example']}\n```\n\n"
+    
+    # Custom debugging fields
+    custom_sections = ""
+    
+    # Debug levels reference
+    if 'debug_levels' in example:
+        custom_sections += f"\n**Debug Levels Reference:**\n```\n{example['debug_levels']}\n```\n\n"
+    
+    # Output guide
+    if 'output_guide' in example:
+        custom_sections += f"\n**Output Channels Guide:**\n```\n{example['output_guide']}\n```\n\n"
+    
+    # Sample output
+    if 'sample_output' in example:
+        custom_sections += f"\n**Sample Debug Output:**\n```\n{example['sample_output']}\n```\n\n"
+    
+    # Workflow
+    if 'workflow' in example:
+        custom_sections += f"\n**Debugging Workflow:**\n```\n{example['workflow']}\n```\n\n"
+    
+    # Optimization guide  
+    if 'optimization_guide' in example:
+        custom_sections += f"\n**Performance Optimization:**\n```\n{example['optimization_guide']}\n```\n\n"
+    
+    # Scenarios
+    if 'scenarios' in example:
+        custom_sections += f"\n**Common Scenarios:**\n```\n{example['scenarios']}\n```\n\n"
+    
+    # Flag combinations
+    if 'flag_combinations' in example:
+        custom_sections += f"\n**Flag Combinations:**\n```\n{example['flag_combinations']}\n```\n\n"
+    
     return f"""### {name.replace('_', ' ').title()}
 
 {description}
@@ -61,12 +97,12 @@ def generate_example_section(example: dict) -> str:
 {format_script(script)}
 ```
 
-{input_section}{flags_section}**Expected Output:**
+{input_section}{flags_section}{cli_section}**Expected Output:**
 ```json
 {format_json(expected)}
 ```
 
-"""
+{custom_sections}"""
 
 def generate_examples_by_category(examples: list) -> str:
     """Group examples by category and generate sections."""

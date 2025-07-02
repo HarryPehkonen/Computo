@@ -1405,6 +1405,11 @@ Note: This is a documentation example showing CLI usage patterns.
 }
 ```
 
+**CLI Example:**
+```bash
+./build/computo script.json input.json
+```
+
 **Expected Output:**
 ```json
 {
@@ -1477,6 +1482,11 @@ Note: This is a documentation example showing multi-input CLI patterns.
   ]
 }
 ```
+**CLI Example:**
+```bash
+./build/computo script.json input1.json input2.json
+```
+
 **Expected Output:**
 ```json
 {
@@ -1522,6 +1532,11 @@ Note: This is a documentation example showing Permuto integration.
 ```
 
 **Flags:** `--interpolation`
+
+**CLI Example:**
+```bash
+./build/computo --interpolation script.json input.json
+```
 
 **Expected Output:**
 ```json
@@ -1592,6 +1607,11 @@ Note: This is a documentation example showing output formatting.
 ]
 ```
 
+**CLI Example:**
+```bash
+./build/computo --pretty=2 script.json input.json
+```
+
 **Expected Output:**
 ```json
 {
@@ -1637,6 +1657,11 @@ Note: This is a documentation example showing comment parsing.
     ]
   ]
 ]
+```
+
+**CLI Example:**
+```bash
+./build/computo --comments script_with_comments.json input.json
 ```
 
 **Expected Output:**
@@ -2938,6 +2963,11 @@ Note: This demonstrates CLI debugging flags - actual trace output goes to stderr
 ]
 ```
 
+**CLI Example:**
+```bash
+./build/computo --debug --trace script.json input.json
+```
+
 **Expected Output:**
 ```json
 {
@@ -2998,6 +3028,11 @@ Note: Performance reports are sent to stderr, JSON result to stdout.
   ],
   0
 ]
+```
+
+**CLI Example:**
+```bash
+./build/computo --debug --profile script.json input.json
 ```
 
 **Expected Output:**
@@ -3072,6 +3107,11 @@ Note: Operations slower than 5ms will be flagged in the debug output.
 ]
 ```
 
+**CLI Example:**
+```bash
+./build/computo --debug --profile --slow-threshold=5 script.json input.json
+```
+
 **Expected Output:**
 ```json
 [
@@ -3132,6 +3172,11 @@ Note: In non-interactive mode, breakpoints log to stderr without stopping.
 ]
 ```
 
+**CLI Example:**
+```bash
+./build/computo --debug --trace --break-on=map script.json input.json
+```
+
 **Expected Output:**
 ```json
 [
@@ -3183,6 +3228,11 @@ Note: Variable watch output appears in the execution trace on stderr.
     ]
   ]
 ]
+```
+
+**CLI Example:**
+```bash
+./build/computo --debug --trace --watch=multiplier --watch=base script.json input.json
 ```
 
 **Expected Output:**
@@ -3246,6 +3296,11 @@ Note: Combines tracing, profiling, breakpoints, and variable watching.
 ]
 ```
 
+**CLI Example:**
+```bash
+./build/computo --debug --trace --profile --watch=numbers --break-on=reduce --slow-threshold=1 script.json input.json
+```
+
 **Expected Output:**
 ```json
 120
@@ -3275,6 +3330,11 @@ Note: This example would normally cause an error, shown here for documentation.
     "This part works fine"
   ]
 ]
+```
+
+**CLI Example:**
+```bash
+./build/computo --debug --trace --debug-level=verbose script.json input.json
 ```
 
 **Expected Output:**
@@ -3318,6 +3378,11 @@ Note: Higher levels (verbose) provide more detailed execution information.
     ]
   ]
 ]
+```
+
+**CLI Example:**
+```bash
+./build/computo --debug --trace --debug-level=verbose script.json input.json
 ```
 
 **Expected Output:**
@@ -3454,6 +3519,11 @@ Note: Trace output shows the complete execution flow through nested operations.
 ]
 ```
 
+**CLI Example:**
+```bash
+./build/computo --debug --trace --profile --watch=users --break-on=filter script.json input.json
+```
+
 **Expected Output:**
 ```json
 {
@@ -3500,6 +3570,11 @@ Note: Interactive mode allows step-by-step execution with variable inspection.
 ]
 ```
 
+**CLI Example:**
+```bash
+./build/computo --debug --interactive --break-on=+ script.json input.json
+```
+
 **Expected Output:**
 ```json
 42
@@ -3531,12 +3606,50 @@ Use higher levels for more detailed information when troubleshooting complex iss
 ]
 ```
 
+**CLI Example:**
+```bash
+./build/computo --debug --debug-level=verbose script.json input.json
+```
+
 **Expected Output:**
 ```json
 {
   "result": 42,
   "computed": true
 }
+```
+
+
+**Debug Levels Reference:**
+```
+🔍 DEBUG LEVELS EXPLAINED:
+
+• error: Only critical errors, exceptions, and fatal issues
+  - Script parsing errors
+  - Runtime exceptions
+  - Missing file errors
+
+• warning: Errors + performance warnings and deprecated usage
+  - Slow operations without --slow-threshold
+  - Deprecated operator usage
+  - Potential optimization opportunities
+
+• info: Warnings + basic execution flow and timing summary
+  - Total execution time
+  - High-level operation flow
+  - Success/failure status
+
+• debug: Info + detailed operation parameters and intermediate results
+  - Individual operator execution
+  - Variable assignments
+  - Data structure details
+
+• verbose: Debug + full variable state, memory usage, and internal details
+  - Complete execution trace
+  - Memory allocation patterns
+  - Internal state changes
+  - JSON pointer resolution details
+
 ```
 
 ### Debug Output Channels Guide
@@ -3561,12 +3674,52 @@ Explains stderr vs stdout separation and redirection techniques.
 ]
 ```
 
+**CLI Example:**
+```bash
+./build/computo --debug --trace script.json input.json 2> debug.log
+```
+
 **Expected Output:**
 ```json
 {
   "message": "Hello Debug",
   "value": 42
 }
+```
+
+
+**Output Channels Guide:**
+```
+📤 OUTPUT CHANNELS:
+
+• stdout (standard output): JSON results only
+  - Final script result
+  - Clean JSON for piping to other tools
+  - No debug noise mixed in
+
+• stderr (standard error): All debug information
+  - Execution traces
+  - Performance profiles
+  - Error messages
+  - Debugging tips
+
+🔧 CAPTURE TECHNIQUES:
+
+# Save JSON result only
+./build/computo --debug --trace script.json input.json > result.json
+
+# Save debug info only  
+./build/computo --debug --trace script.json input.json 2> debug.log
+
+# Save both separately
+./build/computo --debug --trace script.json input.json > result.json 2> debug.log
+
+# Save everything together
+./build/computo --debug --trace script.json input.json > combined.log 2>&1
+
+# Silent JSON output with debug visible
+./build/computo --debug --trace script.json input.json > /dev/null
+
 ```
 
 ### Debug Output Samples
@@ -3599,12 +3752,61 @@ Helps users understand and interpret debugging output effectively.
 ]
 ```
 
+**CLI Example:**
+```bash
+./build/computo --debug --trace --profile script.json input.json
+```
+
 **Expected Output:**
 ```json
 {
   "result": 30,
   "computed": true
 }
+```
+
+
+**Sample Debug Output:**
+```
+🔍 ACTUAL DEBUG OUTPUT SAMPLES:
+
+▶ WITH --debug --trace:
+🔍 Debug mode enabled [TRACE]
+
+📋 EXECUTION TRACE:
+===================
+[0.15ms] evaluate: ["obj", ["result", ["+", ["*", 3, 4], 18]], ["computed", true]]
+[0.08ms] obj: Creating object with 2 fields
+[0.03ms] *: 3 * 4 = 12
+[0.02ms] +: 12 + 18 = 30
+[0.02ms] obj: {"result": 30, "computed": true}
+
+✅ EXECUTION SUCCESSFUL in 0.30ms
+==========================================
+
+📤 RESULT:
+==========
+
+▶ WITH --debug --profile:
+⏱️  PERFORMANCE PROFILE:
+========================
+Total execution: 0.30ms
+Operation breakdown:
+- obj (0.10ms, 33%): Object construction
+- + (0.02ms, 7%): Addition operation  
+- * (0.03ms, 10%): Multiplication operation
+- evaluate (0.15ms, 50%): Script evaluation overhead
+
+Memory usage: 2.1KB peak
+Operations executed: 4
+
+▶ WITH --debug --debug-level=verbose:
+[VERBOSE] JSON pointer resolution: /result -> field access
+[VERBOSE] Variable scope created: {}
+[VERBOSE] Memory allocated: 1.2KB for intermediate results
+[DEBUG] Operator '*': args=[3, 4], type=number+number
+[INFO] Operation completed: 12
+
 ```
 
 ### Debugging Workflow Systematic
@@ -3642,6 +3844,11 @@ Provides a structured approach from simple to complex debugging techniques.
 ]
 ```
 
+**CLI Example:**
+```bash
+./build/computo --debug --trace --profile script.json input.json
+```
+
 **Expected Output:**
 ```json
 [
@@ -3649,6 +3856,49 @@ Provides a structured approach from simple to complex debugging techniques.
   4,
   6
 ]
+```
+
+
+**Debugging Workflow:**
+```
+🔬 SYSTEMATIC DEBUGGING WORKFLOW:
+
+1️⃣ BASIC EXECUTION TEST
+   ./build/computo script.json input.json
+   → Verify script runs without syntax errors
+
+2️⃣ ADD EXECUTION TRACING  
+   ./build/computo --debug --trace script.json input.json
+   → See operation flow and identify where issues occur
+
+3️⃣ ADD PERFORMANCE PROFILING
+   ./build/computo --debug --trace --profile script.json input.json  
+   → Identify slow operations and bottlenecks
+
+4️⃣ FOCUS ON PROBLEM AREAS
+   ./build/computo --debug --trace --break-on=OPERATOR script.json input.json
+   → Stop at specific operations that might be causing issues
+
+5️⃣ WATCH VARIABLE CHANGES
+   ./build/computo --debug --trace --watch=VARIABLE script.json input.json
+   → Track how specific variables change through execution
+
+6️⃣ INCREASE VERBOSITY
+   ./build/computo --debug --trace --debug-level=verbose script.json input.json
+   → Get maximum detail when other methods don't reveal the issue
+
+7️⃣ SAVE AND ANALYZE
+   ./build/computo --debug --trace --profile script.json input.json 2> analysis.log
+   → Save detailed logs for deeper investigation
+
+🎯 ISSUE-SPECIFIC STRATEGIES:
+
+• Wrong Results: Use --trace to see execution flow
+• Performance Issues: Use --profile and --slow-threshold=N  
+• Variable Problems: Use --watch=VARIABLE_NAME
+• Complex Scripts: Use --break-on=OPERATOR for step-by-step
+• Error Diagnosis: Use --debug-level=verbose for maximum detail
+
 ```
 
 ### Performance Optimization Guide
@@ -3705,9 +3955,78 @@ Includes specific strategies for different types of performance issues.
 ]
 ```
 
+**CLI Example:**
+```bash
+./build/computo --debug --profile --slow-threshold=1 script.json input.json
+```
+
 **Expected Output:**
 ```json
 385
+```
+
+
+**Performance Optimization:**
+```
+⚡ PERFORMANCE OPTIMIZATION GUIDE:
+
+🔍 DETECTION TECHNIQUES:
+
+• Find slow operations:
+  --slow-threshold=1  # Report operations > 1ms
+  --slow-threshold=5  # Report operations > 5ms (default threshold)
+
+• Compare performance versions:
+  ./build/computo --debug --profile script.json input.json > v1_profile.txt
+  # (make changes)
+  ./build/computo --debug --profile script.json input.json > v2_profile.txt
+  diff v1_profile.txt v2_profile.txt
+
+• Profile with different data sizes:
+  ./build/computo --debug --profile script.json small_data.json
+  ./build/computo --debug --profile script.json large_data.json
+
+🎯 OPTIMIZATION STRATEGIES:
+
+• Reduce Operations: Often the bottleneck with large arrays
+  - Watch for: --watch=accumulator --break-on=reduce
+  - Optimize: Minimize operations inside lambda functions
+
+• Map Operations: Can be expensive with complex transformations
+  - Watch for: --break-on=map --slow-threshold=1
+  - Optimize: Simplify lambda expressions, avoid nested maps
+
+• Object Construction: obj operator with many fields
+  - Watch for: --break-on=obj
+  - Optimize: Group related data, avoid redundant field creation
+
+• Variable Access: Excessive $"/path" lookups
+  - Watch for: --watch=frequently_accessed_var
+  - Optimize: Use let bindings to cache expensive lookups
+
+📊 INTERPRETING PROFILE OUTPUT:
+
+• Time Distribution:
+  > 50% in one operation → Focus optimization there
+  Many small operations → Look for redundant work
+  High evaluation overhead → Simplify script structure
+
+• Memory Patterns:
+  Steadily increasing → Potential memory accumulation
+  Large spikes → Heavy intermediate data structures
+  High peak usage → Consider data streaming approaches
+
+🚀 ADVANCED TECHNIQUES:
+
+• Benchmark with realistic data:
+  ./build/computo --debug --profile --slow-threshold=1 script.json production_data.json
+
+• Monitor specific variables in loops:
+  ./build/computo --debug --trace --watch=loop_counter --watch=accumulator script.json
+
+• Break on expensive operations:
+  ./build/computo --debug --interactive --break-on=reduce --break-on=map script.json
+
 ```
 
 ### Common Debugging Scenarios
@@ -3738,9 +4057,84 @@ Covers the most frequent issues users encounter with Computo scripts.
 }
 ```
 
+**CLI Example:**
+```bash
+./build/computo --debug --trace --debug-level=verbose script.json input.json
+```
+
 **Expected Output:**
 ```json
 "Alice"
+```
+
+
+**Common Scenarios:**
+```
+🔧 COMMON DEBUGGING SCENARIOS:
+
+1️⃣ "Script returns wrong result"
+   SYMPTOM: Output doesn't match expectations
+   DEBUG: ./build/computo --debug --trace script.json input.json
+   LOOK FOR: Each operation's input/output in trace
+   SOLUTION: Verify data flow through each step
+
+2️⃣ "Script is too slow"  
+   SYMPTOM: Takes longer than expected
+   DEBUG: ./build/computo --debug --profile --slow-threshold=5 script.json input.json
+   LOOK FOR: Operations consuming most time
+   SOLUTION: Optimize or replace expensive operations
+
+3️⃣ "Variable not found" errors
+   SYMPTOM: ComputoException: Variable '/path' not found
+   DEBUG: ./build/computo --debug --trace --watch=variable_name script.json input.json
+   LOOK FOR: When and where variables are created/accessed
+   SOLUTION: Check let bindings and JSON pointer paths
+
+4️⃣ "Script works with small data, fails with large data"
+   SYMPTOM: Success with test data, errors with production data
+   DEBUG: ./build/computo --debug --profile --debug-level=verbose script.json large_data.json
+   LOOK FOR: Memory usage spikes, timeout operations
+   SOLUTION: Optimize data processing, add error handling
+
+5️⃣ "Nested operations are confusing"
+   SYMPTOM: Complex script is hard to understand/debug
+   DEBUG: ./build/computo --debug --trace --break-on=map --break-on=reduce script.json input.json
+   LOOK FOR: Step-by-step execution of nested operations
+   SOLUTION: Break complex expressions into let bindings
+
+6️⃣ "JSON parsing errors"
+   SYMPTOM: "JSON parsing error in script.json"
+   DEBUG: python3 -m json.tool script.json  # Validate JSON first
+   DEBUG: ./build/computo --comments script.json input.json  # If using comments
+   LOOK FOR: Syntax errors, trailing commas, unquoted strings
+   SOLUTION: Fix JSON syntax or use --comments flag
+
+7️⃣ "Performance regression"
+   SYMPTOM: Script was fast, now slow after changes
+   DEBUG: 
+     git checkout previous_version
+     ./build/computo --debug --profile script.json input.json > old_profile.txt
+     git checkout current_version  
+     ./build/computo --debug --profile script.json input.json > new_profile.txt
+     diff old_profile.txt new_profile.txt
+   LOOK FOR: Operations that became slower, new expensive operations
+   SOLUTION: Revert problematic changes or optimize new code
+
+8️⃣ "Interactive debugging for complex issues"
+   SYMPTOM: Need to step through execution manually
+   DEBUG: ./build/computo --debug --interactive --break-on=problematic_op script.json input.json
+   LOOK FOR: Variable state at each breakpoint
+   SOLUTION: Inspect state and continue step-by-step
+
+💡 GENERAL DEBUGGING TIPS:
+
+• Start simple: Test with minimal input data first
+• Save debug output: Always use 2> debug.log for analysis
+• Use version control: Compare profiles before/after changes
+• Test incrementally: Add complexity gradually
+• Validate JSON: Use json.tool before debugging script logic
+• Read error messages: They often point directly to the issue
+
 ```
 
 ### Debug Flag Combinations Guide
@@ -3801,9 +4195,85 @@ Provides templates for common debugging tasks and workflows.
 ]
 ```
 
+**CLI Example:**
+```bash
+./build/computo --debug --trace --profile --watch=data --slow-threshold=1 script.json input.json
+```
+
 **Expected Output:**
 ```json
 30
+```
+
+
+**Flag Combinations:**
+```
+🎛️ DEBUGGING FLAG COMBINATIONS:
+
+🔍 BASIC INVESTIGATION:
+   --debug --trace
+   → See execution flow with timing
+   → Good for: Understanding script behavior
+
+🔍 PERFORMANCE ANALYSIS:  
+   --debug --profile --slow-threshold=5
+   → Focus on operations slower than 5ms
+   → Good for: Finding bottlenecks
+
+🔍 DETAILED TROUBLESHOOTING:
+   --debug --trace --debug-level=verbose
+   → Maximum information output
+   → Good for: Complex issues requiring deep inspection
+
+🔍 VARIABLE TRACKING:
+   --debug --trace --watch=variable_name
+   → Track specific variable changes
+   → Good for: Data flow issues, unexpected values
+
+🔍 OPERATION-SPECIFIC DEBUGGING:
+   --debug --trace --break-on=map --break-on=reduce
+   → Stop at specific operations
+   → Good for: Complex nested operations
+
+🔍 COMPREHENSIVE ANALYSIS:
+   --debug --trace --profile --watch=data --slow-threshold=1
+   → Everything enabled for thorough analysis
+   → Good for: Persistent issues, optimization work
+
+🔍 DEVELOPMENT WORKFLOW:
+   --debug --trace --profile --pretty=2
+   → Debugging with readable output
+   → Good for: Development and testing
+
+🔍 PRODUCTION DEBUGGING:
+   --debug --debug-level=error
+   → Minimal debug output, errors only
+   → Good for: Production troubleshooting without noise
+
+🔍 INTERACTIVE INSPECTION:
+   --debug --interactive --trace --break-on=problematic_op
+   → Manual step-through with full control
+   → Good for: Complex logic verification
+
+🔍 PERFORMANCE COMPARISON:
+   --debug --profile
+   → Clean performance metrics only
+   → Good for: Benchmarking, before/after comparisons
+
+⚠️ FLAGS TO AVOID TOGETHER:
+
+• --interactive with --profile: Interactive mode disrupts timing
+• --debug-level=verbose with large data: Too much output
+• Multiple --break-on with --profile: Breaks disrupt timing measurements
+
+💡 RECOMMENDED WORKFLOWS:
+
+1. Start with: --debug --trace
+2. Add profiling: --debug --trace --profile  
+3. Focus investigation: --debug --trace --watch=specific_var
+4. Deep dive: --debug --trace --debug-level=verbose
+5. Performance work: --debug --profile --slow-threshold=N
+
 ```
 
 ## Functional Lists Examples
