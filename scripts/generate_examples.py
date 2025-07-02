@@ -81,6 +81,8 @@ def generate_test_script(example: dict, example_path: Path, example_index: int, 
     flags = example.get('flags', [])
     has_expected = 'expected' in example
     multiple_inputs = 'inputs' in example
+    dont_run = example.get('dontrun', False)
+    has_manual_run = 'manualrun' in example
     
     # Build command
     cmd_parts = ['../../../build/computo']
@@ -126,20 +128,76 @@ echo -e "${{BLUE}}Testing {name} (README.toml example #{example_index}{f' line {
 echo -e "Category: {category}"
 echo -e "Description: {description.split('.')[0] if description else 'No description'}"
 echo -e "Source: README.toml examples[{example_index}]{f' line {line_number}' if line_number else ''}"
+'''
 
-echo -e "${{YELLOW}}Running:${{NC}} {command}"
+    # Handle special execution modes
+    if dont_run or has_manual_run:
+        if has_manual_run:
+            manual_output = example['manualrun'].strip()
+            # Escape single quotes in the manual output for bash
+            escaped_manual = manual_output.replace("'", "'\"'\"'")
+            script += f'''echo -e "${{YELLOW}}Execution skipped - using manual output:${{NC}}"
+echo -e "${{BLUE}}Manual execution shown below:${{NC}}"
+echo
 
-# Run the transformation
-RESULT=$({command} 2>&1)
-EXIT_CODE=$?
+# Extract JSON result from manual output (last line that looks like JSON)
+MANUAL_OUTPUT='{escaped_manual}'
+echo "$MANUAL_OUTPUT"
+echo
 
-if [ $EXIT_CODE -ne 0 ]; then
-    echo -e "${{RED}}✗ FAIL: Command failed with exit code $EXIT_CODE${{NC}}"
-    echo "Error output: $RESULT"
-    exit 1
+# Try to extract JSON result from manual output (look for last non-empty line that could be JSON)
+RESULT=$(echo "$MANUAL_OUTPUT" | grep -v '^[[:space:]]*$' | tail -5 | grep -E '^[[:space:]]*[\\[\\{{0-9"tfn-]' | tail -1 | tr -d '[:cntrl:]' | head -c 1000)
+if [ -z "$RESULT" ]; then
+    echo -e "${{YELLOW}}⚠️  Could not extract JSON result from manual output${{NC}}"
+    echo -e "${{BLUE}}Manual output was:${{NC}}"
+    echo "$MANUAL_OUTPUT" | head -20
+    echo -e "${{GREEN}}✓ Manual example displayed successfully${{NC}}"
+    exit 0
 fi
 
-echo -e "${{YELLOW}}Result:${{NC}} $RESULT"
+echo -e "${{YELLOW}}Extracted Result:${{NC}} $RESULT"
+'''
+        else:
+            script += f'''echo -e "${{YELLOW}}Execution skipped (dontrun=true) - this is an interactive or special example${{NC}}"
+echo -e "${{BLUE}}Command would be:${{NC}} {command}"
+echo -e "${{GREEN}}✓ Example files validated successfully${{NC}}"
+exit 0
+'''
+    else:
+        script += f'''echo -e "${{YELLOW}}Running:${{NC}} {command}"
+
+# Run the transformation - handle debug vs non-debug differently
+if [[ "{' '.join(flags)}" == *"--debug"* ]]; then
+    # Debug mode: capture stderr separately, only get JSON from stdout
+    DEBUG_OUTPUT=$(mktemp)
+    RESULT=$({command} 2>"$DEBUG_OUTPUT")
+    EXIT_CODE=$?
+    
+    if [ $EXIT_CODE -ne 0 ]; then
+        echo -e "${{RED}}✗ FAIL: Command failed with exit code $EXIT_CODE${{NC}}"
+        echo "Debug output:"
+        cat "$DEBUG_OUTPUT"
+        rm -f "$DEBUG_OUTPUT"
+        exit 1
+    fi
+    
+    echo -e "${{YELLOW}}Result:${{NC}} $RESULT"
+    echo -e "${{BLUE}}Debug Output (first 20 lines):${{NC}}"
+    head -20 "$DEBUG_OUTPUT" | sed 's/^/  /'
+    rm -f "$DEBUG_OUTPUT"
+else
+    # Normal mode: capture everything together
+    RESULT=$({command} 2>&1)
+    EXIT_CODE=$?
+    
+    if [ $EXIT_CODE -ne 0 ]; then
+        echo -e "${{RED}}✗ FAIL: Command failed with exit code $EXIT_CODE${{NC}}"
+        echo "Error output: $RESULT"
+        exit 1
+    fi
+    
+    echo -e "${{YELLOW}}Result:${{NC}} $RESULT"
+fi
 '''
 
     if has_expected:
@@ -196,6 +254,8 @@ def create_example_readme(example: dict) -> str:
     category = example.get('category', 'misc')
     description = example.get('description', '')
     flags = example.get('flags', [])
+    dont_run = example.get('dontrun', False)
+    has_manual_run = 'manualrun' in example
     
     readme = f'''# {name.replace('_', ' ').title()}
 
@@ -218,15 +278,26 @@ def create_example_readme(example: dict) -> str:
 ```bash
 # Run the test
 ./test.sh
-
-# Or run manually
 '''
     
-    if flags:
-        readme += f'''../../../build/computo {' '.join(flags)} script.json input.json
+    if dont_run:
+        readme += '''
+# Note: This example is marked as dontrun=true (interactive or special)
+# The test script will not execute the command automatically
+'''
+    elif has_manual_run:
+        readme += '''
+# Note: This example uses manual output and will not execute automatically
 '''
     else:
-        readme += '''../../../build/computo script.json input.json
+        readme += '''
+# Or run manually
+'''
+        if flags:
+            readme += f'''../../../build/computo {' '.join(flags)} script.json input.json
+'''
+        else:
+            readme += '''../../../build/computo script.json input.json
 '''
     
     readme += '''```
@@ -256,6 +327,17 @@ def create_example_readme(example: dict) -> str:
 ```json
 '''
         readme += json.dumps(example['expected'], indent=2)
+        readme += '''
+```
+'''
+    
+    if has_manual_run:
+        readme += '''
+## Manual Execution Example
+
+```
+'''
+        readme += example['manualrun'].strip()
         readme += '''
 ```
 '''

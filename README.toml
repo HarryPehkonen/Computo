@@ -157,6 +157,44 @@ The key insight of Computo is that **code is data** - all scripts are valid JSON
 # Allow comments in script files
 ./build/computo --comments script_with_comments.json input.json
 ```
+
+### Debugging Support
+```bash
+# Basic debugging (timing and enhanced error reporting only)
+./build/computo --debug script.json input.json
+
+# Execution tracing (automatically enables debug mode)
+./build/computo --trace script.json input.json
+
+# Performance profiling with timing analysis
+./build/computo --profile script.json input.json
+
+# Interactive debugging with breakpoints
+./build/computo --interactive --break-on=map script.json input.json
+
+# Variable watching during execution
+./build/computo --trace --watch=variable_name script.json input.json
+
+# Comprehensive debugging (all features)
+./build/computo --trace --profile --watch=var --break-on=op --slow-threshold=5 script.json input.json
+
+# Debug output control with tracing
+./build/computo --debug-level=verbose --trace script.json input.json
+```
+
+**Debug Features:**
+- `--debug` - Enable basic debugging output (execution timing and enhanced error reporting)
+- `--trace` - Show execution trace with operation flow
+- `--profile` - Performance profiling with timing analysis
+- `--interactive` - Interactive debugging mode (step-through)
+- `--break-on=OPERATOR` - Set breakpoints on specific operators
+- `--watch=VARIABLE` - Monitor variable changes during execution
+- `--slow-threshold=MS` - Report operations slower than MS milliseconds
+- `--debug-level=LEVEL` - Control debug verbosity (error|warning|info|debug|verbose)
+
+**Debug Independence:** All debug switches work independently and automatically enable debug mode. You do NOT need `--debug` with other debug switches - each debug feature automatically creates the debugger instance and enables debug output.
+
+**Debug Output:** All debug information goes to stderr, JSON results to stdout, allowing proper output separation.
 """
 
 # ============================================================================
@@ -1794,17 +1832,30 @@ auto correct = CB::multiply(6, 7);
 # ============================================================================
 
 [[examples]]
-name = "debug_basic_tracing"
+name = "debug_basic_only"
 category = "debugging"
 description = """
-Basic debugging with execution tracing enabled.
-Shows how to enable execution tracing to see operation flow.
-Note: This demonstrates CLI debugging flags - actual trace output goes to stderr.
+Basic debug mode with --debug flag alone.
+Shows what --debug does by itself: execution timing and enhanced error reporting.
+Note: --debug alone provides minimal debug output - just execution time in milliseconds.
 """
 script = ["obj", ["result", ["+", ["*", 3, 4], ["*", 5, 6]]], ["computed", true]]
 input = {}
 expected = {result = 42, computed = true}
-cli_example = "./build/computo --debug --trace script.json input.json"
+flags = ["--debug"]
+
+[[examples]]
+name = "debug_basic_tracing"
+category = "debugging"
+description = """
+Basic execution tracing to see operation flow.
+Shows how to enable execution tracing (automatically enables debug mode).
+Note: --trace automatically enables debug mode - no need for --debug flag.
+"""
+script = ["obj", ["result", ["+", ["*", 3, 4], ["*", 5, 6]]], ["computed", true]]
+input = {}
+expected = {result = 42, computed = true}
+flags = ["--trace"]
 
 [[examples]]
 name = "debug_performance_profiling"
@@ -1812,12 +1863,12 @@ category = "debugging"
 description = """
 Performance profiling to identify slow operations.
 Demonstrates using profiling to measure execution times and identify bottlenecks.
-Note: Performance reports are sent to stderr, JSON result to stdout.
+Note: --profile automatically enables debug mode and sends reports to stderr.
 """
 script = ["reduce", {array = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}, ["lambda", ["acc", "x"], ["+", ["$", "/acc"], ["*", ["$", "/x"], ["$", "/x"]]]], 0]
 input = {}
 expected = 385
-cli_example = "./build/computo --debug --profile script.json input.json"
+flags = ["--profile"]
 
 [[examples]]
 name = "debug_slow_operation_detection"
@@ -1825,12 +1876,12 @@ category = "debugging"
 description = """
 Detect and report operations slower than threshold.
 Shows using slow operation detection to find performance issues.
-Note: Operations slower than 5ms will be flagged in the debug output.
+Note: --slow-threshold automatically enables profiling and debug mode.
 """
 script = ["map", {array = [1, 2, 3, 4, 5]}, ["lambda", ["x"], ["reduce", {array = [1, 2, 3, 4, 5]}, ["lambda", ["a", "b"], ["+", ["$", "/a"], ["*", ["$", "/b"], ["$", "/x"]]]], 0]]]
 input = {}
 expected = [15, 30, 45, 60, 75]
-cli_example = "./build/computo --debug --profile --slow-threshold=5 script.json input.json"
+flags = ["--slow-threshold=5"]
 
 [[examples]]
 name = "debug_operator_breakpoints"
@@ -1838,12 +1889,12 @@ category = "debugging"
 description = """
 Set breakpoints on specific operators for debugging.
 Demonstrates halting execution when specific operators are encountered.
-Note: In non-interactive mode, breakpoints log to stderr without stopping.
+Note: --break-on automatically enables debug mode; --trace shows execution flow.
 """
 script = ["let", [["data", {array = [1, 2, 3, 4, 5]}]], ["map", ["$", "/data"], ["lambda", ["x"], ["*", ["$", "/x"], 2]]]]
 input = {}
 expected = [2, 4, 6, 8, 10]
-cli_example = "./build/computo --debug --trace --break-on=map script.json input.json"
+flags = ["--trace", "--break-on=map"]
 
 [[examples]]
 name = "debug_variable_watching"
@@ -1851,12 +1902,12 @@ category = "debugging"
 description = """
 Watch variable changes during execution.
 Shows tracking specific variables and their value changes throughout execution.
-Note: Variable watch output appears in the execution trace on stderr.
+Note: --watch automatically enables debug mode; --trace shows variable changes.
 """
 script = ["let", [["multiplier", 3], ["base", 14]], ["+", ["*", ["$", "/base"], ["$", "/multiplier"]], ["$", "/base"]]]
 input = {}
 expected = 56
-cli_example = "./build/computo --debug --trace --watch=multiplier --watch=base script.json input.json"
+flags = ["--trace", "--watch=multiplier", "--watch=base"]
 
 [[examples]]
 name = "debug_comprehensive_analysis"
@@ -1864,12 +1915,12 @@ category = "debugging"
 description = """
 Comprehensive debugging with all features enabled.
 Demonstrates using multiple debugging features together for complete analysis.
-Note: Combines tracing, profiling, breakpoints, and variable watching.
+Note: All debug switches work independently - each automatically enables debug mode.
 """
 script = ["let", [["numbers", {array = [10, 20, 30]}]], ["reduce", ["$", "/numbers"], ["lambda", ["sum", "num"], ["+", ["$", "/sum"], ["*", ["$", "/num"], 2]]], 0]]
 input = {}
 expected = 120
-cli_example = "./build/computo --debug --trace --profile --watch=numbers --break-on=reduce --slow-threshold=1 script.json input.json"
+flags = ["--trace", "--profile", "--watch=numbers", "--break-on=reduce", "--slow-threshold=1"]
 
 [[examples]]
 name = "debug_error_diagnosis"
@@ -1877,12 +1928,12 @@ category = "debugging"
 description = """
 Enhanced error reporting with debugging enabled.
 Shows how debugging provides detailed error context and execution history.
-Note: This example would normally cause an error, shown here for documentation.
+Note: --debug-level automatically enables debug mode with specified verbosity.
 """
 script = ["obj", ["safe_result", ["+", 20, 22]], ["info", "This part works fine"]]
 input = {}
 expected = {safe_result = 42, info = "This part works fine"}
-cli_example = "./build/computo --debug --trace --debug-level=verbose script.json input.json"
+flags = ["--trace", "--debug-level=verbose"]
 
 [[examples]]
 name = "debug_log_levels"
@@ -1890,12 +1941,12 @@ category = "debugging"
 description = """
 Different debug log levels for varying detail amounts.
 Demonstrates controlling the verbosity of debug output.
-Note: Higher levels (verbose) provide more detailed execution information.
+Note: --debug-level automatically enables debug mode with specified verbosity.
 """
 script = ["map", {array = ["hello", "world", "debug"]}, ["lambda", ["str"], ["str_concat", ["$", "/str"], "!"]]]
 input = {}
 expected = ["hello!", "world!", "debug!"]
-cli_example = "./build/computo --debug --trace --debug-level=verbose script.json input.json"
+flags = ["--trace", "--debug-level=verbose"]
 
 [[examples]]
 name = "debug_complex_operations"
@@ -1903,12 +1954,12 @@ category = "debugging"
 description = """
 Debugging complex nested operations and data transformations.
 Shows debugging sophisticated scripts with multiple operators and deep nesting.
-Note: Trace output shows the complete execution flow through nested operations.
+Note: Multiple debug switches work independently to provide comprehensive analysis.
 """
 script = ["let", [["users", {array = [{name = "Alice", score = 85}, {name = "Bob", score = 92}, {name = "Charlie", score = 78}]}]], ["obj", ["top_scorer", ["car", ["filter", ["$", "/users"], ["lambda", ["user"], [">", ["get", ["$", "/user"], "/score"], 90]]]]], ["average_score", ["/", ["reduce", ["map", ["$", "/users"], ["lambda", ["user"], ["get", ["$", "/user"], "/score"]]], ["lambda", ["sum", "score"], ["+", ["$", "/sum"], ["$", "/score"]]], 0], ["count", ["$", "/users"]]]]]]
 input = {}
 expected = {top_scorer = {name = "Bob", score = 92}, average_score = 85}
-cli_example = "./build/computo --debug --trace --profile --watch=users --break-on=filter script.json input.json"
+flags = ["--trace", "--profile", "--watch=users", "--break-on=filter"]
 
 [[examples]]
 name = "debug_interactive_session"
@@ -1916,9 +1967,60 @@ category = "debugging"
 description = """
 Interactive debugging for step-through execution.
 Demonstrates interactive debugging mode for manual script inspection.
-Note: Interactive mode allows step-by-step execution with variable inspection.
+Note: This example uses manualrun output since interactive mode requires user input.
 """
 script = ["let", [["step1", 15], ["step2", 27]], ["+", ["$", "/step1"], ["$", "/step2"]]]
 input = {}
 expected = 42
-cli_example = "./build/computo --debug --interactive --break-on=+ script.json input.json"
+flags = ["--interactive", "--break-on=+"]
+manualrun = """
+$ computo --interactive --break-on=+ script.json input.json
+🔍 Debug mode enabled [INTERACTIVE]
+
+
+🛑 BREAKPOINT: + at /+
+Hit count: 1
+Arguments: [
+  [
+    "$",
+    "/step1"
+  ],
+  [
+    "$",
+    "/step2"
+  ]
+]
+
+Variables in scope:
+  step1: 15
+  step2: 27
+
+Debug Commands:
+  (c)ontinue  (s)tep  (i)nspect <var>  (e)val <expr>  (h)elp  (q)uit
+> i step1
+step1 = 15
+> i step2
+step2 = 27
+> c
+Continuing execution...
+✅ EXECUTION SUCCESSFUL in 2ms
+==========================================
+
+📤 RESULT:
+==========
+42
+"""
+
+[[examples]]
+name = "debug_dont_run_example"
+category = "debugging"
+description = """
+Example marked with dontrun=true to prevent automatic execution.
+This demonstrates how to create examples that require special handling or user interaction.
+Note: The test script will validate files but skip execution when dontrun=true.
+"""
+script = ["obj", ["message", "This example won't auto-run"], ["interactive", true]]
+input = {}
+expected = {message = "This example won't auto-run", interactive = true}
+dontrun = true
+flags = ["--interactive"]

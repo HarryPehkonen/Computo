@@ -150,6 +150,44 @@ The key insight of Computo is that **code is data** - all scripts are valid JSON
 ./build/computo --comments script_with_comments.json input.json
 ```
 
+### Debugging Support
+```bash
+# Basic debugging (timing and enhanced error reporting only)
+./build/computo --debug script.json input.json
+
+# Execution tracing (automatically enables debug mode)
+./build/computo --trace script.json input.json
+
+# Performance profiling with timing analysis
+./build/computo --profile script.json input.json
+
+# Interactive debugging with breakpoints
+./build/computo --interactive --break-on=map script.json input.json
+
+# Variable watching during execution
+./build/computo --trace --watch=variable_name script.json input.json
+
+# Comprehensive debugging (all features)
+./build/computo --trace --profile --watch=var --break-on=op --slow-threshold=5 script.json input.json
+
+# Debug output control with tracing
+./build/computo --debug-level=verbose --trace script.json input.json
+```
+
+**Debug Features:**
+- `--debug` - Enable basic debugging output (execution timing and enhanced error reporting)
+- `--trace` - Show execution trace with operation flow
+- `--profile` - Performance profiling with timing analysis
+- `--interactive` - Interactive debugging mode (step-through)
+- `--break-on=OPERATOR` - Set breakpoints on specific operators
+- `--watch=VARIABLE` - Monitor variable changes during execution
+- `--slow-threshold=MS` - Report operations slower than MS milliseconds
+- `--debug-level=LEVEL` - Control debug verbosity (error|warning|info|debug|verbose)
+
+**Debug Independence:** All debug switches work independently and automatically enable debug mode. You do NOT need `--debug` with other debug switches - each debug feature automatically creates the debugger instance and enables debug output.
+
+**Debug Output:** All debug information goes to stderr, JSON results to stdout, allowing proper output separation.
+
 
 ## Quick Start
 
@@ -2904,11 +2942,11 @@ Demonstrates building objects using values extracted from input.
 
 ## Debugging Examples
 
-### Debug Basic Tracing
+### Debug Basic Only
 
-Basic debugging with execution tracing enabled.
-Shows how to enable execution tracing to see operation flow.
-Note: This demonstrates CLI debugging flags - actual trace output goes to stderr.
+Basic debug mode with --debug flag alone.
+Shows what --debug does by itself: execution timing and enhanced error reporting.
+Note: --debug alone provides minimal debug output - just execution time in milliseconds.
 
 
 **Script:**
@@ -2938,6 +2976,82 @@ Note: This demonstrates CLI debugging flags - actual trace output goes to stderr
 ]
 ```
 
+**Flags:** `--debug`
+
+**Debug Output:**
+```
+🔍 Debug mode enabled
+
+✅ EXECUTION SUCCESSFUL in 0ms
+==========================================
+
+📤 RESULT:
+==========
+```
+
+**Expected Output:**
+```json
+{
+  "result": 42,
+  "computed": true
+}
+```
+
+### Debug Basic Tracing
+
+Basic execution tracing to see operation flow.
+Shows how to enable execution tracing (automatically enables debug mode).
+Note: --trace automatically enables debug mode - no need for --debug flag.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "result",
+    [
+      "+",
+      [
+        "*",
+        3,
+        4
+      ],
+      [
+        "*",
+        5,
+        6
+      ]
+    ]
+  ],
+  [
+    "computed",
+    true
+  ]
+]
+```
+
+**Flags:** `--trace`
+
+**Debug Output:**
+```
+🔍 Debug mode enabled [TRACE]
+
+✅ EXECUTION SUCCESSFUL in 0ms
+==========================================
+
+📋 EXECUTION TRACE:
+===================
+✓ TRACE [0ms]: Operator 'obj' at '/obj' with 2 argument(s)
+✓ TRACE [0ms]: Operator '+' at '/obj/+' with 2 argument(s)
+✓ TRACE [0ms]: Operator '*' at '/obj/+/*' with 2 argument(s)
+✓ TRACE [0ms]: Operator '*' at '/obj/+/*' with 2 argument(s)
+
+
+📤 RESULT:
+==========
+```
+
 **Expected Output:**
 ```json
 {
@@ -2950,7 +3064,7 @@ Note: This demonstrates CLI debugging flags - actual trace output goes to stderr
 
 Performance profiling to identify slow operations.
 Demonstrates using profiling to measure execution times and identify bottlenecks.
-Note: Performance reports are sent to stderr, JSON result to stdout.
+Note: --profile automatically enables debug mode and sends reports to stderr.
 
 
 **Script:**
@@ -3000,6 +3114,28 @@ Note: Performance reports are sent to stderr, JSON result to stdout.
 ]
 ```
 
+**Flags:** `--profile`
+
+**Debug Output:**
+```
+🔍 Debug mode enabled [PROFILE]
+
+✅ EXECUTION SUCCESSFUL in 0ms
+==========================================
+
+⏱️  PERFORMANCE PROFILE:
+========================
+COMPUTO PERFORMANCE PROFILE
+===========================
+Total execution time: 0ms
+
+Operator Performance:
+  reduce  0.15961ms (0.0%)  [1 calls, avg: 0.2ms]
+  +  0.1ms (0.0%)  [10 calls, avg: 0.0ms]
+  *  0.0ms (0.0%)  [10 calls, avg: 0.0ms]
+... (truncated for brevity)
+```
+
 **Expected Output:**
 ```json
 385
@@ -3009,7 +3145,7 @@ Note: Performance reports are sent to stderr, JSON result to stdout.
 
 Detect and report operations slower than threshold.
 Shows using slow operation detection to find performance issues.
-Note: Operations slower than 5ms will be flagged in the debug output.
+Note: --slow-threshold automatically enables profiling and debug mode.
 
 
 **Script:**
@@ -3072,6 +3208,28 @@ Note: Operations slower than 5ms will be flagged in the debug output.
 ]
 ```
 
+**Flags:** `--slow-threshold=5`
+
+**Debug Output:**
+```
+🔍 Debug mode enabled [PROFILE]
+
+✅ EXECUTION SUCCESSFUL in 0ms
+==========================================
+
+⏱️  PERFORMANCE PROFILE:
+========================
+COMPUTO PERFORMANCE PROFILE
+===========================
+Total execution time: 0ms
+
+Operator Performance:
+  map  0.466478ms (0.0%)  [1 calls, avg: 0.5ms]
+  reduce  0.4ms (0.0%)  [5 calls, avg: 0.1ms]
+  +  0.2ms (0.0%)  [25 calls, avg: 0.0ms]
+... (truncated for brevity)
+```
+
 **Expected Output:**
 ```json
 [
@@ -3087,7 +3245,7 @@ Note: Operations slower than 5ms will be flagged in the debug output.
 
 Set breakpoints on specific operators for debugging.
 Demonstrates halting execution when specific operators are encountered.
-Note: In non-interactive mode, breakpoints log to stderr without stopping.
+Note: --break-on automatically enables debug mode; --trace shows execution flow.
 
 
 **Script:**
@@ -3132,6 +3290,28 @@ Note: In non-interactive mode, breakpoints log to stderr without stopping.
 ]
 ```
 
+**Flags:** `--trace --break-on=map`
+
+**Debug Output:**
+```
+🔍 Debug mode enabled [TRACE]
+
+BREAKPOINT: map at /let/body/map
+✅ EXECUTION SUCCESSFUL in 0ms
+==========================================
+
+📋 EXECUTION TRACE:
+===================
+✓ TRACE [0ms]: Operator 'map' at '/let/body/map' with 2 argument(s)
+✓ TRACE [0ms]: Operator '$' at '/let/body/map/array/$' with 1 argument(s)
+✓ TRACE [0ms]: Operator '*' at '/let/body/map/lambda[0]/*' with 2 argument(s)
+✓ TRACE [0ms]: Operator '$' at '/let/body/map/lambda[0]/*/$' with 1 argument(s)
+✓ TRACE [0ms]: Operator '*' at '/let/body/map/lambda[1]/*' with 2 argument(s)
+✓ TRACE [0ms]: Operator '$' at '/let/body/map/lambda[1]/*/$' with 1 argument(s)
+✓ TRACE [0ms]: Operator '*' at '/let/body/map/lambda[2]/*' with 2 argument(s)
+... (truncated for brevity)
+```
+
 **Expected Output:**
 ```json
 [
@@ -3147,7 +3327,7 @@ Note: In non-interactive mode, breakpoints log to stderr without stopping.
 
 Watch variable changes during execution.
 Shows tracking specific variables and their value changes throughout execution.
-Note: Variable watch output appears in the execution trace on stderr.
+Note: --watch automatically enables debug mode; --trace shows variable changes.
 
 
 **Script:**
@@ -3185,6 +3365,28 @@ Note: Variable watch output appears in the execution trace on stderr.
 ]
 ```
 
+**Flags:** `--trace --watch=multiplier --watch=base`
+
+**Debug Output:**
+```
+🔍 Debug mode enabled [TRACE]
+
+✅ EXECUTION SUCCESSFUL in 0ms
+==========================================
+
+📋 EXECUTION TRACE:
+===================
+✓ TRACE [0ms]: Operator '+' at '/let/body/+' with 2 argument(s)
+👁️  WATCH: 'multiplier' = 3
+👁️  WATCH: 'base' = 14
+✓ TRACE [0ms]: Operator '*' at '/let/body/+/*' with 2 argument(s)
+👁️  WATCH: 'multiplier' = 3
+👁️  WATCH: 'base' = 14
+✓ TRACE [0ms]: Operator '$' at '/let/body/+/*/$' with 1 argument(s)
+👁️  WATCH: 'multiplier' = 3
+... (truncated for brevity)
+```
+
 **Expected Output:**
 ```json
 56
@@ -3194,7 +3396,7 @@ Note: Variable watch output appears in the execution trace on stderr.
 
 Comprehensive debugging with all features enabled.
 Demonstrates using multiple debugging features together for complete analysis.
-Note: Combines tracing, profiling, breakpoints, and variable watching.
+Note: All debug switches work independently - each automatically enables debug mode.
 
 
 **Script:**
@@ -3246,6 +3448,28 @@ Note: Combines tracing, profiling, breakpoints, and variable watching.
 ]
 ```
 
+**Flags:** `--trace --profile --watch=numbers --break-on=reduce --slow-threshold=1`
+
+**Debug Output:**
+```
+🔍 Debug mode enabled [TRACE] [PROFILE]
+
+BREAKPOINT: reduce at /let/body/reduce
+✅ EXECUTION SUCCESSFUL in 0ms
+==========================================
+
+📋 EXECUTION TRACE:
+===================
+✓ TRACE [0ms]: Operator 'reduce' at '/let/body/reduce' with 3 argument(s)
+👁️  WATCH: 'numbers' = [10,20,30]
+✓ TRACE [0ms]: Operator '$' at '/let/body/reduce/$' with 1 argument(s)
+👁️  WATCH: 'numbers' = [10,20,30]
+✓ TRACE [0ms]: Operator '+' at '/let/body/reduce/+' with 2 argument(s)
+👁️  WATCH: 'numbers' = [10,20,30]
+✓ TRACE [0ms]: Operator '$' at '/let/body/reduce/+/$' with 1 argument(s)
+... (truncated for brevity)
+```
+
 **Expected Output:**
 ```json
 120
@@ -3255,7 +3479,7 @@ Note: Combines tracing, profiling, breakpoints, and variable watching.
 
 Enhanced error reporting with debugging enabled.
 Shows how debugging provides detailed error context and execution history.
-Note: This example would normally cause an error, shown here for documentation.
+Note: --debug-level automatically enables debug mode with specified verbosity.
 
 
 **Script:**
@@ -3277,6 +3501,27 @@ Note: This example would normally cause an error, shown here for documentation.
 ]
 ```
 
+**Flags:** `--trace --debug-level=verbose`
+
+**Debug Output:**
+```
+🔍 Debug mode enabled [TRACE]
+
+✅ EXECUTION SUCCESSFUL in 0ms
+==========================================
+
+📋 EXECUTION TRACE:
+===================
+✓ TRACE [0ms]: Operator 'obj' at '/obj' with 2 argument(s)
+✓ TRACE [0ms]: Operator '+' at '/obj/+' with 2 argument(s)
+  └─ Result [0ms]: 42
+  └─ Result [0ms]: {"info":"This part works fine","safe_result":42}
+
+
+📤 RESULT:
+==========
+```
+
 **Expected Output:**
 ```json
 {
@@ -3289,7 +3534,7 @@ Note: This example would normally cause an error, shown here for documentation.
 
 Different debug log levels for varying detail amounts.
 Demonstrates controlling the verbosity of debug output.
-Note: Higher levels (verbose) provide more detailed execution information.
+Note: --debug-level automatically enables debug mode with specified verbosity.
 
 
 **Script:**
@@ -3320,6 +3565,28 @@ Note: Higher levels (verbose) provide more detailed execution information.
 ]
 ```
 
+**Flags:** `--trace --debug-level=verbose`
+
+**Debug Output:**
+```
+🔍 Debug mode enabled [TRACE]
+
+✅ EXECUTION SUCCESSFUL in 0ms
+==========================================
+
+📋 EXECUTION TRACE:
+===================
+✓ TRACE [0ms]: Operator 'map' at '/map' with 2 argument(s)
+✓ TRACE [0ms]: Operator 'str_concat' at '/map/lambda[0]/str_concat' with 2 argument(s)
+✓ TRACE [0ms]: Operator '$' at '/map/lambda[0]/str_concat/$' with 1 argument(s)
+  └─ Result [0ms]: "hello"
+  └─ Result [0ms]: "hello!"
+✓ TRACE [0ms]: Operator 'str_concat' at '/map/lambda[1]/str_concat' with 2 argument(s)
+✓ TRACE [0ms]: Operator '$' at '/map/lambda[1]/str_concat/$' with 1 argument(s)
+  └─ Result [0ms]: "world"
+... (truncated for brevity)
+```
+
 **Expected Output:**
 ```json
 [
@@ -3333,7 +3600,7 @@ Note: Higher levels (verbose) provide more detailed execution information.
 
 Debugging complex nested operations and data transformations.
 Shows debugging sophisticated scripts with multiple operators and deep nesting.
-Note: Trace output shows the complete execution flow through nested operations.
+Note: Multiple debug switches work independently to provide comprehensive analysis.
 
 
 **Script:**
@@ -3454,6 +3721,28 @@ Note: Trace output shows the complete execution flow through nested operations.
 ]
 ```
 
+**Flags:** `--trace --profile --watch=users --break-on=filter`
+
+**Debug Output:**
+```
+🔍 Debug mode enabled [TRACE] [PROFILE]
+
+BREAKPOINT: filter at /let/body/obj/car/filter
+✅ EXECUTION SUCCESSFUL in 0ms
+==========================================
+
+📋 EXECUTION TRACE:
+===================
+✓ TRACE [0ms]: Operator 'obj' at '/let/body/obj' with 2 argument(s)
+👁️  WATCH: 'users' = [{"name":"Alice","score":85},{"name":"Bob","score":92},{"name":"Charlie","score":78}]
+✓ TRACE [0ms]: Operator 'car' at '/let/body/obj/car' with 1 argument(s)
+👁️  WATCH: 'users' = [{"name":"Alice","score":85},{"name":"Bob","score":92},{"name":"Charlie","score":78}]
+✓ TRACE [0ms]: Operator 'filter' at '/let/body/obj/car/filter' with 2 argument(s)
+👁️  WATCH: 'users' = [{"name":"Alice","score":85},{"name":"Bob","score":92},{"name":"Charlie","score":78}]
+✓ TRACE [0ms]: Operator '$' at '/let/body/obj/car/filter/$' with 1 argument(s)
+... (truncated for brevity)
+```
+
 **Expected Output:**
 ```json
 {
@@ -3469,7 +3758,7 @@ Note: Trace output shows the complete execution flow through nested operations.
 
 Interactive debugging for step-through execution.
 Demonstrates interactive debugging mode for manual script inspection.
-Note: Interactive mode allows step-by-step execution with variable inspection.
+Note: This example uses manualrun output since interactive mode requires user input.
 
 
 **Script:**
@@ -3500,9 +3789,87 @@ Note: Interactive mode allows step-by-step execution with variable inspection.
 ]
 ```
 
+**Flags:** `--interactive --break-on=+`
+
+**Debug Output:**
+```
+$ computo --interactive --break-on=+ script.json input.json
+🔍 Debug mode enabled [INTERACTIVE]
+
+
+🛑 BREAKPOINT: + at /+
+Hit count: 1
+Arguments: [
+  [
+    "$",
+    "/step1"
+  ],
+  [
+    "$",
+    "/step2"
+  ]
+]
+
+Variables in scope:
+  step1: 15
+  step2: 27
+
+Debug Commands:
+  (c)ontinue  (s)tep  (i)nspect <var>  (e)val <expr>  (h)elp  (q)uit
+> i step1
+step1 = 15
+> i step2
+step2 = 27
+> c
+Continuing execution...
+✅ EXECUTION SUCCESSFUL in 2ms
+==========================================
+
+📤 RESULT:
+==========
+42
+```
+
 **Expected Output:**
 ```json
 42
+```
+
+### Debug Dont Run Example
+
+Example marked with dontrun=true to prevent automatic execution.
+This demonstrates how to create examples that require special handling or user interaction.
+Note: The test script will validate files but skip execution when dontrun=true.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "message",
+    "This example won't auto-run"
+  ],
+  [
+    "interactive",
+    true
+  ]
+]
+```
+
+**Flags:** `--interactive`
+
+**Debug Output:**
+```
+# Example marked with dontrun=true - execution skipped
+```
+
+**Expected Output:**
+```json
+{
+  "message": "This example won't auto-run",
+  "interactive": true
+}
 ```
 
 ## Functional Lists Examples
