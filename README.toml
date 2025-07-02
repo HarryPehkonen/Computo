@@ -1967,7 +1967,6 @@ category = "debugging"
 description = """
 Interactive debugging for step-through execution.
 Demonstrates interactive debugging mode for manual script inspection.
-Note: This example uses manualrun output since interactive mode requires user input.
 """
 script = ["let", [["step1", 15], ["step2", 27]], ["+", ["$", "/step1"], ["$", "/step2"]]]
 input = {}

@@ -3130,7 +3130,7 @@ COMPUTO PERFORMANCE PROFILE
 Total execution time: 0ms
 
 Operator Performance:
-  reduce  0.15961ms (0.0%)  [1 calls, avg: 0.2ms]
+  reduce  0.213397ms (0.0%)  [1 calls, avg: 0.2ms]
   +  0.1ms (0.0%)  [10 calls, avg: 0.0ms]
   *  0.0ms (0.0%)  [10 calls, avg: 0.0ms]
 ... (truncated for brevity)
@@ -3224,9 +3224,9 @@ COMPUTO PERFORMANCE PROFILE
 Total execution time: 0ms
 
 Operator Performance:
-  map  0.466478ms (0.0%)  [1 calls, avg: 0.5ms]
-  reduce  0.4ms (0.0%)  [5 calls, avg: 0.1ms]
-  +  0.2ms (0.0%)  [25 calls, avg: 0.0ms]
+  map  0.735781ms (0.0%)  [1 calls, avg: 0.7ms]
+  reduce  0.6ms (0.0%)  [5 calls, avg: 0.1ms]
+  +  0.4ms (0.0%)  [25 calls, avg: 0.0ms]
 ... (truncated for brevity)
 ```
 
@@ -3728,7 +3728,7 @@ Note: Multiple debug switches work independently to provide comprehensive analys
 🔍 Debug mode enabled [TRACE] [PROFILE]
 
 BREAKPOINT: filter at /let/body/obj/car/filter
-✅ EXECUTION SUCCESSFUL in 0ms
+✅ EXECUTION SUCCESSFUL in 1ms
 ==========================================
 
 📋 EXECUTION TRACE:
@@ -3758,7 +3758,6 @@ BREAKPOINT: filter at /let/body/obj/car/filter
 
 Interactive debugging for step-through execution.
 Demonstrates interactive debugging mode for manual script inspection.
-Note: This example uses manualrun output since interactive mode requires user input.
 
 
 **Script:**
