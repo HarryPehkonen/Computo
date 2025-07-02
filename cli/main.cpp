@@ -17,7 +17,7 @@ void print_help(const char* program_name) {
     std::cout << "Computo - Safe, sandboxed, JSON-native data transformation engine\n\n";
     std::cout << "Usage: " << program_name << " [DEBUG_OPTIONS] [OPTIONS] <script.json> [input1.json [input2.json ...]]\n\n";
     
-    std::cout << "🔍 Debugging Options (use BEFORE other options):\n";
+    std::cout << "Debugging Options (use BEFORE other options):\n";
     std::cout << "  --debug               Enable debugging output\n";
     std::cout << "  --debug-level=LEVEL   Set debug level (error|warning|info|debug|verbose)\n";
     std::cout << "  --trace               Enable execution tracing\n";
@@ -27,18 +27,18 @@ void print_help(const char* program_name) {
     std::cout << "  --watch=VARIABLE      Watch variable changes\n";
     std::cout << "  --slow-threshold=MS   Report operations slower than MS milliseconds\n\n";
     
-    std::cout << "⚙️  Basic Options:\n";
+    std::cout << "Basic Options:\n";
     std::cout << "  --help, -?            Show this help message\n";
     std::cout << "  --interpolation       Enable string interpolation in Permuto templates\n";
     std::cout << "  --diff                Generate a JSON patch between input and result\n";
     std::cout << "  --pretty=N            Pretty-print JSON with N spaces of indentation\n";
     std::cout << "  --comments            Allow comments in script files (/* */ and // style)\n\n";
     
-    std::cout << "📁 File Arguments:\n";
+    std::cout << "File Arguments:\n";
     std::cout << "  <script.json>         The Computo script to execute\n";
     std::cout << "  [input1.json ...]     Input data files (optional)\n\n";
     
-    std::cout << "✨ Examples:\n";
+    std::cout << "Examples:\n";
     std::cout << "  # Basic execution\n";
     std::cout << "  " << program_name << " transform.json data.json\n\n";
     std::cout << "  # Debug with tracing\n";
@@ -75,18 +75,18 @@ std::string extract_value(const std::string& arg, const std::string& prefix) {
 
 // Enhanced error formatting with real debugging
 void print_enhanced_error(const std::exception& e, computo::Debugger* debugger) {
-    std::cerr << "\n❌ EXECUTION FAILED\n";
+    std::cerr << "\nERROR: EXECUTION FAILED\n";
     std::cerr << "===================\n\n";
     
     std::cerr << "ERROR: " << e.what() << "\n\n";
     
     if (debugger && debugger->is_tracing_enabled()) {
-        std::cerr << "📋 EXECUTION TRACE:\n";
+        std::cerr << "EXECUTION TRACE:\n";
         std::cerr << "===================\n";
         std::cerr << debugger->get_execution_report() << std::endl;
     }
     
-    std::cerr << "💡 DEBUGGING TIPS:\n";
+    std::cerr << "DEBUGGING TIPS:\n";
     std::cerr << "   1. Use --trace to see execution flow\n";
     std::cerr << "   2. Use --debug-level=verbose for more details\n";
     std::cerr << "   3. Check your JSON syntax and field names\n";
@@ -279,7 +279,7 @@ int main(int argc, char* argv[]) {
         
         // Show debug configuration and set up the debugger
         if (debug_enabled && debugger) {
-            std::cerr << "🔍 Debug mode enabled";
+            std::cerr << "DEBUG: Debug mode enabled";
             if (debugger->is_tracing_enabled()) std::cerr << " [TRACE]";
             if (debugger->is_profiling_enabled()) std::cerr << " [PROFILE]";
             if (debugger->is_interactive_enabled()) std::cerr << " [INTERACTIVE]";
@@ -320,7 +320,7 @@ int main(int argc, char* argv[]) {
                 print_enhanced_error(e, computo::get_debugger());
                 
                 if (computo::get_debugger() && computo::get_debugger()->is_profiling_enabled()) {
-                    std::cerr << "\n⏱️  PERFORMANCE ANALYSIS:\n";
+                    std::cerr << "\nPERFORMANCE ANALYSIS:\n";
                     std::cerr << "=========================\n";
                     std::cerr << "Failed after: " << duration.count() << "ms\n";
                     std::cerr << computo::get_debugger()->get_performance_report() << std::endl;
@@ -337,23 +337,23 @@ int main(int argc, char* argv[]) {
         
         // Debug output after successful execution
         if (debug_enabled) {
-            std::cerr << "✅ EXECUTION SUCCESSFUL in " << duration.count() << "ms\n";
+            std::cerr << "SUCCESS: EXECUTION SUCCESSFUL in " << duration.count() << "ms\n";
             std::cerr << "==========================================\n";
             
             auto* current_debugger = computo::get_debugger();
             if (current_debugger && current_debugger->is_tracing_enabled()) {
-                std::cerr << "\n📋 EXECUTION TRACE:\n";
+                std::cerr << "\nEXECUTION TRACE:\n";
                 std::cerr << "===================\n";
                 std::cerr << current_debugger->get_execution_report() << std::endl;
             }
             
             if (current_debugger && current_debugger->is_profiling_enabled()) {
-                std::cerr << "\n⏱️  PERFORMANCE PROFILE:\n";
+                std::cerr << "\nPERFORMANCE PROFILE:\n";
                 std::cerr << "========================\n";
                 std::cerr << current_debugger->get_performance_report() << std::endl;
             }
             
-            std::cerr << "\n📤 RESULT:\n";
+            std::cerr << "\nRESULT:\n";
             std::cerr << "==========\n";
         }
         
@@ -376,7 +376,7 @@ int main(int argc, char* argv[]) {
     } catch (const json::exception& e) {
         std::cerr << "JSON parsing error in " << script_file << ": " << e.what() << std::endl;
         if (debug_enabled) {
-            std::cerr << "\n💡 JSON DEBUGGING TIPS:\n";
+            std::cerr << "\nJSON DEBUGGING TIPS:\n";
             std::cerr << "   1. Validate JSON syntax with: python3 -m json.tool " << script_file << "\n";
             std::cerr << "   2. Use --comments flag if your JSON contains comments\n";
             std::cerr << "   3. Check for trailing commas, unquoted strings, etc.\n";
@@ -384,7 +384,7 @@ int main(int argc, char* argv[]) {
         return 1;
     } catch (const std::exception& e) {
         if (debug_enabled) {
-            std::cerr << "\n❌ UNEXPECTED ERROR\n";
+            std::cerr << "\nERROR: UNEXPECTED ERROR\n";
             std::cerr << "===================\n";
             std::cerr << "Error: " << e.what() << std::endl;
             std::cerr << "\nPlease report this as a bug with your script and input files.\n";

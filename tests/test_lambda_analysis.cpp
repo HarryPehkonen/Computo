@@ -65,9 +65,9 @@ TEST_F(LambdaAnalysisTest, StoredLambdaManual) {
     try {
         auto result = computo::execute(stored_lambda_script, input_data);
         EXPECT_EQ(result, expected);
-        std::cout << "✅ Stored lambda (manual) works!\n";
+        std::cout << "SUCCESS: Stored lambda (manual) works!\n";
     } catch (const std::exception& e) {
-        std::cout << "❌ Stored lambda (manual) failed: " << e.what() << "\n";
+        std::cout << "ERROR: Stored lambda (manual) failed: " << e.what() << "\n";
         FAIL() << "Stored lambda failed: " << e.what();
     }
 }
@@ -84,9 +84,9 @@ TEST_F(LambdaAnalysisTest, StoredLambdaBuilder) {
     try {
         auto result = computo::execute(stored_builder_script, input_data);
         EXPECT_EQ(result, expected);
-        std::cout << "✅ Stored lambda (builder) works!\n";
+        std::cout << "SUCCESS: Stored lambda (builder) works!\n";
     } catch (const std::exception& e) {
-        std::cout << "❌ Stored lambda (builder) failed: " << e.what() << "\n";
+        std::cout << "ERROR: Stored lambda (builder) failed: " << e.what() << "\n";
         FAIL() << "Stored lambda (builder) failed: " << e.what();
     }
 }
@@ -124,9 +124,9 @@ TEST_F(LambdaAnalysisTest, PartitionWithAnalysis) {
     try {
         auto result = computo::execute(builder_partition, input_data);
         EXPECT_EQ(result, expected);
-        std::cout << "✅ Partition (builder) works!\n";
+        std::cout << "SUCCESS: Partition (builder) works!\n";
     } catch (const std::exception& e) {
-        std::cout << "❌ Partition (builder) failed: " << e.what() << "\n";
+        std::cout << "ERROR: Partition (builder) failed: " << e.what() << "\n";
         std::cout << "Builder JSON: " << builder_partition.build().dump(2) << "\n";
         std::cout << "Manual JSON:  " << manual_partition.dump(2) << "\n";
         FAIL() << "Partition (builder) failed: " << e.what();

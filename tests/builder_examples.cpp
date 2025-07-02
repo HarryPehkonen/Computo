@@ -17,6 +17,25 @@ protected:
     json input_data;
 };
 
+/*
+* ComputoBuilder Examples and Tests
+*
+* This file demonstrates the ComputoBuilder pattern for readable C++ test construction.
+* Each test shows the ergonomic benefits of the builder API vs manual JSON construction.
+*
+* Key Benefits Demonstrated:
+* GOOD: json{{"array", json::array({1,2,3})}} → CB::array({1,2,3})
+* GOOD: json::array({"+", a, b}) → CB::add(a, b)
+* GOOD: json::array({"$", "/x"}) → CB::var("x")
+* GOOD: Complex nesting becomes readable
+* GOOD: Empty arrays are clear: CB::empty_array()
+* GOOD: Template argument deduction issues eliminated
+* GOOD: Macro conflicts with braced initialization avoided
+*
+* This builder pattern eliminates hundreds of lines of boilerplate JSON construction
+* and makes test intent crystal clear.
+*/
+
 // Example 1: Simple array operations
 TEST_F(BuilderExamplesTest, ArrayOperationsComparison) {
     // OLD VERBOSE SYNTAX - painful to write and read
@@ -172,26 +191,3 @@ TEST_F(BuilderExamplesTest, FluentChainingExample) {
     // The actual reduce operator might not be implemented yet, so we'll skip execution
     // but this shows how the builder enables complex nested structures
 }
-
-/*
- * BENEFITS DEMONSTRATED:
- * 
- * 1. READABILITY: Code reads like natural language instead of nested JSON arrays
- * 2. TYPE SAFETY: Static typing catches errors at compile time
- * 3. DISCOVERABILITY: IDE autocomplete shows available methods
- * 4. MAINTAINABILITY: Changes are easier to make and understand
- * 5. LESS ERROR-PRONE: No need to manually balance brackets and quotes
- * 6. COMPOSABILITY: Builders can be easily composed and reused
- * 7. DEBUGGING: Stack traces point to meaningful code instead of JSON construction
- * 
- * PAIN POINTS SOLVED:
- * 
- * ✅ json{{"array", json::array({1,2,3})}} → CB::array({1,2,3})
- * ✅ json::array({"+", a, b}) → CB::add(a, b)  
- * ✅ json::array({"$", "/x"}) → CB::var("x")
- * ✅ Complex nesting becomes readable
- * ✅ Empty arrays are clear: CB::empty_array()
- * ✅ Template argument deduction issues eliminated
- * ✅ Macro conflicts with braced initialization avoided
- * 
- */

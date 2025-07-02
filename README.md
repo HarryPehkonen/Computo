@@ -2980,12 +2980,12 @@ Note: --debug alone provides minimal debug output - just execution time in milli
 
 **Debug Output:**
 ```
-🔍 Debug mode enabled
+DEBUG: Debug mode enabled
 
-✅ EXECUTION SUCCESSFUL in 0ms
+SUCCESS: EXECUTION SUCCESSFUL in 0ms
 ==========================================
 
-📤 RESULT:
+RESULT:
 ==========
 ```
 
@@ -3035,20 +3035,20 @@ Note: --trace automatically enables debug mode - no need for --debug flag.
 
 **Debug Output:**
 ```
-🔍 Debug mode enabled [TRACE]
+DEBUG: Debug mode enabled [TRACE]
 
-✅ EXECUTION SUCCESSFUL in 0ms
+SUCCESS: EXECUTION SUCCESSFUL in 0ms
 ==========================================
 
-📋 EXECUTION TRACE:
+EXECUTION TRACE:
 ===================
-✓ TRACE [0ms]: Operator 'obj' at '/obj' with 2 argument(s)
-✓ TRACE [0ms]: Operator '+' at '/obj/+' with 2 argument(s)
-✓ TRACE [0ms]: Operator '*' at '/obj/+/*' with 2 argument(s)
-✓ TRACE [0ms]: Operator '*' at '/obj/+/*' with 2 argument(s)
+TRACE [0ms]: Operator 'obj' at '/obj' with 2 argument(s)
+TRACE [0ms]: Operator '+' at '/obj/+' with 2 argument(s)
+TRACE [0ms]: Operator '*' at '/obj/+/*' with 2 argument(s)
+TRACE [0ms]: Operator '*' at '/obj/+/*' with 2 argument(s)
 
 
-📤 RESULT:
+RESULT:
 ==========
 ```
 
@@ -3118,21 +3118,21 @@ Note: --profile automatically enables debug mode and sends reports to stderr.
 
 **Debug Output:**
 ```
-🔍 Debug mode enabled [PROFILE]
+DEBUG: Debug mode enabled [PROFILE]
 
-✅ EXECUTION SUCCESSFUL in 0ms
+SUCCESS: EXECUTION SUCCESSFUL in 0ms
 ==========================================
 
-⏱️  PERFORMANCE PROFILE:
+PERFORMANCE PROFILE:
 ========================
 COMPUTO PERFORMANCE PROFILE
 ===========================
 Total execution time: 0ms
 
 Operator Performance:
-  reduce  0.213397ms (0.0%)  [1 calls, avg: 0.2ms]
+  reduce  0.27361ms (0.0%)  [1 calls, avg: 0.3ms]
   +  0.1ms (0.0%)  [10 calls, avg: 0.0ms]
-  *  0.0ms (0.0%)  [10 calls, avg: 0.0ms]
+  *  0.1ms (0.0%)  [10 calls, avg: 0.0ms]
 ... (truncated for brevity)
 ```
 
@@ -3212,21 +3212,21 @@ Note: --slow-threshold automatically enables profiling and debug mode.
 
 **Debug Output:**
 ```
-🔍 Debug mode enabled [PROFILE]
+DEBUG: Debug mode enabled [PROFILE]
 
-✅ EXECUTION SUCCESSFUL in 0ms
+SUCCESS: EXECUTION SUCCESSFUL in 1ms
 ==========================================
 
-⏱️  PERFORMANCE PROFILE:
+PERFORMANCE PROFILE:
 ========================
 COMPUTO PERFORMANCE PROFILE
 ===========================
-Total execution time: 0ms
+Total execution time: 1ms
 
 Operator Performance:
-  map  0.735781ms (0.0%)  [1 calls, avg: 0.7ms]
-  reduce  0.6ms (0.0%)  [5 calls, avg: 0.1ms]
-  +  0.4ms (0.0%)  [25 calls, avg: 0.0ms]
+  map  0.974712ms (97.5%)  [1 calls, avg: 1.0ms]
+  reduce  0.8ms (83.4%)  [5 calls, avg: 0.2ms]
+  +  0.5ms (49.1%)  [25 calls, avg: 0.0ms]
 ... (truncated for brevity)
 ```
 
@@ -3294,21 +3294,21 @@ Note: --break-on automatically enables debug mode; --trace shows execution flow.
 
 **Debug Output:**
 ```
-🔍 Debug mode enabled [TRACE]
+DEBUG: Debug mode enabled [TRACE]
 
 BREAKPOINT: map at /let/body/map
-✅ EXECUTION SUCCESSFUL in 0ms
+SUCCESS: EXECUTION SUCCESSFUL in 0ms
 ==========================================
 
-📋 EXECUTION TRACE:
+EXECUTION TRACE:
 ===================
-✓ TRACE [0ms]: Operator 'map' at '/let/body/map' with 2 argument(s)
-✓ TRACE [0ms]: Operator '$' at '/let/body/map/array/$' with 1 argument(s)
-✓ TRACE [0ms]: Operator '*' at '/let/body/map/lambda[0]/*' with 2 argument(s)
-✓ TRACE [0ms]: Operator '$' at '/let/body/map/lambda[0]/*/$' with 1 argument(s)
-✓ TRACE [0ms]: Operator '*' at '/let/body/map/lambda[1]/*' with 2 argument(s)
-✓ TRACE [0ms]: Operator '$' at '/let/body/map/lambda[1]/*/$' with 1 argument(s)
-✓ TRACE [0ms]: Operator '*' at '/let/body/map/lambda[2]/*' with 2 argument(s)
+TRACE [0ms]: Operator 'map' at '/let/body/map' with 2 argument(s)
+TRACE [0ms]: Operator '$' at '/let/body/map/array/$' with 1 argument(s)
+TRACE [0ms]: Operator '*' at '/let/body/map/lambda[0]/*' with 2 argument(s)
+TRACE [0ms]: Operator '$' at '/let/body/map/lambda[0]/*/$' with 1 argument(s)
+TRACE [0ms]: Operator '*' at '/let/body/map/lambda[1]/*' with 2 argument(s)
+TRACE [0ms]: Operator '$' at '/let/body/map/lambda[1]/*/$' with 1 argument(s)
+TRACE [0ms]: Operator '*' at '/let/body/map/lambda[2]/*' with 2 argument(s)
 ... (truncated for brevity)
 ```
 
@@ -3369,21 +3369,21 @@ Note: --watch automatically enables debug mode; --trace shows variable changes.
 
 **Debug Output:**
 ```
-🔍 Debug mode enabled [TRACE]
+DEBUG: Debug mode enabled [TRACE]
 
-✅ EXECUTION SUCCESSFUL in 0ms
+SUCCESS: EXECUTION SUCCESSFUL in 0ms
 ==========================================
 
-📋 EXECUTION TRACE:
+EXECUTION TRACE:
 ===================
-✓ TRACE [0ms]: Operator '+' at '/let/body/+' with 2 argument(s)
-👁️  WATCH: 'multiplier' = 3
-👁️  WATCH: 'base' = 14
-✓ TRACE [0ms]: Operator '*' at '/let/body/+/*' with 2 argument(s)
-👁️  WATCH: 'multiplier' = 3
-👁️  WATCH: 'base' = 14
-✓ TRACE [0ms]: Operator '$' at '/let/body/+/*/$' with 1 argument(s)
-👁️  WATCH: 'multiplier' = 3
+TRACE [0ms]: Operator '+' at '/let/body/+' with 2 argument(s)
+WATCH: 'multiplier' = 3
+WATCH: 'base' = 14
+TRACE [0ms]: Operator '*' at '/let/body/+/*' with 2 argument(s)
+WATCH: 'multiplier' = 3
+WATCH: 'base' = 14
+TRACE [0ms]: Operator '$' at '/let/body/+/*/$' with 1 argument(s)
+WATCH: 'multiplier' = 3
 ... (truncated for brevity)
 ```
 
@@ -3452,21 +3452,21 @@ Note: All debug switches work independently - each automatically enables debug m
 
 **Debug Output:**
 ```
-🔍 Debug mode enabled [TRACE] [PROFILE]
+DEBUG: Debug mode enabled [TRACE] [PROFILE]
 
 BREAKPOINT: reduce at /let/body/reduce
-✅ EXECUTION SUCCESSFUL in 0ms
+SUCCESS: EXECUTION SUCCESSFUL in 0ms
 ==========================================
 
-📋 EXECUTION TRACE:
+EXECUTION TRACE:
 ===================
-✓ TRACE [0ms]: Operator 'reduce' at '/let/body/reduce' with 3 argument(s)
-👁️  WATCH: 'numbers' = [10,20,30]
-✓ TRACE [0ms]: Operator '$' at '/let/body/reduce/$' with 1 argument(s)
-👁️  WATCH: 'numbers' = [10,20,30]
-✓ TRACE [0ms]: Operator '+' at '/let/body/reduce/+' with 2 argument(s)
-👁️  WATCH: 'numbers' = [10,20,30]
-✓ TRACE [0ms]: Operator '$' at '/let/body/reduce/+/$' with 1 argument(s)
+TRACE [0ms]: Operator 'reduce' at '/let/body/reduce' with 3 argument(s)
+WATCH: 'numbers' = [10,20,30]
+TRACE [0ms]: Operator '$' at '/let/body/reduce/$' with 1 argument(s)
+WATCH: 'numbers' = [10,20,30]
+TRACE [0ms]: Operator '+' at '/let/body/reduce/+' with 2 argument(s)
+WATCH: 'numbers' = [10,20,30]
+TRACE [0ms]: Operator '$' at '/let/body/reduce/+/$' with 1 argument(s)
 ... (truncated for brevity)
 ```
 
@@ -3505,20 +3505,20 @@ Note: --debug-level automatically enables debug mode with specified verbosity.
 
 **Debug Output:**
 ```
-🔍 Debug mode enabled [TRACE]
+DEBUG: Debug mode enabled [TRACE]
 
-✅ EXECUTION SUCCESSFUL in 0ms
+SUCCESS: EXECUTION SUCCESSFUL in 0ms
 ==========================================
 
-📋 EXECUTION TRACE:
+EXECUTION TRACE:
 ===================
-✓ TRACE [0ms]: Operator 'obj' at '/obj' with 2 argument(s)
-✓ TRACE [0ms]: Operator '+' at '/obj/+' with 2 argument(s)
+TRACE [0ms]: Operator 'obj' at '/obj' with 2 argument(s)
+TRACE [0ms]: Operator '+' at '/obj/+' with 2 argument(s)
   └─ Result [0ms]: 42
   └─ Result [0ms]: {"info":"This part works fine","safe_result":42}
 
 
-📤 RESULT:
+RESULT:
 ==========
 ```
 
@@ -3569,21 +3569,21 @@ Note: --debug-level automatically enables debug mode with specified verbosity.
 
 **Debug Output:**
 ```
-🔍 Debug mode enabled [TRACE]
+DEBUG: Debug mode enabled [TRACE]
 
-✅ EXECUTION SUCCESSFUL in 0ms
-==========================================
 
-📋 EXECUTION TRACE:
+ERROR: EXECUTION FAILED
 ===================
-✓ TRACE [0ms]: Operator 'map' at '/map' with 2 argument(s)
-✓ TRACE [0ms]: Operator 'str_concat' at '/map/lambda[0]/str_concat' with 2 argument(s)
-✓ TRACE [0ms]: Operator '$' at '/map/lambda[0]/str_concat/$' with 1 argument(s)
-  └─ Result [0ms]: "hello"
-  └─ Result [0ms]: "hello!"
-✓ TRACE [0ms]: Operator 'str_concat' at '/map/lambda[1]/str_concat' with 2 argument(s)
-✓ TRACE [0ms]: Operator '$' at '/map/lambda[1]/str_concat/$' with 1 argument(s)
-  └─ Result [0ms]: "world"
+
+ERROR: Invalid operator: str_concat
+
+EXECUTION TRACE:
+===================
+TRACE [0ms]: Operator 'map' at '/map' with 2 argument(s)
+ERROR: ERROR in 'map' at '/map': Invalid operator: str_concat
+STACK: /map
+INFO: Arguments: [{"array":["hello","world","debug"]},["lambda",["str"],["str_concat",["$","/str"],"!"]]]
+
 ... (truncated for brevity)
 ```
 
@@ -3725,21 +3725,21 @@ Note: Multiple debug switches work independently to provide comprehensive analys
 
 **Debug Output:**
 ```
-🔍 Debug mode enabled [TRACE] [PROFILE]
+DEBUG: Debug mode enabled [TRACE] [PROFILE]
 
 BREAKPOINT: filter at /let/body/obj/car/filter
-✅ EXECUTION SUCCESSFUL in 1ms
+SUCCESS: EXECUTION SUCCESSFUL in 0ms
 ==========================================
 
-📋 EXECUTION TRACE:
+EXECUTION TRACE:
 ===================
-✓ TRACE [0ms]: Operator 'obj' at '/let/body/obj' with 2 argument(s)
-👁️  WATCH: 'users' = [{"name":"Alice","score":85},{"name":"Bob","score":92},{"name":"Charlie","score":78}]
-✓ TRACE [0ms]: Operator 'car' at '/let/body/obj/car' with 1 argument(s)
-👁️  WATCH: 'users' = [{"name":"Alice","score":85},{"name":"Bob","score":92},{"name":"Charlie","score":78}]
-✓ TRACE [0ms]: Operator 'filter' at '/let/body/obj/car/filter' with 2 argument(s)
-👁️  WATCH: 'users' = [{"name":"Alice","score":85},{"name":"Bob","score":92},{"name":"Charlie","score":78}]
-✓ TRACE [0ms]: Operator '$' at '/let/body/obj/car/filter/$' with 1 argument(s)
+TRACE [0ms]: Operator 'obj' at '/let/body/obj' with 2 argument(s)
+WATCH: 'users' = [{"name":"Alice","score":85},{"name":"Bob","score":92},{"name":"Charlie","score":78}]
+TRACE [0ms]: Operator 'car' at '/let/body/obj/car' with 1 argument(s)
+WATCH: 'users' = [{"name":"Alice","score":85},{"name":"Bob","score":92},{"name":"Charlie","score":78}]
+TRACE [0ms]: Operator 'filter' at '/let/body/obj/car/filter' with 2 argument(s)
+WATCH: 'users' = [{"name":"Alice","score":85},{"name":"Bob","score":92},{"name":"Charlie","score":78}]
+TRACE [0ms]: Operator '$' at '/let/body/obj/car/filter/$' with 1 argument(s)
 ... (truncated for brevity)
 ```
 
@@ -3793,10 +3793,10 @@ Demonstrates interactive debugging mode for manual script inspection.
 **Debug Output:**
 ```
 $ computo --interactive --break-on=+ script.json input.json
-🔍 Debug mode enabled [INTERACTIVE]
+DEBUG: Debug mode enabled [INTERACTIVE]
 
 
-🛑 BREAKPOINT: + at /+
+BREAKPOINT: + at /+
 Hit count: 1
 Arguments: [
   [
@@ -3821,10 +3821,10 @@ step1 = 15
 step2 = 27
 > c
 Continuing execution...
-✅ EXECUTION SUCCESSFUL in 2ms
+SUCCESS: EXECUTION SUCCESSFUL in 2ms
 ==========================================
 
-📤 RESULT:
+RESULT:
 ==========
 42
 ```

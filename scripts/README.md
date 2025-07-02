@@ -163,7 +163,7 @@ expected = 43
 flags = ["--interactive", "--break-on=+"]
 manualrun = """
 $ computo --interactive --break-on=+ script.json input.json
-🔍 Debug mode enabled [INTERACTIVE]
+DEBUG: Debug mode enabled [INTERACTIVE]
 
 BREAKPOINT: + at /+
 Hit count: 1

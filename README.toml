@@ -1977,7 +1977,7 @@ $ computo --interactive --break-on=+ script.json input.json
 DEBUG: Debug mode enabled [INTERACTIVE]
 
 
-🛑 BREAKPOINT: + at /+
+BREAKPOINT: + at /+
 Hit count: 1
 Arguments: [
   [
@@ -2005,7 +2005,7 @@ Continuing execution...
 SUCCESS: EXECUTION SUCCESSFUL in 2ms
 ==========================================
 
-📤 RESULT:
+RESULT:
 ==========
 42
 """

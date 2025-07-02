@@ -233,13 +233,13 @@ if [ -f expected.json ]; then
             exit 1
         fi
     fi
-else
-    echo -e "${{YELLOW}}WARNING: No expected output file found${{NC}}"
+else:
+    echo -e "${YELLOW}INFO: No expected output defined for this example${NC}"
 fi
 '''
     else:
         script += '''
-echo -e "${YELLOW}ℹ️  No expected output defined for this example${NC}"
+echo -e "${YELLOW}INFO: No expected output defined for this example${NC}"
 '''
 
     script += '''
@@ -395,7 +395,7 @@ run_test() {
     else
         echo -e "${RED}FAIL${NC}"
         FAILED=$((FAILED + 1))
-        echo "    📄 Source: ${toml_ref}"
+        echo "    SOURCE: ${toml_ref}"
         echo "    ERROR LOG: $test_path/test_output.log"
         # Show first few lines of error for quick debugging
         echo "    ERROR PREVIEW:"
@@ -451,7 +451,7 @@ def create_examples_from_toml(toml_data: dict, output_dir: str = "examples"):
         shutil.rmtree(base_path)
     base_path.mkdir(exist_ok=True)
     
-    print(f"📁 Creating {len(examples)} examples in {output_dir}/")
+    print(f"CREATING: {len(examples)} examples in {output_dir}/")
     
     for example_index, example in enumerate(examples):
         example_path = create_example_directory(example, base_path)
@@ -522,7 +522,7 @@ def main():
         
         print(f"")
         print(f"SUCCESS: Created {examples_count} examples!")
-        print(f"📂 Categories: {', '.join(sorted(categories))}")
+        print(f"Categories: {', '.join(sorted(categories))}")
         print(f"")
         print(f"USAGE: To run all tests:")
         print(f"   cd examples && ./run_all.sh")
