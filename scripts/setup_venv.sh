@@ -11,32 +11,32 @@ echo "Setting up Python virtual environment for Computo documentation..."
 
 # Check Python version
 if ! python3 --version | grep -q "Python 3.1[1-9]"; then
-    echo "❌ Error: Python 3.11+ is required for tomllib support"
+    echo "ERROR: Python 3.11+ is required for tomllib support"
     echo "Current version: $(python3 --version)"
     exit 1
 fi
 
 # Create virtual environment if it doesn't exist
 if [ ! -d "$VENV_DIR" ]; then
-    echo "📦 Creating virtual environment..."
+    echo "SETUP: Creating virtual environment..."
     python3 -m venv "$VENV_DIR"
 else
-    echo "📦 Virtual environment already exists"
+    echo "INFO: Virtual environment already exists"
 fi
 
 # Activate virtual environment
-echo "🔧 Activating virtual environment..."
+echo "SETUP: Activating virtual environment..."
 source "$VENV_DIR/bin/activate"
 
 # Upgrade pip
-echo "📦 Upgrading pip..."
+echo "SETUP: Upgrading pip..."
 pip install --upgrade pip
 
 # Install requirements (minimal for now)
-echo "📦 Installing requirements..."
+echo "SETUP: Installing requirements..."
 pip install -r "$SCRIPT_DIR/requirements.txt" || echo "No additional packages needed"
 
-echo "✅ Virtual environment setup complete!"
+echo "SUCCESS: Virtual environment setup complete!"
 echo ""
 echo "To activate the environment:"
 echo "  source venv/bin/activate"

@@ -222,7 +222,7 @@ private:
             auto expr = parse_repl_expression(input, substitution_made, substitution_info);
             
             if (substitution_made) {
-                std::cerr << "📝 " << substitution_info << std::endl;
+                std::cerr << "INFO: " << substitution_info << std::endl;
             }
             
             // Create isolated execution context with dummy input data
@@ -315,7 +315,7 @@ public:
                 ss << " with " << context.arguments.size() << " argument(s)";
             }
             
-            execution_log_.push_back("✓ TRACE [" + std::to_string(duration.count()) + "ms]: " + ss.str());
+            execution_log_.push_back("TRACE [" + std::to_string(duration.count()) + "ms]: " + ss.str());
         }
         
         // Check breakpoints
@@ -338,7 +338,7 @@ public:
                     variable_history_[var_name].push_back(value);
                     
                     if (execution_trace_enabled_) {
-                        execution_log_.push_back("👁️  WATCH: '" + var_name + "' = " + value.dump());
+                        execution_log_.push_back("WATCH: '" + var_name + "' = " + value.dump());
                     }
                 }
             }
@@ -356,7 +356,7 @@ public:
             operator_stats_[context.operator_name].add_execution(duration);
             
             if (duration > slow_operation_threshold_) {
-                execution_log_.push_back("🐌 SLOW: " + context.operator_name + " took " + 
+                execution_log_.push_back("SLOW: " + context.operator_name + " took " + 
                                        std::to_string(duration.count()) + "ms");
             }
         }
@@ -377,18 +377,18 @@ public:
     void on_error(const std::exception& error, const DebugContext& context) {
         std::ostringstream ss;
         ss << "ERROR in '" << context.operator_name << "' at '" << context.execution_path << "': " << error.what();
-        execution_log_.push_back("❌ " + ss.str());
+        execution_log_.push_back("ERROR: " + ss.str());
         
         if (!call_stack_.empty()) {
-            execution_log_.push_back("📍 Call stack: " + join_call_stack());
+            execution_log_.push_back("STACK: " + join_call_stack());
         }
         
         if (context.arguments.is_array() && !context.arguments.empty()) {
-            execution_log_.push_back("📝 Arguments: " + context.arguments.dump());
+            execution_log_.push_back("INFO: Arguments: " + context.arguments.dump());
         }
         
         if (!context.variables_in_scope.empty()) {
-            execution_log_.push_back("📊 Variables in scope:");
+            execution_log_.push_back("DEBUG: Variables in scope:");
             for (const auto& [name, value] : context.variables_in_scope) {
                 std::string value_str = value.dump();
                 if (value_str.length() > 100) value_str = value_str.substr(0, 97) + "...";
@@ -401,7 +401,7 @@ public:
     void handle_breakpoint(const DebugContext& context, const Breakpoint& bp) {
         in_breakpoint_ = true;
         
-        std::cerr << "\n🛑 BREAKPOINT: " << context.operator_name << " at " << context.execution_path << std::endl;
+        std::cerr << "\nBREAKPOINT: " << context.operator_name << " at " << context.execution_path << std::endl;
         std::cerr << "Hit count: " << bp.hit_count << std::endl;
         
         if (context.arguments.is_array() && !context.arguments.empty()) {
@@ -424,7 +424,7 @@ public:
         
         std::cerr << "\nDebug Commands:" << std::endl;
         std::cerr << "  (c)ontinue  (s)tep  (i)nspect <var>  (h)elp  (q)uit" << std::endl;
-        std::cerr << "💡 Tip: Type expressions directly (e.g., 'users' or '[\"count\", [\"$\", \"/users\"]]')" << std::endl;
+        std::cerr << "TIP: Type expressions directly (e.g., 'users' or '[\"count\", [\"$\", \"/users\"]]')" << std::endl;
         
         while (true) {
             command = get_debug_input("> ");
@@ -436,11 +436,11 @@ public:
                 char cmd = command[0];
                 switch (cmd) {
                     case 'c':
-                        std::cerr << "▶️  Continuing execution..." << std::endl;
+                        std::cerr << "CONTINUE: Continuing execution..." << std::endl;
                         return;
                         
                     case 's':
-                        std::cerr << "👣 Step mode enabled" << std::endl;
+                        std::cerr << "STEP: Step mode enabled" << std::endl;
                         step_mode_ = true;
                         return;
                         
@@ -452,7 +452,7 @@ public:
                         std::cerr << "  h - Show this help" << std::endl;
                         std::cerr << "  q - Quit debugging session" << std::endl;
                         std::cerr << std::endl;
-                        std::cerr << "💡 Expression Evaluation:" << std::endl;
+                        std::cerr << "INFO: Expression Evaluation:" << std::endl;
                         std::cerr << "  Type expressions directly without 'e':" << std::endl;
                         std::cerr << "    users                           # Variable (auto-converts to [\"$\", \"/users\"])" << std::endl;
                         std::cerr << "    [\"count\", [\"$\", \"/users\"]]     # Function call with variable" << std::endl;
@@ -461,16 +461,16 @@ public:
                         break;
                         
                     case 'q':
-                        std::cerr << "👋 Exiting debugger." << std::endl;
+                        std::cerr << "QUIT: Exiting debugger." << std::endl;
                         std::exit(0);
                         
                     default:
                         // Single character but not a known command - treat as expression
                         auto result = evaluate_repl_expression(command, context);
                         if (result.contains("_repl_error")) {
-                            std::cerr << "❌ Error: " << result["_repl_error"] << std::endl;
+                            std::cerr << "ERROR: " << result["_repl_error"] << std::endl;
                         } else {
-                            std::cerr << "✅ => " << result.dump(2) << std::endl;
+                            std::cerr << "RESULT: " << result.dump(2) << std::endl;
                         }
                         break;
                 }
@@ -479,9 +479,9 @@ public:
                 std::string var_name = trim(command.substr(2));
                 if (context.has_variable(var_name)) {
                     auto value = context.get_variable(var_name);
-                    std::cerr << "📋 " << var_name << " = " << value.dump(2) << std::endl;
+                    std::cerr << "INSPECT: " << var_name << " = " << value.dump(2) << std::endl;
                 } else {
-                    std::cerr << "❌ Variable '" << var_name << "' not found" << std::endl;
+                    std::cerr << "ERROR: Variable '" << var_name << "' not found" << std::endl;
                     std::cerr << "Available variables: ";
                     for (const auto& [name, _] : context.variables_in_scope) {
                         std::cerr << name << " ";
@@ -492,9 +492,9 @@ public:
                 // Default: treat as expression to evaluate
                 auto result = evaluate_repl_expression(command, context);
                 if (result.contains("_repl_error")) {
-                    std::cerr << "❌ Error: " << result["_repl_error"] << std::endl;
+                    std::cerr << "ERROR: " << result["_repl_error"] << std::endl;
                 } else {
-                    std::cerr << "✅ => " << result.dump(2) << std::endl;
+                    std::cerr << "RESULT: " << result.dump(2) << std::endl;
                 }
             }
         }
@@ -546,7 +546,7 @@ public:
         // Report slow operations
         auto slow_ops = get_slow_operations();
         if (!slow_ops.empty()) {
-            ss << "🐌 Slow Operations (>" << slow_operation_threshold_.count() << "ms threshold):\n";
+            ss << "SLOW OPERATIONS (>" << slow_operation_threshold_.count() << "ms threshold):\n";
             for (const auto& op : slow_ops) {
                 ss << "  " << op << "\n";
             }

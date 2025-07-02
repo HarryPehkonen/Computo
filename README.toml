@@ -1812,10 +1812,10 @@ expected = 42
 cpp_example = """
 // Type safety examples
 
-// ✅ GOOD: Type-safe builder
+// GOOD: Type-safe builder
 auto correct = CB::multiply(6, 7);
 
-// ❌ BAD: Manual JSON prone to errors
+// BAD: Manual JSON prone to errors
 // json error1 = json::array({"*", 6, 7, 8});  // Wrong arity
 // json error2 = json::array({"multiply", 6, 7}); // Wrong operator name  
 // json error3 = json({"+", 6, 7});  // Missing array wrapper
@@ -1974,7 +1974,7 @@ expected = 42
 flags = ["--interactive", "--break-on=+"]
 manualrun = """
 $ computo --interactive --break-on=+ script.json input.json
-🔍 Debug mode enabled [INTERACTIVE]
+DEBUG: Debug mode enabled [INTERACTIVE]
 
 
 🛑 BREAKPOINT: + at /+
@@ -2002,7 +2002,7 @@ step1 = 15
 step2 = 27
 > c
 Continuing execution...
-✅ EXECUTION SUCCESSFUL in 2ms
+SUCCESS: EXECUTION SUCCESSFUL in 2ms
 ==========================================
 
 📤 RESULT:

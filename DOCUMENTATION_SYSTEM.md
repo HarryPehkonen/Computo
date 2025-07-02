@@ -151,12 +151,12 @@ make doctest
 ## Current Status
 
 ### Test Results
-- ✅ **100 Examples** across 16 categories
-- ✅ **100% Pass Rate** (100/100 tests passing)
-- ✅ **Single Source of Truth** (README.toml)
-- ✅ **Integrated Build System** (CMake targets)
-- ✅ **Automatic Verification** (Every example tested)
-- ✅ **AI-Optimized Documentation** (Generated README.md)
+- **100 Examples** across 16 categories
+- **100% Pass Rate** (100/100 tests passing)
+- **Single Source of Truth** (README.toml)
+- **Integrated Build System** (CMake targets)
+- **Automatic Verification** (Every example tested)
+- **AI-Optimized Documentation** (Generated README.md)
 
 ### Categories Covered
 - Arithmetic (5 examples)
@@ -217,13 +217,13 @@ cd build && make readme
 
 **Key Principle**: Only commit source files, not generated artifacts.
 
-**What's Committed** ✅:
+**What's Committed**:
 - `README.toml` (single source of truth)
 - `scripts/` (generation tools) 
 - `README.md` (for GitHub display)
 - `CMakeLists.txt` (build system)
 
-**What's Git-Ignored** ❌:
+**What's Git-Ignored**:
 - `examples/` (generated test files)
 - `build/` (build artifacts)
 

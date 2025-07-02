@@ -114,7 +114,7 @@ dontrun = true
 # Provide manually captured output instead of auto-execution
 manualrun = """
 $ computo --interactive script.json input.json
-🔍 Debug mode enabled [INTERACTIVE]
+DEBUG: Debug mode enabled [INTERACTIVE]
 ...complete interactive session...
 42
 """
@@ -165,7 +165,7 @@ manualrun = """
 $ computo --interactive --break-on=+ script.json input.json
 🔍 Debug mode enabled [INTERACTIVE]
 
-🛑 BREAKPOINT: + at /+
+BREAKPOINT: + at /+
 Hit count: 1
 Arguments: [["$", "/x"], 1]
 
@@ -176,10 +176,10 @@ Debug Commands:
   (c)ontinue  (s)tep  (i)nspect <var>  (e)val <expr>  (h)elp  (q)uit
 > c
 Continuing execution...
-✅ EXECUTION SUCCESSFUL in 2ms
+SUCCESS: EXECUTION SUCCESSFUL in 2ms
 ==========================================
 
-📤 RESULT:
+RESULT:
 ==========
 43
 """

@@ -709,8 +709,8 @@ We implemented a **bulletproof syntax separation**:
 
 **The edge cases that are now impossible**:
 ```json
-{"array": ["filter", "map", "let", "if", "get"]}  // ✅ Clearly literal
-["unknown_operator", 1, 2]                        // ✅ Clearly invalid operator
+{"array": ["filter", "map", "let", "if", "get"]}  // CLEARLY LITERAL
+["unknown_operator", 1, 2]                        // CLEARLY INVALID OPERATOR
 ```
 
 ### Why This Is Superior
@@ -752,9 +752,9 @@ All literal arrays in existing code need updating:
 
 Phase 6 completed the essential **functional programming triumvirate**:
 
-✅ **Map**: Transform each element → new array  
-✅ **Filter**: Select elements → filtered array  
-✅ **Reduce**: Aggregate elements → single value
+**Map**: Transform each element → new array  
+**Filter**: Select elements → filtered array  
+**Reduce**: Aggregate elements → single value
 
 ### New Operators Implemented
 
@@ -779,13 +779,13 @@ Phase 6 completed the essential **functional programming triumvirate**:
 ### Functional Programming Completeness
 
 **Core Paradigms Now Complete**:
-- ✅ **Higher-order functions**: map, filter, reduce with lambda support
-- ✅ **Function composition**: Operators compose naturally  
-- ✅ **Immutability**: All operations pure, no side effects
-- ✅ **Expression evaluation**: Everything is an expression
-- ✅ **Conditional logic**: Full if/then/else support
-- ✅ **Comparison logic**: All standard comparison operators
-- ✅ **Arithmetic**: Complete math operator set
+- **Higher-order functions**: map, filter, reduce with lambda support
+- **Function composition**: Operators compose naturally  
+- **Immutability**: All operations pure, no side effects
+- **Expression evaluation**: Everything is an expression
+- **Conditional logic**: Full if/then/else support
+- **Comparison logic**: All standard comparison operators
+- **Arithmetic**: Complete math operator set
 
 **Real-World Examples Now Possible**:
 ```json

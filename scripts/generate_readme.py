@@ -291,9 +291,9 @@ def main():
         if debug_examples:
             computo_binary = project_root / "build" / "computo"
             if computo_binary.exists():
-                print(f"🔍 Found {len(debug_examples)} debug examples - capturing live debug output...")
+                print(f"INFO: Found {len(debug_examples)} debug examples - capturing live debug output...")
             else:
-                print(f"⚠️  Found {len(debug_examples)} debug examples but computo binary not found at {computo_binary}")
+                print(f"WARNING: Found {len(debug_examples)} debug examples but computo binary not found at {computo_binary}")
                 print("   Debug output will not be included in documentation.")
         
         readme_content = generate_readme(toml_data, project_root)
@@ -301,14 +301,14 @@ def main():
         with open(readme_file, 'w', encoding='utf-8') as f:
             f.write(readme_content)
         
-        print(f"✅ Generated {readme_file} from {toml_file}")
-        print(f"📊 Included {len(examples)} examples")
+        print(f"SUCCESS: Generated {readme_file} from {toml_file}")
+        print(f"INFO: Included {len(examples)} examples")
         
         if debug_examples and computo_binary.exists():
-            print(f"🔧 Debug examples include live output from computo binary")
+            print(f"INFO: Debug examples include live output from computo binary")
         
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"ERROR: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

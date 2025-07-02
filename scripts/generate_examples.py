@@ -148,7 +148,7 @@ echo
 # Try to extract JSON result from manual output (look for last non-empty line that could be JSON)
 RESULT=$(echo "$MANUAL_OUTPUT" | grep -v '^[[:space:]]*$' | tail -5 | grep -E '^[[:space:]]*[\\[\\{{0-9"tfn-]' | tail -1 | tr -d '[:cntrl:]' | head -c 1000)
 if [ -z "$RESULT" ]; then
-    echo -e "${{YELLOW}}⚠️  Could not extract JSON result from manual output${{NC}}"
+    echo -e "${{YELLOW}}WARNING: Could not extract JSON result from manual output${{NC}}"
     echo -e "${{BLUE}}Manual output was:${{NC}}"
     echo "$MANUAL_OUTPUT" | head -20
     echo -e "${{GREEN}}✓ Manual example displayed successfully${{NC}}"
@@ -234,7 +234,7 @@ if [ -f expected.json ]; then
         fi
     fi
 else
-    echo -e "${{YELLOW}}⚠️  No expected output file found${{NC}}"
+    echo -e "${{YELLOW}}WARNING: No expected output file found${{NC}}"
 fi
 '''
     else:
@@ -396,9 +396,9 @@ run_test() {
         echo -e "${RED}FAIL${NC}"
         FAILED=$((FAILED + 1))
         echo "    📄 Source: ${toml_ref}"
-        echo "    📋 Error log: $test_path/test_output.log"
+        echo "    ERROR LOG: $test_path/test_output.log"
         # Show first few lines of error for quick debugging
-        echo "    🔍 Error preview:"
+        echo "    ERROR PREVIEW:"
         head -3 test_output.log | sed 's/^/       /'
     fi
     cd - > /dev/null
@@ -426,10 +426,10 @@ echo "===================================="
 echo -e "Results: ${GREEN}$PASSED passed${NC}, ${RED}$FAILED failed${NC}, $TOTAL total"
 
 if [ $FAILED -eq 0 ]; then
-    echo -e "${GREEN}🎉 All tests passed!${NC}"
+    echo -e "${GREEN}SUCCESS: All tests passed!${NC}"
     exit 0
 else
-    echo -e "${RED}❌ Some tests failed.${NC}"
+    echo -e "${RED}ERROR: Some tests failed.${NC}"
     echo "Check individual test logs for details."
     exit 1
 fi
@@ -495,12 +495,12 @@ def create_examples_from_toml(toml_data: dict, output_dir: str = "examples"):
         with open(example_path / "README.md", 'w') as f:
             f.write(example_readme)
         
-        print(f"  ✅ {example.get('category', 'misc')}/{name} (example #{example_index})")
+        print(f"  CREATED: {example.get('category', 'misc')}/{name} (example #{example_index})")
     
     # Generate master test runner
     line_map = toml_data.get('_line_map', {})
     generate_master_test_runner(examples, base_path, line_map)
-    print(f"  ✅ run_all.sh")
+    print(f"  CREATED: run_all.sh")
 
 def main():
     # Work from project root (parent directory)
@@ -508,7 +508,7 @@ def main():
     toml_file = project_root / "README.toml"
     
     if not toml_file.exists():
-        print(f"❌ Error: {toml_file} not found")
+        print(f"ERROR: {toml_file} not found")
         sys.exit(1)
     
     try:
@@ -521,17 +521,17 @@ def main():
         categories = set(ex.get('category', 'misc') for ex in toml_data.get('examples', []))
         
         print(f"")
-        print(f"🎉 Successfully created {examples_count} examples!")
+        print(f"SUCCESS: Created {examples_count} examples!")
         print(f"📂 Categories: {', '.join(sorted(categories))}")
         print(f"")
-        print(f"🚀 To run all tests:")
+        print(f"USAGE: To run all tests:")
         print(f"   cd examples && ./run_all.sh")
         print(f"")
-        print(f"🔍 To run specific example:")
+        print(f"USAGE: To run specific example:")
         print(f"   cd examples/category/example_name && ./test.sh")
         
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"ERROR: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
