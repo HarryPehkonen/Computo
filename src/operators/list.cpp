@@ -117,7 +117,7 @@ void init_list_operators(std::map<std::string, OperatorFunc>& ops) {
     
     // Append operator - concatenates arrays
     ops["append"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
-        if (args.size() < 1) {
+        if (args.empty()) {
             throw InvalidArgumentException("append operator requires at least 1 argument");
         }
         

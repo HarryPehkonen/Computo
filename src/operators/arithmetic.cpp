@@ -9,7 +9,7 @@ void init_arithmetic_operators(std::map<std::string, OperatorFunc>& ops) {
     
     // Addition operator - n-ary
     ops["+"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
-        if (args.size() < 1) {
+        if (args.empty()) {
             throw InvalidArgumentException("+ operator requires at least 1 argument");
         }
         
@@ -64,7 +64,7 @@ void init_arithmetic_operators(std::map<std::string, OperatorFunc>& ops) {
     
     // Multiplication operator - n-ary
     ops["*"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
-        if (args.size() < 1) {
+        if (args.empty()) {
             throw InvalidArgumentException("* operator requires at least 1 argument");
         }
         

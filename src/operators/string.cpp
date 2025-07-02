@@ -9,7 +9,7 @@ void init_string_operators(std::map<std::string, OperatorFunc>& ops) {
     
     // str_concat operator - concatenates values as strings with automatic type conversion
     ops["strConcat"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
-        if (args.size() < 1) {
+        if (args.empty()) {
             throw InvalidArgumentException("strConcat operator requires at least 1 argument");
         }
         

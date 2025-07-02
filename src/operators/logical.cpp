@@ -11,7 +11,7 @@ void init_logical_operators(std::map<std::string, OperatorFunc>& ops) {
     
     // Logical AND with short-circuit evaluation
     ops["&&"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
-        if (args.size() < 1) {
+        if (args.empty()) {
             throw InvalidArgumentException("&& operator requires at least 1 argument");
         }
         
@@ -29,7 +29,7 @@ void init_logical_operators(std::map<std::string, OperatorFunc>& ops) {
     
     // Logical OR with short-circuit evaluation
     ops["||"] = [](const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
-        if (args.size() < 1) {
+        if (args.empty()) {
             throw InvalidArgumentException("|| operator requires at least 1 argument");
         }
         
