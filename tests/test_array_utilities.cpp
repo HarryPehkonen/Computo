@@ -158,7 +158,7 @@ TEST_F(ArrayUtilitiesTest, FlatmapOperator) {
     // EXPECT_EQ(computo::execute(script, input_data), expected);
     
     // For now, just test that the Builder creates the correct JSON structure
-    auto script = CB::flatmap(
+    auto script = CB::flatMap(
         CB::array({1, 2, 3}),
         CB::lambda("x", CB::array({CB::var("x"), CB::var("x")}))
     );

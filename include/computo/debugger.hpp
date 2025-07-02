@@ -107,7 +107,7 @@ struct Breakpoint {
         return {CONDITIONAL, op_name, cond, true, 0};
     }
     
-    bool should_break(const DebugContext& context) {
+    bool should_break(const DebugContext& context) const {
         if (!enabled) return false;
         
         switch (type) {

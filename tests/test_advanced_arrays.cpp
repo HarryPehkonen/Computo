@@ -22,7 +22,7 @@ TEST_F(AdvancedArraysTest, ZipWithOperatorBasic) {
     };
     
     // Builder Pattern makes zipWith crystal clear!
-    auto script = CB::zip_with(
+    auto script = CB::zipWith(
         CB::get(CB::input(), "/array1"),
         CB::get(CB::input(), "/array2"),
         CB::lambda({"a", "b"}, CB::add(CB::var("a"), CB::var("b")))
@@ -39,7 +39,7 @@ TEST_F(AdvancedArraysTest, ZipWithOperatorDifferentSizes) {
         {"array2", json::array({10, 20, 30, 40, 50})}
     };
     
-    auto script = CB::zip_with(
+    auto script = CB::zipWith(
         CB::get(CB::input(), "/array1"),
         CB::get(CB::input(), "/array2"),
         CB::lambda({"a", "b"}, CB::multiply(CB::var("a"), CB::var("b")))
@@ -56,7 +56,7 @@ TEST_F(AdvancedArraysTest, ZipWithOperatorEmpty) {
         {"array2", json::array({10, 20, 30})}
     };
     
-    auto script = CB::zip_with(
+    auto script = CB::zipWith(
         CB::get(CB::input(), "/array1"),
         CB::get(CB::input(), "/array2"),
         CB::lambda({"a", "b"}, CB::add(CB::var("a"), CB::var("b")))
@@ -71,7 +71,7 @@ TEST_F(AdvancedArraysTest, MapWithIndexOperatorBasic) {
     json test_input = json::array({5, 7, 2, 9, 1});
     
     // Map with index - Builder Pattern makes multi-parameter lambdas readable
-    auto script = CB::map_with_index(
+    auto script = CB::mapWithIndex(
         CB::input(),
         CB::lambda_multi({"value", "index"}, 
             CB::multiply(CB::var("value"), CB::var("index"))
@@ -86,7 +86,7 @@ TEST_F(AdvancedArraysTest, MapWithIndexOperatorBasic) {
 TEST_F(AdvancedArraysTest, MapWithIndexOperatorObjectConstruction) {
     json test_input = json::array({"a", "b", "c"});
     
-    auto script = CB::map_with_index(
+    auto script = CB::mapWithIndex(
         CB::input(),
         CB::lambda_multi({"value", "index"}, 
             CB::obj()
@@ -107,7 +107,7 @@ TEST_F(AdvancedArraysTest, MapWithIndexOperatorObjectConstruction) {
 TEST_F(AdvancedArraysTest, MapWithIndexOperatorEmpty) {
     json test_input = json::array();
     
-    auto script = CB::map_with_index(
+    auto script = CB::mapWithIndex(
         CB::input(),
         CB::lambda_multi({"value", "index"}, CB::var("value"))
     );
@@ -261,7 +261,7 @@ TEST_F(AdvancedArraysTest, ComplexFunctionalPipeline) {
     // Complex pipeline: zip arrays, map with index, filter, then enumerate
     auto script = CB::enumerate(
         CB::filter(
-            CB::map_with_index(
+            CB::mapWithIndex(
                 CB::zip(
                     CB::get(CB::input(), "/numbers"),
                     CB::get(CB::input(), "/multipliers")
@@ -300,7 +300,7 @@ TEST_F(AdvancedArraysTest, AdvancedOperationsWithLet) {
         {
             {"data", CB::array({"a", "b", "c"})},
             {"enumerated", CB::enumerate(CB::var("data"))},
-            {"processed", CB::map(CB::var("data"), CB::lambda("x", CB::str_concat({CB::var("x"), "_processed"})))}
+            {"processed", CB::map(CB::var("data"), CB::lambda("x", CB::strConcat({CB::var("x"), "_processed"})))}
         },
         CB::zip(CB::var("enumerated"), CB::var("processed"))
     );

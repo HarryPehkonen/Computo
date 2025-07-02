@@ -17,7 +17,7 @@ protected:
 
 // Test fixed zipWith argument order
 TEST_F(BuilderFixTest, ZipWithArgumentOrder) {
-    auto script = CB::zip_with(
+    auto script = CB::zipWith(
         CB::array({1, 2, 3}).build(),
         CB::array({10, 20, 30}).build(),
         CB::lambda({"a", "b"}, CB::add(CB::var("a"), CB::var("b")).build()).build()
@@ -64,15 +64,15 @@ TEST_F(BuilderFixTest, NaryOperators) {
 // Test string concatenation with automatic type conversion
 TEST_F(BuilderFixTest, StringConcatenation) {
     // Test basic string concatenation
-    auto script1 = CB::str_concat({"Hello", " ", "World"}).build();
+    auto script1 = CB::strConcat({"Hello", " ", "World"}).build();
     EXPECT_EQ(computo::execute(script1, input_data), "Hello World");
     
     // Test automatic type conversion
-    auto script2 = CB::str_concat({"Value: ", 42, ", Active: ", true}).build();
+    auto script2 = CB::strConcat({"Value: ", 42, ", Active: ", true}).build();
     EXPECT_EQ(computo::execute(script2, input_data), "Value: 42, Active: true");
     
     // Test with objects and arrays (JSON conversion)
-    auto script3 = CB::str_concat({
+    auto script3 = CB::strConcat({
         "Data: ",
         CB::obj().add_field("id", 123).build(),
         " Array: ",
@@ -83,7 +83,7 @@ TEST_F(BuilderFixTest, StringConcatenation) {
     EXPECT_TRUE(result.find("Array: [1,2,3]") != std::string::npos);
     
     // Test with null values (should be skipped)
-    auto script4 = CB::str_concat({"Before", json(nullptr), "After"}).build();
+    auto script4 = CB::strConcat({"Before", json(nullptr), "After"}).build();
     EXPECT_EQ(computo::execute(script4, input_data), "BeforeAfter");
 }
 
@@ -133,7 +133,7 @@ TEST_F(BuilderFixTest, MultiParameterLambda) {
 
 // Test flatMap with correct operator name
 TEST_F(BuilderFixTest, FlatMapOperator) {
-    auto script = CB::flatmap(
+    auto script = CB::flatMap(
         CB::array({1, 2, 3}).build(),
         CB::lambda("x", CB::array({
             CB::var("x").build(),

@@ -309,7 +309,7 @@ public:
         return ComputoBuilder(nlohmann::json::array({"partition", array_expr, predicate_expr}));
     }
     
-    static ComputoBuilder flatmap(const nlohmann::json& array_expr, const nlohmann::json& lambda_expr) {
+    static ComputoBuilder flatMap(const nlohmann::json& array_expr, const nlohmann::json& lambda_expr) {
         return ComputoBuilder(nlohmann::json::array({"flatMap", array_expr, lambda_expr}));
     }
     
@@ -408,7 +408,7 @@ public:
         return ComputoBuilder(nlohmann::json::array({"zip", array1_expr, array2_expr}));
     }
     
-    static ComputoBuilder zip_with(const nlohmann::json& array1_expr, const nlohmann::json& array2_expr, const nlohmann::json& lambda_expr) {
+    static ComputoBuilder zipWith(const nlohmann::json& array1_expr, const nlohmann::json& array2_expr, const nlohmann::json& lambda_expr) {
         return ComputoBuilder(nlohmann::json::array({"zipWith", array1_expr, array2_expr, lambda_expr}));
     }
     
@@ -416,13 +416,13 @@ public:
         return ComputoBuilder(nlohmann::json::array({"enumerate", array_expr}));
     }
     
-    static ComputoBuilder map_with_index(const nlohmann::json& array_expr, const nlohmann::json& lambda_expr) {
+    static ComputoBuilder mapWithIndex(const nlohmann::json& array_expr, const nlohmann::json& lambda_expr) {
         return ComputoBuilder(nlohmann::json::array({"mapWithIndex", array_expr, lambda_expr}));
     }
     
     // String concatenation with automatic type conversion
-    static ComputoBuilder str_concat(std::initializer_list<nlohmann::json> values) {
-        nlohmann::json result = nlohmann::json::array({"str_concat"});
+    static ComputoBuilder strConcat(std::initializer_list<nlohmann::json> values) {
+        nlohmann::json result = nlohmann::json::array({"strConcat"});
         for (const auto& val : values) {
             result.push_back(val);
         }

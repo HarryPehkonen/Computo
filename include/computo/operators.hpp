@@ -27,10 +27,10 @@ void init_comparison_operators(std::map<std::string, OperatorFunc>& ops);
 // Array operators: map, filter, reduce, find, some, every, flatMap, etc.
 void init_array_operators(std::map<std::string, OperatorFunc>& ops);
 
-// Utility operators: $, get, obj, permuto.apply, diff, patch, etc.
+// Utility operators: $, get, obj, permuto.apply, diff, patch, lambda
 void init_utility_operators(std::map<std::string, OperatorFunc>& ops);
 
-// List operations: car, cdr, cons, append, chunk, partition, etc.
+// List operations: car, cdr, cons, append, chunk, partition
 void init_list_operators(std::map<std::string, OperatorFunc>& ops);
 
 // String and type conversion operators

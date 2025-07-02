@@ -174,7 +174,18 @@ class Debugger;
 void set_debugger(std::unique_ptr<Debugger> debugger);
 Debugger* get_debugger();
 
-// Utility function for consistent truthiness evaluation across operators
+// Utility functions for evaluation
 bool is_truthy(const nlohmann::json& value);
+
+// Forward declarations for debugging
+struct DebugContext;
+DebugContext create_debug_context(const std::string& operator_name, const nlohmann::json& args, const ExecutionContext& ctx);
+
+// Helper function to execute an operator with optional debugging
+nlohmann::json execute_operator_with_debugging(
+    const std::string& op_name,
+    const std::function<nlohmann::json(const nlohmann::json&, ExecutionContext&)>& operator_func,
+    const nlohmann::json& args,
+    ExecutionContext& ctx);
 
 } // namespace computo
