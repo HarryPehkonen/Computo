@@ -3505,6 +3505,307 @@ Note: Interactive mode allows step-by-step execution with variable inspection.
 42
 ```
 
+### Debug Levels Reference
+
+Complete reference for debug levels and their output detail.
+Each level includes all output from lower levels (error < warning < info < debug < verbose).
+Use higher levels for more detailed information when troubleshooting complex issues.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "result",
+    [
+      "+",
+      20,
+      22
+    ]
+  ],
+  [
+    "computed",
+    true
+  ]
+]
+```
+
+**Expected Output:**
+```json
+{
+  "result": 42,
+  "computed": true
+}
+```
+
+### Debug Output Channels Guide
+
+Understanding where debug output goes and how to capture it.
+Critical for scripting, automation, and saving debug information for analysis.
+Explains stderr vs stdout separation and redirection techniques.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "message",
+    "Hello Debug"
+  ],
+  [
+    "value",
+    42
+  ]
+]
+```
+
+**Expected Output:**
+```json
+{
+  "message": "Hello Debug",
+  "value": 42
+}
+```
+
+### Debug Output Samples
+
+Sample debug output showing what users should expect to see.
+Demonstrates the actual format and content of debug information.
+Helps users understand and interpret debugging output effectively.
+
+
+**Script:**
+```json
+[
+  "obj",
+  [
+    "result",
+    [
+      "+",
+      [
+        "*",
+        3,
+        4
+      ],
+      18
+    ]
+  ],
+  [
+    "computed",
+    true
+  ]
+]
+```
+
+**Expected Output:**
+```json
+{
+  "result": 30,
+  "computed": true
+}
+```
+
+### Debugging Workflow Systematic
+
+Systematic debugging workflow for troubleshooting Computo scripts.
+Step-by-step methodology for diagnosing different types of issues.
+Provides a structured approach from simple to complex debugging techniques.
+
+
+**Script:**
+```json
+[
+  "map",
+  {
+    "array": [
+      1,
+      2,
+      3
+    ]
+  },
+  [
+    "lambda",
+    [
+      "x"
+    ],
+    [
+      "*",
+      [
+        "$",
+        "/x"
+      ],
+      2
+    ]
+  ]
+]
+```
+
+**Expected Output:**
+```json
+[
+  2,
+  4,
+  6
+]
+```
+
+### Performance Optimization Guide
+
+Advanced performance analysis and optimization techniques.
+Shows systematic approach to finding and fixing performance bottlenecks.
+Includes specific strategies for different types of performance issues.
+
+
+**Script:**
+```json
+[
+  "reduce",
+  {
+    "array": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  [
+    "lambda",
+    [
+      "acc",
+      "x"
+    ],
+    [
+      "+",
+      [
+        "$",
+        "/acc"
+      ],
+      [
+        "*",
+        [
+          "$",
+          "/x"
+        ],
+        [
+          "$",
+          "/x"
+        ]
+      ]
+    ]
+  ],
+  0
+]
+```
+
+**Expected Output:**
+```json
+385
+```
+
+### Common Debugging Scenarios
+
+Common debugging scenarios and their solutions.
+Real-world troubleshooting examples with specific commands and expected outcomes.
+Covers the most frequent issues users encounter with Computo scripts.
+
+
+**Script:**
+```json
+[
+  "get",
+  [
+    "$input"
+  ],
+  "/user/name"
+]
+```
+
+**Input:**
+```json
+{
+  "user": {
+    "name": "Alice",
+    "email": "alice@test.com"
+  }
+}
+```
+
+**Expected Output:**
+```json
+"Alice"
+```
+
+### Debug Flag Combinations Guide
+
+Effective combinations of debugging flags for different scenarios.
+Shows which flags work well together and when to use specific combinations.
+Provides templates for common debugging tasks and workflows.
+
+
+**Script:**
+```json
+[
+  "let",
+  [
+    [
+      "data",
+      {
+        "array": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    ]
+  ],
+  [
+    "reduce",
+    [
+      "$",
+      "/data"
+    ],
+    [
+      "lambda",
+      [
+        "acc",
+        "x"
+      ],
+      [
+        "+",
+        [
+          "$",
+          "/acc"
+        ],
+        [
+          "*",
+          [
+            "$",
+            "/x"
+          ],
+          2
+        ]
+      ]
+    ],
+    0
+  ]
+]
+```
+
+**Expected Output:**
+```json
+30
+```
+
 ## Functional Lists Examples
 
 ### List Car First Element
