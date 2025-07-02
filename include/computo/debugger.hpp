@@ -11,6 +11,14 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
+#include <regex>
+#include <cctype>
+
+// Conditional readline support
+#ifdef COMPUTO_USE_READLINE
+#include <readline/readline.h>
+#include <readline/history.h>
+#endif
 
 namespace computo {
 
@@ -149,6 +157,93 @@ private:
     // Current debugging session state
     bool in_breakpoint_ = false;
     bool step_mode_ = false;
+    
+    // REPL functionality
+    std::string trim(const std::string& str) const {
+        size_t first = str.find_first_not_of(" \t\r\n");
+        if (first == std::string::npos) return "";
+        size_t last = str.find_last_not_of(" \t\r\n");
+        return str.substr(first, (last - first + 1));
+    }
+    
+    // Get input with optional readline support for command history
+    std::string get_debug_input(const std::string& prompt) const {
+#ifdef COMPUTO_USE_READLINE
+        char* input = readline(prompt.c_str());
+        if (!input) {
+            return "";  // EOF
+        }
+        
+        std::string result(input);
+        
+        // Add non-empty commands to history
+        if (!result.empty() && !trim(result).empty()) {
+            add_history(input);
+        }
+        
+        free(input);
+        return result;
+#else
+        // Fallback to basic input without history
+        std::cerr << prompt;
+        std::string result;
+        std::getline(std::cin, result);
+        return result;
+#endif
+    }
+    
+    // Parse REPL input with simple variable substitution
+    nlohmann::json parse_repl_expression(const std::string& input, bool& substitution_made, std::string& substitution_info) const {
+        std::string trimmed = trim(input);
+        substitution_made = false;
+        substitution_info = "";
+        
+        // Check if it's a simple variable name (letters, numbers, underscore, starts with letter)
+        std::regex variable_pattern("^[a-zA-Z_][a-zA-Z0-9_]*$");
+        if (std::regex_match(trimmed, variable_pattern)) {
+            substitution_made = true;
+            substitution_info = "'" + trimmed + "' → [\"$\", \"/" + trimmed + "\"]";
+            return nlohmann::json::array({"$", "/" + trimmed});
+        }
+        
+        // Otherwise, try to parse as JSON
+        try {
+            return nlohmann::json::parse(trimmed);
+        } catch (const nlohmann::json::parse_error& e) {
+            throw std::runtime_error("Invalid JSON expression: " + std::string(e.what()));
+        }
+    }
+    
+    // Evaluate expression safely in isolated context
+    nlohmann::json evaluate_repl_expression(const std::string& input, const DebugContext& context) const {
+        try {
+            bool substitution_made = false;
+            std::string substitution_info;
+            auto expr = parse_repl_expression(input, substitution_made, substitution_info);
+            
+            if (substitution_made) {
+                std::cerr << "📝 " << substitution_info << std::endl;
+            }
+            
+            // Create isolated execution context with dummy input data
+            // We use an empty object as placeholder since we're only evaluating expressions
+            ExecutionContext repl_ctx(nlohmann::json{});
+            
+            // Copy all variables from the debugging context
+            for (const auto& [name, value] : context.variables_in_scope) {
+                repl_ctx.variables[name] = value;
+            }
+            
+            // Set the current execution path for proper context
+            repl_ctx.evaluation_path = {context.execution_path};
+            
+            // Evaluate the expression (this uses the main evaluate function)
+            return evaluate(expr, repl_ctx);
+            
+        } catch (const std::exception& e) {
+            return nlohmann::json{{"_repl_error", e.what()}};
+        }
+    }
     
 public:
     // Configuration methods
@@ -328,59 +423,79 @@ public:
         std::string command;
         
         std::cerr << "\nDebug Commands:" << std::endl;
-        std::cerr << "  (c)ontinue  (s)tep  (i)nspect <var>  (e)val <expr>  (h)elp  (q)uit" << std::endl;
+        std::cerr << "  (c)ontinue  (s)tep  (i)nspect <var>  (h)elp  (q)uit" << std::endl;
+        std::cerr << "💡 Tip: Type expressions directly (e.g., 'users' or '[\"count\", [\"$\", \"/users\"]]')" << std::endl;
         
         while (true) {
-            std::cerr << "> ";
-            std::getline(std::cin, command);
+            command = get_debug_input("> ");
             
             if (command.empty()) continue;
             
-            char cmd = command[0];
-            switch (cmd) {
-                case 'c':
-                    std::cerr << "Continuing execution..." << std::endl;
-                    return;
-                    
-                case 's':
-                    std::cerr << "Step mode enabled" << std::endl;
-                    step_mode_ = true;
-                    return;
-                    
-                case 'i': {
-                    if (command.length() > 2) {
-                        std::string var_name = command.substr(2);
-                        if (context.has_variable(var_name)) {
-                            std::cerr << var_name << " = " << context.get_variable(var_name).dump(2) << std::endl;
+            // Check if it's a single-character command
+            if (command.length() == 1) {
+                char cmd = command[0];
+                switch (cmd) {
+                    case 'c':
+                        std::cerr << "▶️  Continuing execution..." << std::endl;
+                        return;
+                        
+                    case 's':
+                        std::cerr << "👣 Step mode enabled" << std::endl;
+                        step_mode_ = true;
+                        return;
+                        
+                    case 'h':
+                        std::cerr << "Available commands:" << std::endl;
+                        std::cerr << "  c - Continue execution" << std::endl;
+                        std::cerr << "  s - Step to next operation" << std::endl;
+                        std::cerr << "  i <var> - Inspect variable" << std::endl;
+                        std::cerr << "  h - Show this help" << std::endl;
+                        std::cerr << "  q - Quit debugging session" << std::endl;
+                        std::cerr << std::endl;
+                        std::cerr << "💡 Expression Evaluation:" << std::endl;
+                        std::cerr << "  Type expressions directly without 'e':" << std::endl;
+                        std::cerr << "    users                           # Variable (auto-converts to [\"$\", \"/users\"])" << std::endl;
+                        std::cerr << "    [\"count\", [\"$\", \"/users\"]]     # Function call with variable" << std::endl;
+                        std::cerr << "    [\"+\", 1, 2]                    # Arithmetic" << std::endl;
+                        std::cerr << "    [\"get\", [\"$\", \"/users\"], \"/0\"] # JSON navigation" << std::endl;
+                        break;
+                        
+                    case 'q':
+                        std::cerr << "👋 Exiting debugger." << std::endl;
+                        std::exit(0);
+                        
+                    default:
+                        // Single character but not a known command - treat as expression
+                        auto result = evaluate_repl_expression(command, context);
+                        if (result.contains("_repl_error")) {
+                            std::cerr << "❌ Error: " << result["_repl_error"] << std::endl;
                         } else {
-                            std::cerr << "Variable '" << var_name << "' not found" << std::endl;
+                            std::cerr << "✅ => " << result.dump(2) << std::endl;
                         }
-                    } else {
-                        std::cerr << "Usage: i <variable_name>" << std::endl;
-                    }
-                    break;
+                        break;
                 }
-                
-                case 'e':
-                    std::cerr << "Expression evaluation not yet implemented" << std::endl;
-                    break;
-                    
-                case 'h':
-                    std::cerr << "Available commands:" << std::endl;
-                    std::cerr << "  c - Continue execution" << std::endl;
-                    std::cerr << "  s - Step to next operation" << std::endl;
-                    std::cerr << "  i <var> - Inspect variable" << std::endl;
-                    std::cerr << "  e <expr> - Evaluate expression (future)" << std::endl;
-                    std::cerr << "  h - Show this help" << std::endl;
-                    std::cerr << "  q - Quit debugging session" << std::endl;
-                    break;
-                    
-                case 'q':
-                    std::cerr << "Exiting debugger." << std::endl;
-                    std::exit(0);
-                    
-                default:
-                    std::cerr << "Unknown command. Type 'h' for help." << std::endl;
+            } else if (command[0] == 'i' && command.length() > 2) {
+                // Handle "i varname" command
+                std::string var_name = trim(command.substr(2));
+                if (context.has_variable(var_name)) {
+                    auto value = context.get_variable(var_name);
+                    std::cerr << "📋 " << var_name << " = " << value.dump(2) << std::endl;
+                } else {
+                    std::cerr << "❌ Variable '" << var_name << "' not found" << std::endl;
+                    std::cerr << "Available variables: ";
+                    for (const auto& [name, _] : context.variables_in_scope) {
+                        std::cerr << name << " ";
+                    }
+                    std::cerr << std::endl;
+                }
+            } else {
+                // Default: treat as expression to evaluate
+                auto result = evaluate_repl_expression(command, context);
+                if (result.contains("_repl_error")) {
+                    std::cerr << "❌ Error: " << result["_repl_error"] << std::endl;
+                } else {
+                    std::cerr << "✅ => " << result.dump(2) << std::endl;
+                }
             }
         }
     }
