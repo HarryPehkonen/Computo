@@ -28,25 +28,33 @@ public:
         }
     }
     
+    // Custom deleter type for pool return
+    using PoolDeleter = std::function<void(nlohmann::json*)>;
+    using PooledJsonPtr = std::unique_ptr<nlohmann::json, PoolDeleter>;
+
     /**
      * Acquire a JSON object from the pool.
      * Returns a new object if pool is empty.
      */
-    std::unique_ptr<nlohmann::json> acquire() {
+    PooledJsonPtr acquire() {
         if (!available_objects.empty()) {
             auto* raw_ptr = available_objects.top();
             available_objects.pop();
             raw_ptr->clear(); // Reset the object
             
             // Create a custom deleter that returns to pool
-            auto deleter = [this](nlohmann::json* ptr) {
+            PoolDeleter deleter = [this](nlohmann::json* ptr) {
                 this->return_to_pool(ptr);
             };
-            return std::unique_ptr<nlohmann::json, decltype(deleter)>(raw_ptr, deleter);
+            
+            return PooledJsonPtr(raw_ptr, deleter);
         }
         
-        // Pool is empty, create new object with regular deleter
-        return std::make_unique<nlohmann::json>();
+        // Pool is empty, create new object with default deleter
+        PoolDeleter deleter = [](nlohmann::json* ptr) {
+            delete ptr;
+        };
+        return PooledJsonPtr(new nlohmann::json(), deleter);
     }
     
     /**

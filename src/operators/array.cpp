@@ -1,5 +1,6 @@
 #include <computo/operators.hpp>
 #include <computo/computo.hpp>
+#include <computo/memory_pool.hpp>
 #include <nlohmann/json.hpp>
 #include <algorithm>
 

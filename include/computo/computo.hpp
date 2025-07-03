@@ -8,7 +8,7 @@
 #include <memory>
 #include <permuto/permuto.hpp>
 #include "builder.hpp"
-// #include "memory_pool.hpp"  // TODO: Re-enable when memory pool is completed
+#include "memory_pool.hpp"
 
 namespace computo {
 
