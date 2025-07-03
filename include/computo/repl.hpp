@@ -6,6 +6,11 @@
 #include <string>
 #include <vector>
 
+#ifdef COMPUTO_USE_READLINE
+#include <readline/readline.h>
+#include <readline/history.h>
+#endif
+
 namespace computo {
 
 class ComputoREPL {
@@ -28,6 +33,9 @@ private:
     
     // Print evaluation history
     void print_history();
+    
+    // Get input with optional readline support for command history
+    std::string get_input(const std::string& prompt);
     
 public:
     explicit ComputoREPL(Debugger* debugger = nullptr);

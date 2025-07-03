@@ -15,6 +15,31 @@ std::string ComputoREPL::trim(const std::string& str) {
     return str.substr(first, (last - first + 1));
 }
 
+std::string ComputoREPL::get_input(const std::string& prompt) {
+#ifdef COMPUTO_USE_READLINE
+    char* input = readline(prompt.c_str());
+    if (!input) {
+        return "";  // EOF
+    }
+    
+    std::string result(input);
+    
+    // Add non-empty commands to history
+    if (!result.empty() && !trim(result).empty()) {
+        add_history(input);
+    }
+    
+    free(input);
+    return result;
+#else
+    // Fallback to basic input without history
+    std::cout << prompt;
+    std::string result;
+    std::getline(std::cin, result);
+    return result;
+#endif
+}
+
 nlohmann::json ComputoREPL::parse_repl_expression(const std::string& input) {
     std::string trimmed = trim(input);
     
@@ -128,14 +153,18 @@ void ComputoREPL::print_history() {
 
 void ComputoREPL::run() {
     std::cout << "Computo REPL v1.0 - Interactive JSON Processing\n";
-    std::cout << "Type 'help' for commands, 'quit' to exit\n\n";
+    std::cout << "Type 'help' for commands, 'quit' to exit\n";
+#ifdef COMPUTO_USE_READLINE
+    std::cout << "Arrow keys enabled for command history\n";
+#endif
+    std::cout << "\n";
     
     std::string line;
     while (true) {
-        std::cout << "computo> ";
-        std::getline(std::cin, line);
+        line = get_input("computo> ");
         
-        if (std::cin.eof()) {
+        // Handle EOF (Ctrl+D)
+        if (line.empty() && std::cin.eof()) {
             std::cout << "\nGoodbye!\n";
             break;
         }
