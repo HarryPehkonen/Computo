@@ -1,5 +1,6 @@
 #include <computo/computo.hpp>
 #include <computo/debugger.hpp>
+#include <computo/repl.hpp>
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include <fstream>
@@ -15,7 +16,11 @@ using LogLevel = computo::LogLevel;
 
 void print_help(const char* program_name) {
     std::cout << "Computo - Safe, sandboxed, JSON-native data transformation engine\n\n";
-    std::cout << "Usage: " << program_name << " [DEBUG_OPTIONS] [OPTIONS] <script.json> [input1.json [input2.json ...]]\n\n";
+    std::cout << "Usage: " << program_name << " [DEBUG_OPTIONS] [OPTIONS] <script.json> [input1.json [input2.json ...]]\n";
+    std::cout << "       " << program_name << " --repl [DEBUG_OPTIONS] [OPTIONS]\n\n";
+    
+    std::cout << "Execution Modes:\n";
+    std::cout << "  --repl                Start interactive REPL (no script file required)\n\n";
     
     std::cout << "Debugging Options (use BEFORE other options):\n";
     std::cout << "  --debug               Enable debugging output\n";
@@ -39,6 +44,10 @@ void print_help(const char* program_name) {
     std::cout << "  [input1.json ...]     Input data files (optional)\n\n";
     
     std::cout << "Examples:\n";
+    std::cout << "  # Start REPL\n";
+    std::cout << "  " << program_name << " --repl\n\n";
+    std::cout << "  # REPL with debugging\n";
+    std::cout << "  " << program_name << " --repl --debug --trace\n\n";
     std::cout << "  # Basic execution\n";
     std::cout << "  " << program_name << " transform.json data.json\n\n";
     std::cout << "  # Debug with tracing\n";
@@ -107,6 +116,7 @@ int main(int argc, char* argv[]) {
     bool enable_interpolation = false;
     bool diff_mode = false;
     bool allow_comments = false;
+    bool repl_mode = false;
     int pretty_indent = -1;
     
     // Parse arguments - DEBUG OPTIONS FIRST, then other options, then files
@@ -125,6 +135,10 @@ int main(int argc, char* argv[]) {
         if (arg == "--help" || arg == "-?") {
             print_help(argv[0]);
             return 0;
+        }
+        // EXECUTION MODES
+        else if (arg == "--repl") {
+            repl_mode = true;
         }
         // DEBUG OPTIONS (parsed first)
         else if (arg == "--debug") {
@@ -233,9 +247,25 @@ int main(int argc, char* argv[]) {
         }
     }
     
+    // Handle REPL mode
+    if (repl_mode) {
+        if (debug_enabled && debugger) {
+            std::cerr << "DEBUG: Debug mode enabled";
+            if (debugger->is_tracing_enabled()) std::cerr << " [TRACE]";
+            if (debugger->is_profiling_enabled()) std::cerr << " [PROFILE]";
+            if (debugger->is_interactive_enabled()) std::cerr << " [INTERACTIVE]";
+            std::cerr << "\n\n";
+        }
+        
+        computo::ComputoREPL repl(debugger.get());
+        repl.run();
+        return 0;
+    }
+    
     if (file_args.empty()) {
         std::cerr << "Error: Script file not specified" << std::endl;
         std::cerr << "Usage: " << argv[0] << " [OPTIONS] <script.json> [input1.json ...]" << std::endl;
+        std::cerr << "       " << argv[0] << " --repl [OPTIONS]" << std::endl;
         return 1;
     }
     

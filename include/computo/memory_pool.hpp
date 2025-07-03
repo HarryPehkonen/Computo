@@ -4,6 +4,8 @@
 #include <vector>
 #include <memory>
 #include <stack>
+#include <functional>
+#include <unordered_set>
 
 namespace computo {
 namespace memory {
@@ -16,16 +18,22 @@ class JsonMemoryPool {
 private:
     std::stack<nlohmann::json*> available_objects;
     std::vector<std::unique_ptr<nlohmann::json>> all_objects;
+    std::unordered_set<nlohmann::json*> managed_objects; // Track which objects we manage
     size_t max_pool_size;
+    size_t total_created_objects = 0; // Track all objects, including those created on-demand
     
 public:
     explicit JsonMemoryPool(size_t max_size = 1000) : max_pool_size(max_size) {
-        // Pre-allocate some objects
-        for (size_t i = 0; i < std::min(max_size / 10, size_t(100)); ++i) {
+        // Pre-allocate some objects (but less for large pools)
+        size_t pre_alloc = std::min(max_size, size_t(10)); // Cap at 10 for simplicity
+        for (size_t i = 0; i < pre_alloc; ++i) {
             auto obj = std::make_unique<nlohmann::json>();
-            available_objects.push(obj.get());
+            auto* raw_ptr = obj.get();
+            available_objects.push(raw_ptr);
+            managed_objects.insert(raw_ptr);
             all_objects.push_back(std::move(obj));
         }
+        total_created_objects = pre_alloc;
     }
     
     // Custom deleter type for pool return
@@ -37,35 +45,43 @@ public:
      * Returns a new object if pool is empty.
      */
     PooledJsonPtr acquire() {
+        nlohmann::json* raw_ptr = nullptr;
+        
         if (!available_objects.empty()) {
-            auto* raw_ptr = available_objects.top();
+            // Reuse from pool
+            raw_ptr = available_objects.top();
             available_objects.pop();
-            raw_ptr->clear(); // Reset the object
-            
-            // Create a custom deleter that returns to pool
-            PoolDeleter deleter = [this](nlohmann::json* ptr) {
-                this->return_to_pool(ptr);
-            };
-            
-            return PooledJsonPtr(raw_ptr, deleter);
+            *raw_ptr = nlohmann::json(nullptr); // Reset to null
+        } else {
+            // Pool is empty, create new object and track it
+            auto new_obj = std::make_unique<nlohmann::json>();
+            raw_ptr = new_obj.get();
+            managed_objects.insert(raw_ptr);
+            all_objects.push_back(std::move(new_obj));
+            total_created_objects++;
         }
         
-        // Pool is empty, create new object with default deleter
-        PoolDeleter deleter = [](nlohmann::json* ptr) {
-            delete ptr;
+        // Create a custom deleter that returns to pool
+        PoolDeleter deleter = [this](nlohmann::json* ptr) {
+            this->return_to_pool(ptr);
         };
-        return PooledJsonPtr(new nlohmann::json(), deleter);
+        
+        return PooledJsonPtr(raw_ptr, deleter);
     }
     
     /**
      * Internal method to return object to pool.
      */
     void return_to_pool(nlohmann::json* obj) {
-        if (available_objects.size() < max_pool_size) {
-            obj->clear(); // Clear content for reuse
-            available_objects.push(obj);
+        // Only accept objects we manage
+        if (managed_objects.find(obj) != managed_objects.end()) {
+            if (available_objects.size() < max_pool_size) {
+                *obj = nlohmann::json(nullptr); // Reset to null for reuse
+                available_objects.push(obj);
+            }
+            // If pool is full, object stays managed but not immediately available
         }
-        // If pool is full, object will be destroyed when all_objects is destroyed
+        // Non-managed objects are ignored (shouldn't happen with our design)
     }
     
     /**
@@ -79,10 +95,10 @@ public:
     
     Stats get_stats() const {
         Stats stats;
-        stats.total_objects = all_objects.size();
+        stats.total_objects = total_created_objects;
         stats.available_objects = available_objects.size();
-        stats.pool_usage_percent = all_objects.empty() ? 0 : 
-            ((all_objects.size() - available_objects.size()) * 100) / all_objects.size();
+        stats.pool_usage_percent = total_created_objects == 0 ? 0 : 
+            ((total_created_objects - available_objects.size()) * 100) / total_created_objects;
         return stats;
     }
     
@@ -94,6 +110,8 @@ public:
             available_objects.pop();
         }
         all_objects.clear();
+        managed_objects.clear();
+        total_created_objects = 0;
     }
 };
 

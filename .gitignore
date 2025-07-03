@@ -34,3 +34,6 @@
 # Generated documentation and test files
 examples/
 build/
+
+.cursor/
+venv/

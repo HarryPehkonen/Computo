@@ -7,6 +7,7 @@ set(COMPUTO_SOURCES
     src/computo.cpp
     src/debugger_manager.cpp
     src/evaluation_utils.cpp
+    src/repl.cpp
     src/operators/arithmetic.cpp
     src/operators/logical.cpp
     src/operators/comparison.cpp
