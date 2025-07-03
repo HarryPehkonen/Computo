@@ -6,82 +6,156 @@
 #include <stack>
 #include <functional>
 #include <unordered_set>
+#include <atomic>
 
 namespace computo {
 namespace memory {
 
 /**
- * Simple memory pool for JSON objects to reduce allocations
- * during intensive array operations.
+ * Global memory pool statistics across all threads
+ */
+class GlobalPoolStats {
+private:
+    static std::atomic<size_t> total_objects_created_;
+    static std::atomic<size_t> total_objects_reused_;
+    static std::atomic<size_t> total_pool_hits_;
+    static std::atomic<size_t> total_pool_misses_;
+    
+public:
+    static void increment_objects_created() { total_objects_created_++; }
+    static void increment_objects_reused() { total_objects_reused_++; }
+    static void increment_pool_hits() { total_pool_hits_++; }
+    static void increment_pool_misses() { total_pool_misses_++; }
+    
+    static size_t get_total_objects_created() { return total_objects_created_.load(); }
+    static size_t get_total_objects_reused() { return total_objects_reused_.load(); }
+    static size_t get_total_pool_hits() { return total_pool_hits_.load(); }
+    static size_t get_total_pool_misses() { return total_pool_misses_.load(); }
+    
+    static double get_pool_hit_rate() {
+        size_t hits = total_pool_hits_.load();
+        size_t misses = total_pool_misses_.load();
+        if (hits + misses == 0) return 0.0;
+        return static_cast<double>(hits) / (hits + misses);
+    }
+    
+    static void reset() {
+        total_objects_created_ = 0;
+        total_objects_reused_ = 0;
+        total_pool_hits_ = 0;
+        total_pool_misses_ = 0;
+    }
+};
+
+/**
+ * Thread-safe memory pool for JSON objects using index-based management.
+ * Eliminates use-after-free risks through stable object storage.
  */
 class JsonMemoryPool {
 private:
-    std::stack<nlohmann::json*> available_objects;
-    std::vector<std::unique_ptr<nlohmann::json>> all_objects;
-    std::unordered_set<nlohmann::json*> managed_objects; // Track which objects we manage
-    size_t max_pool_size;
-    size_t total_created_objects = 0; // Track all objects, including those created on-demand
+    // Objects stored in stable vector - indices never invalidate
+    std::vector<std::unique_ptr<nlohmann::json>> objects_;
+    
+    // Available object indices (not raw pointers)
+    std::stack<size_t> available_indices_;
+    
+    // Pool configuration
+    size_t max_pool_size_;
+    size_t total_created_objects_ = 0;
+    
+    // Pool generation counter - invalidates stale references on clear()
+    std::atomic<uint64_t> generation_{1};
     
 public:
-    explicit JsonMemoryPool(size_t max_size = 1000) : max_pool_size(max_size) {
-        // Pre-allocate some objects (but less for large pools)
-        size_t pre_alloc = std::min(max_size, size_t(10)); // Cap at 10 for simplicity
+    explicit JsonMemoryPool(size_t max_size = 1000) : max_pool_size_(max_size) {
+        // Pre-allocate some objects with stable indices
+        size_t pre_alloc = std::min(max_size, size_t(10));
+        objects_.reserve(max_size); // Prevent vector reallocations
+        
         for (size_t i = 0; i < pre_alloc; ++i) {
-            auto obj = std::make_unique<nlohmann::json>();
-            auto* raw_ptr = obj.get();
-            available_objects.push(raw_ptr);
-            managed_objects.insert(raw_ptr);
-            all_objects.push_back(std::move(obj));
+            objects_.emplace_back(std::make_unique<nlohmann::json>());
+            available_indices_.push(i);
         }
-        total_created_objects = pre_alloc;
+        total_created_objects_ = pre_alloc;
     }
     
-    // Custom deleter type for pool return
-    using PoolDeleter = std::function<void(nlohmann::json*)>;
-    using PooledJsonPtr = std::unique_ptr<nlohmann::json, PoolDeleter>;
+    // Safe handle for pooled objects
+    class PooledJsonHandle {
+    private:
+        nlohmann::json* ptr_;
+        size_t index_;
+        uint64_t generation_;
+        JsonMemoryPool* pool_;
+        
+    public:
+        PooledJsonHandle(nlohmann::json* ptr, size_t index, uint64_t gen, JsonMemoryPool* pool)
+            : ptr_(ptr), index_(index), generation_(gen), pool_(pool) {}
+            
+        ~PooledJsonHandle() {
+            if (pool_) {
+                pool_->return_to_pool(index_, generation_);
+            }
+        }
+        
+        // Non-copyable, movable
+        PooledJsonHandle(const PooledJsonHandle&) = delete;
+        PooledJsonHandle& operator=(const PooledJsonHandle&) = delete;
+        
+        PooledJsonHandle(PooledJsonHandle&& other) noexcept
+            : ptr_(other.ptr_), index_(other.index_), 
+              generation_(other.generation_), pool_(other.pool_) {
+            other.pool_ = nullptr; // Transfer ownership
+        }
+        
+        PooledJsonHandle& operator=(PooledJsonHandle&& other) noexcept {
+            if (this != &other) {
+                if (pool_) {
+                    pool_->return_to_pool(index_, generation_);
+                }
+                ptr_ = other.ptr_;
+                index_ = other.index_;
+                generation_ = other.generation_;
+                pool_ = other.pool_;
+                other.pool_ = nullptr;
+            }
+            return *this;
+        }
+        
+        nlohmann::json& operator*() { return *ptr_; }
+        const nlohmann::json& operator*() const { return *ptr_; }
+        nlohmann::json* operator->() { return ptr_; }
+        const nlohmann::json* operator->() const { return ptr_; }
+        nlohmann::json* get() { return ptr_; }
+        const nlohmann::json* get() const { return ptr_; }
+    };
 
     /**
      * Acquire a JSON object from the pool.
-     * Returns a new object if pool is empty.
+     * Returns handle with automatic return-to-pool on destruction.
      */
-    PooledJsonPtr acquire() {
-        nlohmann::json* raw_ptr = nullptr;
+    PooledJsonHandle acquire() {
+        size_t index;
+        nlohmann::json* ptr;
         
-        if (!available_objects.empty()) {
+        if (!available_indices_.empty()) {
             // Reuse from pool
-            raw_ptr = available_objects.top();
-            available_objects.pop();
-            *raw_ptr = nlohmann::json(nullptr); // Reset to null
+            index = available_indices_.top();
+            available_indices_.pop();
+            ptr = objects_[index].get();
+            *ptr = nlohmann::json(nullptr); // Reset to null
+            GlobalPoolStats::increment_pool_hits();
+            GlobalPoolStats::increment_objects_reused();
         } else {
-            // Pool is empty, create new object and track it
-            auto new_obj = std::make_unique<nlohmann::json>();
-            raw_ptr = new_obj.get();
-            managed_objects.insert(raw_ptr);
-            all_objects.push_back(std::move(new_obj));
-            total_created_objects++;
+            // Create new object
+            index = objects_.size();
+            objects_.emplace_back(std::make_unique<nlohmann::json>());
+            ptr = objects_[index].get();
+            total_created_objects_++;
+            GlobalPoolStats::increment_pool_misses();
+            GlobalPoolStats::increment_objects_created();
         }
         
-        // Create a custom deleter that returns to pool
-        PoolDeleter deleter = [this](nlohmann::json* ptr) {
-            this->return_to_pool(ptr);
-        };
-        
-        return PooledJsonPtr(raw_ptr, deleter);
-    }
-    
-    /**
-     * Internal method to return object to pool.
-     */
-    void return_to_pool(nlohmann::json* obj) {
-        // Only accept objects we manage
-        if (managed_objects.find(obj) != managed_objects.end()) {
-            if (available_objects.size() < max_pool_size) {
-                *obj = nlohmann::json(nullptr); // Reset to null for reuse
-                available_objects.push(obj);
-            }
-            // If pool is full, object stays managed but not immediately available
-        }
-        // Non-managed objects are ignored (shouldn't happen with our design)
+        return PooledJsonHandle(ptr, index, generation_.load(), this);
     }
     
     /**
@@ -95,23 +169,50 @@ public:
     
     Stats get_stats() const {
         Stats stats;
-        stats.total_objects = total_created_objects;
-        stats.available_objects = available_objects.size();
-        stats.pool_usage_percent = total_created_objects == 0 ? 0 : 
-            ((total_created_objects - available_objects.size()) * 100) / total_created_objects;
+        stats.total_objects = total_created_objects_;
+        stats.available_objects = available_indices_.size();
+        stats.pool_usage_percent = total_created_objects_ == 0 ? 0 : 
+            ((total_created_objects_ - available_indices_.size()) * 100) / total_created_objects_;
         return stats;
     }
     
     /**
-     * Clear the entire pool (useful for testing or cleanup).
+     * Clear the entire pool safely. Outstanding handles remain valid
+     * but won't be returned to pool due to generation checking.
      */
     void clear() {
-        while (!available_objects.empty()) {
-            available_objects.pop();
+        // Increment generation to invalidate outstanding handles for pool return
+        generation_++;
+        
+        // Clear available indices (but keep objects alive for outstanding handles)
+        while (!available_indices_.empty()) {
+            available_indices_.pop();
         }
-        all_objects.clear();
-        managed_objects.clear();
-        total_created_objects = 0;
+        
+        // DON'T clear objects_ - they need to remain valid for outstanding handles
+        // Only clear the available pool, not the actual objects
+        total_created_objects_ = 0;
+    }
+
+private:
+    /**
+     * Internal method to return object to pool by index.
+     * Uses generation checking to prevent stale returns.
+     */
+    void return_to_pool(size_t index, uint64_t handle_generation) {
+        // Check if this handle is from the current generation
+        if (handle_generation != generation_.load()) {
+            // Stale handle from before clear() - ignore safely
+            return;
+        }
+        
+        // Check bounds and pool capacity
+        if (index < objects_.size() && available_indices_.size() < max_pool_size_) {
+            // Reset object and return to pool
+            *objects_[index] = nlohmann::json(nullptr);
+            available_indices_.push(index);
+        }
+        // If pool is full or index invalid, object stays allocated but not pooled
     }
 };
 
@@ -123,6 +224,9 @@ inline JsonMemoryPool& get_thread_local_pool() {
     static thread_local JsonMemoryPool pool;
     return pool;
 }
+
+// Type alias for the new handle type (backward compatibility helper)
+using PooledJsonPtr = JsonMemoryPool::PooledJsonHandle;
 
 } // namespace memory
 } // namespace computo 

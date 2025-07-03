@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <regex>
 #include <cctype>
+#include <atomic>
 
 // Conditional readline support
 #ifdef COMPUTO_USE_READLINE
@@ -131,6 +132,39 @@ struct Breakpoint {
 };
 
 /**
+ * Global thread-safe statistics for cross-thread monitoring
+ */
+class GlobalDebugStats {
+private:
+    static std::atomic<size_t> total_operations_;
+    static std::atomic<size_t> total_errors_;
+    static std::atomic<size_t> total_breakpoints_hit_;
+    static std::atomic<std::chrono::milliseconds::rep> total_execution_time_ms_;
+    
+public:
+    static void increment_operations() { total_operations_++; }
+    static void increment_errors() { total_errors_++; }
+    static void increment_breakpoints() { total_breakpoints_hit_++; }
+    static void add_execution_time(std::chrono::milliseconds duration) {
+        total_execution_time_ms_ += duration.count();
+    }
+    
+    static size_t get_total_operations() { return total_operations_.load(); }
+    static size_t get_total_errors() { return total_errors_.load(); }
+    static size_t get_total_breakpoints_hit() { return total_breakpoints_hit_.load(); }
+    static std::chrono::milliseconds get_total_execution_time() {
+        return std::chrono::milliseconds{total_execution_time_ms_.load()};
+    }
+    
+    static void reset() {
+        total_operations_ = 0;
+        total_errors_ = 0;
+        total_breakpoints_hit_ = 0;
+        total_execution_time_ms_ = 0;
+    }
+};
+
+/**
  * Working debugger implementation
  */
 class Debugger {
@@ -166,22 +200,48 @@ private:
         return str.substr(first, (last - first + 1));
     }
     
+    // RAII wrapper for readline memory management
+#ifdef COMPUTO_USE_READLINE
+    class ReadlineGuard {
+    private:
+        char* input_;
+    public:
+        explicit ReadlineGuard(const std::string& prompt) 
+            : input_(readline(prompt.c_str())) {}
+        
+        ~ReadlineGuard() {
+            if (input_) {
+                free(input_);
+            }
+        }
+        
+        // Non-copyable, non-movable (simple RAII guard)
+        ReadlineGuard(const ReadlineGuard&) = delete;
+        ReadlineGuard& operator=(const ReadlineGuard&) = delete;
+        ReadlineGuard(ReadlineGuard&&) = delete;
+        ReadlineGuard& operator=(ReadlineGuard&&) = delete;
+        
+        char* get() const { return input_; }
+        bool is_valid() const { return input_ != nullptr; }
+    };
+#endif
+
     // Get input with optional readline support for command history
     std::string get_debug_input(const std::string& prompt) const {
 #ifdef COMPUTO_USE_READLINE
-        char* input = readline(prompt.c_str());
-        if (!input) {
+        ReadlineGuard guard(prompt);
+        
+        if (!guard.is_valid()) {
             return "";  // EOF
         }
         
-        std::string result(input);
+        std::string result(guard.get());
         
-        // Add non-empty commands to history
+        // Add non-empty commands to history (exception-safe now)
         if (!result.empty() && !trim(result).empty()) {
-            add_history(input);
+            add_history(guard.get());
         }
         
-        free(input);
         return result;
 #else
         // Fallback to basic input without history
@@ -214,36 +274,8 @@ private:
         }
     }
     
-    // Evaluate expression safely in isolated context
-    nlohmann::json evaluate_repl_expression(const std::string& input, const DebugContext& context) const {
-        try {
-            bool substitution_made = false;
-            std::string substitution_info;
-            auto expr = parse_repl_expression(input, substitution_made, substitution_info);
-            
-            if (substitution_made) {
-                std::cerr << "INFO: " << substitution_info << std::endl;
-            }
-            
-            // Create isolated execution context with dummy input data
-            // We use an empty object as placeholder since we're only evaluating expressions
-            ExecutionContext repl_ctx(nlohmann::json{});
-            
-            // Copy all variables from the debugging context
-            for (const auto& [name, value] : context.variables_in_scope) {
-                repl_ctx.variables[name] = value;
-            }
-            
-            // Set the current execution path for proper context
-            repl_ctx.evaluation_path = {context.execution_path};
-            
-            // Evaluate the expression (this uses the main evaluate function)
-            return evaluate(expr, repl_ctx);
-            
-        } catch (const std::exception& e) {
-            return nlohmann::json{{"_repl_error", e.what()}};
-        }
-    }
+    // Forward declaration for REPL evaluation - implementation in debugger.cpp  
+    nlohmann::json evaluate_repl_expression(const std::string& input, const DebugContext& context) const;
     
 public:
     // Configuration methods

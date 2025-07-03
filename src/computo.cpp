@@ -51,12 +51,21 @@ nlohmann::json evaluate_move(nlohmann::json&& expr, ExecutionContext ctx) {
             if (!expr["array"].is_array()) {
                 throw InvalidArgumentException("array object must contain an actual array", ctx.get_path_string());
             }
-            // Evaluate each element in the array - use move when possible
+            // Evaluate each element in the array - exception-safe move operations
             nlohmann::json result = nlohmann::json::array();
             auto& array_ref = expr["array"];
+            
+            // Pre-reserve space to minimize reallocation exceptions
+            result.get_ref<nlohmann::json::array_t&>().reserve(array_ref.size());
+            
             for (size_t i = 0; i < array_ref.size(); ++i) {
                 ExecutionContext element_ctx = ctx.with_path("array[" + std::to_string(i) + "]");
+                
+                // Exception-safe: move only when we're sure push_back will succeed
                 nlohmann::json element = evaluate_move(std::move(array_ref[i]), element_ctx);
+                
+                // This should not throw due to pre-reservation, but if it does,
+                // element is already moved so we're in a consistent state
                 result.push_back(std::move(element));
             }
             return result;
@@ -143,17 +152,27 @@ nlohmann::json evaluate_move(nlohmann::json&& expr, ExecutionContext ctx) {
                 
                 std::string var_name = binding[0].get<std::string>();
                 
-                // Special case: don't evaluate lambda expressions, store them as-is
+                // Exception-safe variable binding
                 nlohmann::json var_value;
-                if (binding[1].is_array() && binding[1].size() == 3 &&
-                    binding[1][0].is_string() && binding[1][0].get<std::string>() == "lambda") {
-                    var_value = std::move(binding[1]);  // Move lambda as-is
-                } else {
-                    // Include previously bound variables in the evaluation context
-                    ExecutionContext value_ctx = binding_ctx.with_path("value").with_variables(new_vars);
-                    var_value = evaluate_move(std::move(binding[1]), value_ctx);  // Move evaluate with sequential context
+                try {
+                    // Special case: don't evaluate lambda expressions, store them as-is
+                    if (binding[1].is_array() && binding[1].size() == 3 &&
+                        binding[1][0].is_string() && binding[1][0].get<std::string>() == "lambda") {
+                        var_value = std::move(binding[1]);  // Move lambda as-is
+                    } else {
+                        // Include previously bound variables in the evaluation context
+                        ExecutionContext value_ctx = binding_ctx.with_path("value").with_variables(new_vars);
+                        var_value = evaluate_move(std::move(binding[1]), value_ctx);  // Move evaluate with sequential context
+                    }
+                    
+                    // Only add to new_vars if evaluation succeeded
+                    // This ensures new_vars is in a consistent state if later bindings fail
+                    new_vars[var_name] = std::move(var_value);
+                } catch (...) {
+                    // If evaluation fails, binding[1] is already moved, but that's okay
+                    // because we're about to propagate the exception and abandon this let operation
+                    throw;
                 }
-                new_vars[var_name] = std::move(var_value);
             }
             
             // TCO: Update context and set next expression to the body
@@ -170,9 +189,17 @@ nlohmann::json evaluate_move(nlohmann::json&& expr, ExecutionContext ctx) {
             throw InvalidOperatorException(op);
         }
         
-        // Extract arguments (everything except the first element) - use move
+        // Extract arguments (everything except the first element) - exception-safe move
         nlohmann::json args = nlohmann::json::array();
+        
+        // Pre-reserve space to minimize reallocation exceptions
+        if (expr.size() > 1) {
+            args.get_ref<nlohmann::json::array_t&>().reserve(expr.size() - 1);
+        }
+        
         for (size_t i = 1; i < expr.size(); ++i) {
+            // Exception-safe: move element and add to args
+            // If push_back throws, element is moved but we're propagating exception anyway
             args.push_back(std::move(expr[i]));
         }
         
@@ -193,6 +220,10 @@ nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx) {
             }
             // Evaluate each element in the array
             nlohmann::json result = nlohmann::json::array();
+            
+            // Pre-reserve space to minimize reallocation exceptions
+            result.get_ref<nlohmann::json::array_t&>().reserve(expr["array"].size());
+            
             for (size_t i = 0; i < expr["array"].size(); ++i) {
                 ExecutionContext element_ctx = ctx.with_path("array[" + std::to_string(i) + "]");
                 nlohmann::json element = evaluate(expr["array"][i], element_ctx);
@@ -310,6 +341,12 @@ nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx) {
         
         // Extract arguments (everything except the first element)
         nlohmann::json args = nlohmann::json::array();
+        
+        // Pre-reserve space to minimize reallocation exceptions
+        if (expr.size() > 1) {
+            args.get_ref<nlohmann::json::array_t&>().reserve(expr.size() - 1);
+        }
+        
         for (size_t i = 1; i < expr.size(); ++i) {
             args.push_back(expr[i]);
         }

@@ -7,6 +7,9 @@ namespace computo {
 // Forward declaration for debugger access
 Debugger* get_debugger();
 
+// Forward declaration for global debug statistics
+class GlobalDebugStats;
+
 // Helper function for consistent truthiness evaluation across all operators
 bool is_truthy(const nlohmann::json& value) {
     if (value.is_boolean()) {
@@ -52,6 +55,9 @@ nlohmann::json execute_operator_with_debugging(
         DebugContext debug_ctx = create_debug_context(op_name, args, ctx);
         debugger->on_operator_enter(debug_ctx);
         
+        // Update global statistics
+        GlobalDebugStats::increment_operations();
+        
         try {
             auto start_time = std::chrono::high_resolution_clock::now();
             
@@ -61,10 +67,14 @@ nlohmann::json execute_operator_with_debugging(
             auto end_time = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(end_time - start_time);
             
+            // Update global timing statistics
+            GlobalDebugStats::add_execution_time(std::chrono::duration_cast<std::chrono::milliseconds>(duration));
+            
             debugger->on_operator_exit(debug_ctx, result, duration);
             return result;
             
         } catch (const std::exception& e) {
+            GlobalDebugStats::increment_errors();
             debugger->on_error(e, debug_ctx);
             throw;
         }

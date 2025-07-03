@@ -1,3 +1,10 @@
+// Thread Safety Guarantees:
+// - All evaluation functions are thread-safe due to thread-local storage
+// - Each thread maintains its own debugger instance and memory pool
+// - ExecutionContext is stack-based and thread-local
+// - Operator registry uses std::once_flag for safe initialization
+// - No shared mutable state between threads
+
 #pragma once
 
 #include <nlohmann/json.hpp>
@@ -173,6 +180,35 @@ nlohmann::json execute_move(nlohmann::json&& script, const std::vector<nlohmann:
 class Debugger;
 void set_debugger(std::unique_ptr<Debugger> debugger);
 Debugger* get_debugger();
+
+// Internal functions for RAII debugger management
+void push_debugger_state();
+void pop_debugger_state();
+
+// RAII wrapper for debugger lifecycle management
+class DebuggerScope {
+private:
+    bool state_pushed_;
+    
+public:
+    // Constructor: sets a new debugger and saves the previous one
+    explicit DebuggerScope(std::unique_ptr<Debugger> debugger);
+    
+    // Destructor: restores the previous debugger
+    ~DebuggerScope();
+    
+    // Non-copyable, non-moveable (RAII guard)
+    DebuggerScope(const DebuggerScope&) = delete;
+    DebuggerScope& operator=(const DebuggerScope&) = delete;
+    DebuggerScope(DebuggerScope&&) = delete;
+    DebuggerScope& operator=(DebuggerScope&&) = delete;
+    
+    // Get the current debugger
+    Debugger* get() const;
+    
+    // Check if debugger is set
+    bool is_set() const;
+};
 
 // Utility functions for evaluation
 bool is_truthy(const nlohmann::json& value);

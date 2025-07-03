@@ -25,6 +25,7 @@ set(COMPUTO_TEST_SOURCES
     tests/test_builder_fixes.cpp
     tests/test_debugging.cpp
     tests/test_memory_pool.cpp
+    tests/test_thread_safety.cpp
 )
 
 # Create test executable
