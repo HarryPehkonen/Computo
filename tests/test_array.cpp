@@ -33,7 +33,7 @@ TEST_F(ArrayOperatorTest, ReduceOperator) {
     json script = json::array({
         "reduce",
         json::object({{"array", json::array({1, 2, 3, 4})}}),
-        json::array({"lambda", json::array({"args"}), json::array({"+", json::array({"get", json::array({"$", "/args"}), "/0"}), json::array({"get", json::array({"$", "/args"}), "/1"})})}),
+        json::array({"lambda", json::array({"args"}), json::array({"+", json::array({"$", "/args/0"}), json::array({"$", "/args/1"})})}),
         0
     });
     EXPECT_EQ(exec(script), 10);

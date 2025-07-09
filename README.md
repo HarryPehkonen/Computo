@@ -84,15 +84,18 @@ All Computo scripts are valid JSON. The basic syntax is:
 ### Variables and Data Access
 
 ```json
-// Access input
-["$input"]                   // First input or null
+// Access input data
+["$input"]                   // Entire input object
+["$input", "/path/to/data"]  // Navigate within input using JSON Pointer
+
+// Access multiple inputs
 ["$inputs"]                  // Array of all inputs
+["$inputs", "/0/path"]       // Navigate to specific input by index
 
 // Variable access
 ["$", "/varname"]            // Access variable
-
-// JSON Pointer access
-["get", {"a": {"b": 2}}, "/a/b"]  // 2
+["$", "/varname/path"]       // Navigate within variable using JSON Pointer  
+["$"]                        // All variables in current scope
 
 // Variable binding
 ["let", [["x", 10]], ["+", ["$", "/x"], 5]]  // 15
@@ -136,8 +139,8 @@ All Computo scripts are valid JSON. The basic syntax is:
 // Reduce: aggregate to single value
 ["reduce", {"array": [1, 2, 3, 4]},
   ["lambda", ["args"], 
-    ["+", ["get", ["$", "/args"], "/0"], 
-          ["get", ["$", "/args"], "/1"]]
+    ["+", ["$", "/args/0"], 
+          ["$", "/args/1"]]
   ],
   0
 ]
@@ -202,9 +205,9 @@ Lambda expressions are used with array operations and can be called directly:
 ], [
   "map",
   ["filter", ["$", "/data"],
-    ["lambda", ["s"], [">", ["get", ["$", "/s"], "/score"], 80]]
+    ["lambda", ["s"], [">", ["$", "/s/score"], 80]]
   ],
-  ["lambda", ["s"], ["get", ["$", "/s"], "/name"]]
+  ["lambda", ["s"], ["$", "/s/name"]]
 ]]
 ```
 Result: `{"array": ["Alice", "Bob"]}`
@@ -216,10 +219,10 @@ Result: `{"array": ["Alice", "Bob"]}`
   ["zip", {"array": ["a", "b", "c"]}, {"array": [1, 2, 3]}],
   ["lambda", ["x"], 
     ["merge", 
-      ["get", ["$", "/x"], "/0"],
+      ["$", "/x/0"],
       ["obj", [
-        ["get", ["get", ["$", "/x"], "/1"], "/0"],
-        ["get", ["get", ["$", "/x"], "/1"], "/1"]
+        ["$", "/x/1/0"],
+        ["$", "/x/1/1"]
       ]]
     ]
   ],

@@ -17,10 +17,10 @@ TEST_F(ZipObjectCreationTest, BasicZipToObject) {
                            json::object({{"array", json::array({2, 4, 6})}})}),
         json::array({"lambda", json::array({"x"}), 
             json::array({"merge", 
-                json::array({"get", json::array({"$", "/x"}), "/0"}),
+                json::array({"$", "/x/0"}),
                 json::array({"obj", json::array({
-                    json::array({"get", json::array({"get", json::array({"$", "/x"}), "/1"}), "/0"}),
-                    json::array({"get", json::array({"get", json::array({"$", "/x"}), "/1"}), "/1"})
+                    json::array({"$", "/x/1/0"}),
+                    json::array({"$", "/x/1/1"})
                 })})
             })
         }),
@@ -45,14 +45,14 @@ TEST_F(ZipObjectCreationTest, ZipToObjectWithLetBindings) {
             json::array({"lambda", json::array({"x"}),
                 json::array({"let", 
                     json::array({
-                        json::array({"acc", json::array({"get", json::array({"$", "/x"}), "/0"})}),
-                        json::array({"pair", json::array({"get", json::array({"$", "/x"}), "/1"})})
+                        json::array({"acc", json::array({"$", "/x/0"})}),
+                        json::array({"pair", json::array({"$", "/x/1"})})
                     }),
                     json::array({"merge", 
                         json::array({"$", "/acc"}),
                         json::array({"obj", json::array({
-                            json::array({"get", json::array({"$", "/pair"}), "/0"}),
-                            json::array({"get", json::array({"$", "/pair"}), "/1"})
+                            json::array({"$", "/pair/0"}),
+                            json::array({"$", "/pair/1"})
                         })})
                     })
                 })
@@ -81,8 +81,8 @@ TEST_F(ZipObjectCreationTest, ZipToObjectWithVariablePointerSyntax) {
             json::array({"lambda", json::array({"x"}),
                 json::array({"let",
                     json::array({
-                        json::array({"acc", json::array({"get", json::array({"$", "/x"}), "/0"})}),
-                        json::array({"pair", json::array({"get", json::array({"$", "/x"}), "/1"})})
+                        json::array({"acc", json::array({"$", "/x/0"})}),
+                        json::array({"pair", json::array({"$", "/x/1"})})
                     }),
                     json::array({"merge",
                         json::array({"$", "/acc"}),
@@ -111,10 +111,10 @@ TEST_F(ZipObjectCreationTest, ZipToObjectEmptyArrays) {
         }),
         json::array({"lambda", json::array({"x"}),
             json::array({"merge",
-                json::array({"get", json::array({"$", "/x"}), "/0"}),
+                json::array({"$", "/x/0"}),
                 json::array({"obj", json::array({
-                    json::array({"get", json::array({"get", json::array({"$", "/x"}), "/1"}), "/0"}),
-                    json::array({"get", json::array({"get", json::array({"$", "/x"}), "/1"}), "/1"})
+                    json::array({"$", "/x/1/0"}),
+                    json::array({"$", "/x/1/1"})
                 })})
             })
         }),
@@ -135,10 +135,10 @@ TEST_F(ZipObjectCreationTest, ZipToObjectUnequalLengths) {
         }),
         json::array({"lambda", json::array({"x"}),
             json::array({"merge",
-                json::array({"get", json::array({"$", "/x"}), "/0"}),
+                json::array({"$", "/x/0"}),
                 json::array({"obj", json::array({
-                    json::array({"get", json::array({"get", json::array({"$", "/x"}), "/1"}), "/0"}),
-                    json::array({"get", json::array({"get", json::array({"$", "/x"}), "/1"}), "/1"})
+                    json::array({"$", "/x/1/0"}),
+                    json::array({"$", "/x/1/1"})
                 })})
             })
         }),
@@ -162,10 +162,10 @@ TEST_F(ZipObjectCreationTest, ZipToObjectWithComplexValues) {
         }),
         json::array({"lambda", json::array({"x"}),
             json::array({"merge",
-                json::array({"get", json::array({"$", "/x"}), "/0"}),
+                json::array({"$", "/x/0"}),
                 json::array({"obj", json::array({
-                    json::array({"get", json::array({"get", json::array({"$", "/x"}), "/1"}), "/0"}),
-                    json::array({"get", json::array({"get", json::array({"$", "/x"}), "/1"}), "/1"})
+                    json::array({"$", "/x/1/0"}),
+                    json::array({"$", "/x/1/1"})
                 })})
             })
         }),
@@ -200,10 +200,10 @@ TEST_F(ZipObjectCreationTest, ZipToObjectWithDynamicKeys) {
             }),
             json::array({"lambda", json::array({"x"}),
                 json::array({"merge",
-                    json::array({"get", json::array({"$", "/x"}), "/0"}),
+                    json::array({"$", "/x/0"}),
                     json::array({"obj", json::array({
-                        json::array({"get", json::array({"get", json::array({"$", "/x"}), "/1"}), "/0"}),
-                        json::array({"get", json::array({"get", json::array({"$", "/x"}), "/1"}), "/1"})
+                        json::array({"$", "/x/1/0"}),
+                        json::array({"$", "/x/1/1"})
                     })})
                 })
             }),
@@ -230,10 +230,10 @@ TEST_F(ZipObjectCreationTest, DirectArrayAccessInReduce) {
             json::array({"$", "/zipped"}),
             json::array({"lambda", json::array({"acc_pair"}),
                 json::array({"merge",
-                    json::array({"get", json::array({"$", "/acc_pair"}), "/0"}),
+                    json::array({"$", "/acc_pair/0"}),
                     json::array({"obj", json::array({
-                        json::array({"get", json::array({"get", json::array({"$", "/acc_pair"}), "/1"}), "/0"}),
-                        json::array({"get", json::array({"get", json::array({"$", "/acc_pair"}), "/1"}), "/1"})
+                        json::array({"$", "/acc_pair/1/0"}),
+                        json::array({"$", "/acc_pair/1/1"})
                     })})
                 })
             }),

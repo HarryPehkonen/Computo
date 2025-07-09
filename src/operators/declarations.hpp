@@ -25,7 +25,6 @@ nlohmann::json logical_not(const nlohmann::json& args, ExecutionContext& ctx);
 // Data access / construction / control (stubs for now)
 nlohmann::json var_access(const nlohmann::json& args, ExecutionContext& ctx);
 nlohmann::json let_binding(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json get_ptr(const nlohmann::json& args, ExecutionContext& ctx);
 nlohmann::json obj_construct(const nlohmann::json& args, ExecutionContext& ctx);
 nlohmann::json if_operator(const nlohmann::json& args, ExecutionContext& ctx);
 

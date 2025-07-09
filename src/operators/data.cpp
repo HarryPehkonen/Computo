@@ -19,9 +19,15 @@ static std::vector<std::string> split_segments(const std::string& ptr) {
 }
 
 nlohmann::json var_access(const nlohmann::json& args, ExecutionContext& ctx) {
-    if (args.size() != 1) throw InvalidArgumentException("$ requires exactly 1 argument");
-    if (!args[0].is_string()) throw InvalidArgumentException("$ requires string JSON pointer argument");
-    std::string ptr = args[0].get<std::string>();
+    if (args.size() == 0) {
+        // Return entire variable scope as object
+        return nlohmann::json(ctx.variables);
+    }
+    if (args.size() != 1) throw InvalidArgumentException("$ requires 0 or 1 argument");
+    
+    auto path_expr = evaluate(args[0], ctx);
+    if (!path_expr.is_string()) throw InvalidArgumentException("$ requires string JSON pointer argument");
+    std::string ptr = path_expr.get<std::string>();
     if (ptr.empty() || ptr[0] != '/') throw InvalidArgumentException("$ pointer must start with '/'");
 
     auto segs = split_segments(ptr.substr(1));
@@ -48,18 +54,6 @@ nlohmann::json var_access(const nlohmann::json& args, ExecutionContext& ctx) {
     return current;
 }
 
-nlohmann::json get_ptr(const nlohmann::json& args, ExecutionContext& ctx) {
-    if (args.size() != 2) throw InvalidArgumentException("get requires exactly 2 arguments");
-    auto obj_val = evaluate(args[0], ctx);
-    auto ptr_expr = evaluate(args[1], ctx);
-    if (!ptr_expr.is_string()) throw InvalidArgumentException("get pointer must be string");
-    std::string ptr = ptr_expr.get<std::string>();
-    try {
-        return obj_val.at(nlohmann::json::json_pointer(ptr));
-    } catch (const std::exception&) {
-        throw InvalidArgumentException("Invalid JSON pointer or path not found");
-    }
-}
 
 nlohmann::json let_binding(const nlohmann::json& args, ExecutionContext& ctx) {
     if (args.size() != 2) throw InvalidArgumentException("let requires exactly 2 arguments");

@@ -617,6 +617,88 @@ endif()
 
 **Key Insight**: Well-designed debugging infrastructure can accommodate future language features without architectural changes.
 
+## Data Access Operator Consolidation (2024-07-09)
+
+### 33. Enhanced Data Access Operators ✅ SUCCESSFUL
+
+**Decision**: Consolidate `get`, `$`, `$input`, and `$inputs` operators into a unified data access system.
+
+**What Worked**:
+- **Dramatic syntax simplification**: `["get", ["$", "/var"], "/path"]` → `["$", "/var/path"]`
+- **Consistent API design**: All data access follows `[source, optional_path]` pattern
+- **Unified JSON Pointer syntax**: Standard JSON Pointer paths across all operators
+- **Backward compatibility**: Existing `["$", "/varname"]` syntax remains valid
+- **Zero regression**: All 114 tests pass with enhanced functionality
+
+**Implementation**:
+```cpp
+// Enhanced $input operator
+if (op == "$input") {
+    if (expr.size() > 2) throw InvalidArgumentException("$input takes 0 or 1 argument");
+    if (expr.size() == 1) return ctx.input();
+    // Handle optional path argument
+    auto path_expr = evaluate_lazy_tco(expr[1], ctx.with_path("path"));
+    return ctx.input().at(nlohmann::json::json_pointer(path));
+}
+
+// Enhanced $ operator with unified JSON Pointer parsing
+nlohmann::json var_access(const nlohmann::json& args, ExecutionContext& ctx) {
+    if (args.size() == 0) return nlohmann::json(ctx.variables);  // Return all variables
+    auto path_expr = evaluate(args[0], ctx);
+    std::string ptr = path_expr.get<std::string>();
+    // Parse: /varname/path/to/data
+    auto segs = split_segments(ptr.substr(1));
+    // First segment is variable name, rest is path navigation
+}
+```
+
+**Breaking Changes Handled**:
+- Removed `get` operator entirely from registry and implementation
+- Updated all test files to use new syntax patterns
+- Updated documentation (README.md, CLAUDE.md) to reflect new API
+- Comprehensive test coverage for new enhanced operators
+
+**Performance Impact**:
+- **Zero overhead**: New operators use same underlying JSON Pointer implementation
+- **Reduced complexity**: Fewer operators to learn and maintain
+- **Cleaner evaluation**: Eliminated nested `get` calls in complex expressions
+
+**User Experience Improvements**:
+- **Reduced cognitive load**: Single pattern instead of three separate operators
+- **Shorter expressions**: Complex nested access becomes linear paths
+- **Better error messages**: JSON Pointer errors include full path context
+- **Consistent behavior**: All data access operators work the same way
+
+**Example Transformations**:
+```json
+// Before: Complex nested get operations
+["get", ["get", ["$", "/user_list"], "/0"], "/name"]
+
+// After: Simple unified syntax
+["$", "/user_list/0/name"]
+
+// Before: Verbose input access
+["get", ["$input"], "/data/users/0/name"]
+
+// After: Direct input navigation
+["$input", "/data/users/0/name"]
+
+// Before: Complex multi-input access
+["get", ["$inputs"], "/0"]
+
+// After: Direct input indexing with navigation
+["$inputs", "/0/data/user/name"]
+```
+
+**Testing Strategy**:
+- **Comprehensive operator tests**: 9 new tests covering all enhanced functionality
+- **Integration tests**: Updated existing complex scenarios to use new syntax
+- **Edge case handling**: Invalid paths, missing variables, array bounds
+- **Performance validation**: TCO and thread safety tests all pass
+- **CLI integration**: Full command-line interface works with new operators
+
+**Key Insight**: Language simplification should prioritize **user experience over implementation complexity**. The enhanced data access system eliminated the most verbose and error-prone patterns while maintaining full functionality through unified JSON Pointer syntax.
+
 ## Conclusion
 
 The key to this project's success was maintaining clean architectural boundaries while building comprehensive development tools:

@@ -64,7 +64,7 @@ cmake --build build-debug
 - `logical.cpp` - `&&`, `||` (n-ary), `not` (unary only)
 - `array.cpp` - `map`, `filter`, `reduce`, `count`, `find`, `some`, `every`
 - `functional.cpp` - `car`, `cdr`, `cons`, `append`
-- `data.cpp` - `$`, `$input`, `$inputs`, `get`, `let`, `obj`, `if`
+- `data.cpp` - `$`, `let`, `obj`, `if` (Note: `$input` and `$inputs` are handled in evaluator)
 - `utilities.cpp` - `strConcat`, `merge`, `approx`
 
 **ExecutionContext Design**: Immutable input data (shared_ptr) + mutable variable scope. Supports nested scoping for `let` expressions with path tracking for error reporting.
@@ -80,7 +80,15 @@ cmake --build build-debug
 - Literal arrays: `{"array": [1, 2, 3]}`
 - Objects: Standard JSON objects
 
-**Variable System**: JSON Pointer syntax for variable access `["$", "/varname"]`. Variable binding via `["let", [["var", value]], body]`.
+**Enhanced Data Access System**: 
+- `["$input"]` - Access entire input object
+- `["$input", "/path"]` - Navigate within input using JSON Pointer
+- `["$inputs"]` - Access all inputs as array
+- `["$inputs", "/0/path"]` - Access specific input by index with navigation
+- `["$", "/varname"]` - Access variable
+- `["$", "/varname/path"]` - Navigate within variable using JSON Pointer
+- `["$"]` - Access all variables in current scope
+- Variable binding via `["let", [["var", value]], body]`
 
 ## Debug Infrastructure (REPL Build Only)
 
@@ -115,7 +123,7 @@ The REPL uses a wrapper class that instruments core library calls without modify
 
 **Operator Initialization**: Uses `std::call_once` for thread-safe lazy initialization of the operator registry.
 
-**JSON Pointer Integration**: Variable access and `get` operator use standard JSON Pointer syntax for consistency.
+**JSON Pointer Integration**: All data access operators use standard JSON Pointer syntax for consistency.
 
 ## Primary Use Cases
 

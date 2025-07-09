@@ -25,7 +25,7 @@ TEST_F(IntegrationTest, SimpleDataTransformation) {
         json::array({json::array({"data", json::array({"$input"})})}),
         json::array({
             "let",
-            json::array({json::array({"users", json::array({"get", json::array({"$", "/data"}), "/users"})})}),
+            json::array({json::array({"users", json::array({"$", "/data/users"})})}),
             json::array({
                 "count",
                 json::array({"$", "/users"})
@@ -55,8 +55,8 @@ TEST_F(IntegrationTest, MathematicalComputation) {
                 json::array({"$", "/squared"}),
                 json::array({"lambda", json::array({"args"}), json::array({
                     "+",
-                    json::array({"get", json::array({"$", "/args"}), "/0"}),
-                    json::array({"get", json::array({"$", "/args"}), "/1"})
+                    json::array({"$", "/args/0"}),
+                    json::array({"$", "/args/1"})
                 })}),
                 0
             })
@@ -77,12 +77,12 @@ TEST_F(IntegrationTest, StringProcessing) {
         json::array({json::array({"data", json::array({"$input"})})}),
         json::array({
             "let",
-            json::array({json::array({"texts", json::array({"get", json::array({"$", "/data"}), "/texts"})})}),
+            json::array({json::array({"texts", json::array({"$", "/data/texts"})})}),
             json::array({
                 "strConcat",
-                json::array({"get", json::array({"$", "/texts"}), "/0"}),
+                json::array({"$", "/texts/0"}),
                 " ",
-                json::array({"get", json::array({"$", "/texts"}), "/1"})
+                json::array({"$", "/texts/1"})
             })
         })
     });

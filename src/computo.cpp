@@ -33,7 +33,6 @@ void initialize_operators() {
         // data access etc.
         op_registry["$"] = computo::operators::var_access;
         op_registry["let"] = computo::operators::let_binding;
-        op_registry["get"] = computo::operators::get_ptr;
         op_registry["obj"] = computo::operators::obj_construct;
         op_registry["if"] = computo::operators::if_operator;
         // array ops
@@ -136,17 +135,44 @@ nlohmann::json evaluate_lazy_tco(nlohmann::json expr, ExecutionContext ctx) {
         
         // Handle special built-in operators
         if (op == "$input") {
-            if (expr.size() != 1) {
-                throw InvalidArgumentException("$input takes no arguments", ctx.get_path_string());
+            if (expr.size() > 2) {
+                throw InvalidArgumentException("$input takes 0 or 1 argument", ctx.get_path_string());
             }
-            return ctx.input();
+            if (expr.size() == 1) {
+                return ctx.input();
+            }
+            // Handle optional path argument
+            auto path_expr = evaluate_lazy_tco(expr[1], ctx.with_path("path"));
+            if (!path_expr.is_string()) {
+                throw InvalidArgumentException("$input path must be string", ctx.get_path_string());
+            }
+            std::string path = path_expr.get<std::string>();
+            try {
+                return ctx.input().at(nlohmann::json::json_pointer(path));
+            } catch (const std::exception&) {
+                throw InvalidArgumentException("Invalid JSON pointer or path not found: " + path, ctx.get_path_string());
+            }
         }
         
         if (op == "$inputs") {
-            if (expr.size() != 1) {
-                throw InvalidArgumentException("$inputs takes no arguments", ctx.get_path_string());
+            if (expr.size() > 2) {
+                throw InvalidArgumentException("$inputs takes 0 or 1 argument", ctx.get_path_string());
             }
-            return nlohmann::json(ctx.inputs());
+            if (expr.size() == 1) {
+                return nlohmann::json(ctx.inputs());
+            }
+            // Handle optional path argument for array indexing
+            auto path_expr = evaluate_lazy_tco(expr[1], ctx.with_path("path"));
+            if (!path_expr.is_string()) {
+                throw InvalidArgumentException("$inputs path must be string", ctx.get_path_string());
+            }
+            std::string path = path_expr.get<std::string>();
+            try {
+                nlohmann::json inputs_array = nlohmann::json(ctx.inputs());
+                return inputs_array.at(nlohmann::json::json_pointer(path));
+            } catch (const std::exception&) {
+                throw InvalidArgumentException("Invalid JSON pointer or path not found: " + path, ctx.get_path_string());
+            }
         }
         
         // Lazy debug hook - only called when debugging is active
