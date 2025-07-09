@@ -1,0 +1,115 @@
+#include <computo.hpp>
+#include "read_json.hpp"
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <nlohmann/json.hpp>
+
+// Forward declaration for benchmark function
+void run_performance_benchmarks();
+
+void print_usage(const char* program_name) {
+    // accept multiple input files
+    std::cout << "Usage: " << program_name << " [OPTIONS] SCRIPT_FILENAME [INPUT_FILE [INPUT_FILENAME]...]\n"
+              << "Options:\n"
+              << "  -h, --help     Show this help message\n"
+              << "  -v, --version  Show version information\n"
+              << "  --perf         Run performance benchmarks\n"
+              << "\n"
+              << "If no input file is specified, uses null input.\n";
+}
+
+void print_version() {
+    std::cout << "Computo CLI v1.0.0\n"
+              << "JSON-native data transformation engine\n";
+}
+
+// hold CLI options
+struct CLIOptions {
+    bool help = false;
+    bool version = false;
+    bool perf = false;
+    std::string bad_option;
+    std::string script_filename;
+    std::vector<std::string> input_filenames;
+};
+
+int main(int argc, char* argv[]) {
+    CLIOptions options;
+    
+    // Parse command line arguments
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        
+        if (arg == "-h" || arg == "--help") {
+            options.help = true;
+        } else if (arg == "-v" || arg == "--version") {
+            options.version = true;
+        } else if (arg == "--perf") {
+            options.perf = true;
+        } else if (arg[0] == '-') {
+            // unknown option
+            options.bad_option = arg;
+            break;
+        } else {
+            // first filename is the script
+            if (options.script_filename.empty()) {
+                options.script_filename = arg;
+            } else {
+                // subsequent filenames are input files
+                options.input_filenames.push_back(arg);
+            }
+        }
+    }
+    
+    if (!options.bad_option.empty()) {
+        std::cerr << "Error: Unknown option: " << options.bad_option << "\n";
+        print_usage(argv[0]);
+        return 1;
+    }
+
+    if (options.help) {
+        print_usage(argv[0]);
+        return 0;
+    }
+    
+    if (options.version) {
+        print_version();
+        return 0;
+    }
+    
+    if (options.perf) {
+        run_performance_benchmarks();
+        return 0;
+    }
+    
+    try {
+        // Read script
+        nlohmann::json script;
+        if (!options.script_filename.empty()) {
+            script = read_json_from_file(options.script_filename);
+        }
+        
+        // Read input
+        nlohmann::json inputs = nlohmann::json::array();
+        if (!options.input_filenames.empty()) {
+            // append all input files
+            for (const auto& input_file : options.input_filenames) {
+                inputs.push_back(read_json_from_file(input_file));
+            }
+        }
+        
+        // Execute script
+        auto result = computo::execute(script, inputs);
+        
+        // Output result
+        std::cout << result.dump(2) << std::endl;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
+    
+    return 0;
+} 

@@ -1,241 +1,853 @@
-#include <computo/repl.hpp>
+#include <computo.hpp>
+#include "read_json.hpp"
 #include <iostream>
-#include <regex>
+#include <string>
+#include <vector>
+#include <chrono>
+#include <map>
+#include <set>
+#include <filesystem>
+#include <climits>
 #include <memory>
+#include <readline/readline.h>
+#include <readline/history.h>
+#include <nlohmann/json.hpp>
 
+// Forward declaration for benchmark function
+void run_performance_benchmarks();
+
+// Forward declaration for computo::evaluate (needed by DebugExecutionWrapper)
 namespace computo {
-
-ComputoREPL::ComputoREPL(Debugger* debugger) 
-    : context_(nlohmann::json(nullptr)), debugger_(debugger) {}
-
-std::string ComputoREPL::trim(const std::string& str) {
-    size_t first = str.find_first_not_of(" \t\n\r");
-    if (first == std::string::npos) return "";
-    size_t last = str.find_last_not_of(" \t\n\r");
-    return str.substr(first, (last - first + 1));
+    nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx);
 }
 
-std::string ComputoREPL::get_input(const std::string& prompt) {
-#ifdef COMPUTO_USE_READLINE
-    char* input = readline(prompt.c_str());
-    if (!input) {
-        return "";  // EOF
-    }
-    
-    std::string result(input);
-    
-    // Add non-empty commands to history
-    if (!result.empty() && !trim(result).empty()) {
-        add_history(input);
-    }
-    
-    free(input);
-    return result;
-#else
-    // Fallback to basic input without history
-    std::cout << prompt;
-    std::string result;
-    std::getline(std::cin, result);
-    return result;
+#ifdef REPL
+// Forward declaration
+class DebugExecutionWrapper;
+
+thread_local computo::EvaluationContext* g_current_debug_context = nullptr;
+thread_local DebugExecutionWrapper* g_current_debug_wrapper = nullptr;
+computo::EvaluationAction debug_pre_evaluation_hook(const computo::EvaluationContext& eval_ctx);
 #endif
-}
 
-nlohmann::json ComputoREPL::parse_repl_expression(const std::string& input) {
-    std::string trimmed = trim(input);
+// Levenshtein distance algorithm for operator suggestions
+int levenshtein_distance(const std::string& s1, const std::string& s2) {
+    const size_t len1 = s1.size(), len2 = s2.size();
+    std::vector<std::vector<int>> dp(len1 + 1, std::vector<int>(len2 + 1));
     
-    if (trimmed.empty()) {
-        return nlohmann::json(nullptr);
-    }
+    for (size_t i = 0; i <= len1; ++i) dp[i][0] = i;
+    for (size_t j = 0; j <= len2; ++j) dp[0][j] = j;
     
-    // Handle history references
-    if (trimmed == "_1" && !history_.empty()) {
-        return history_.back();
-    }
-    if (trimmed == "_2" && history_.size() >= 2) {
-        return history_[history_.size() - 2];
-    }
-    if (trimmed == "_3" && history_.size() >= 3) {
-        return history_[history_.size() - 3];
-    }
-    
-    // Handle simple variable references (no spaces, starts with letter)
-    if (std::regex_match(trimmed, std::regex("^[a-zA-Z_][a-zA-Z0-9_]*$"))) {
-        return nlohmann::json::array({"$", "/" + trimmed});
-    }
-    
-    // Handle simple arithmetic (basic cases)
-    std::regex arithmetic_regex(R"(^([a-zA-Z_]\w*)\s*([\+\-\*\/])\s*(\d+)$)");
-    std::smatch match;
-    if (std::regex_match(trimmed, match, arithmetic_regex)) {
-        std::string var = match[1].str();
-        std::string op = match[2].str();
-        int value = std::stoi(match[3].str());
-        return nlohmann::json::array({op, nlohmann::json::array({"$", "/" + var}), value});
-    }
-    
-    // Replace history references in the string before parsing
-    std::string processed = trimmed;
-    
-    // Replace _1, _2, _3 with their actual values in the JSON string
-    if (processed.find("_1") != std::string::npos && !history_.empty()) {
-        std::string replacement = history_.back().dump();
-        size_t pos = 0;
-        while ((pos = processed.find("_1", pos)) != std::string::npos) {
-            processed.replace(pos, 2, replacement);
-            pos += replacement.length();
-        }
-    }
-    if (processed.find("_2") != std::string::npos && history_.size() >= 2) {
-        std::string replacement = history_[history_.size() - 2].dump();
-        size_t pos = 0;
-        while ((pos = processed.find("_2", pos)) != std::string::npos) {
-            processed.replace(pos, 2, replacement);
-            pos += replacement.length();
-        }
-    }
-    if (processed.find("_3") != std::string::npos && history_.size() >= 3) {
-        std::string replacement = history_[history_.size() - 3].dump();
-        size_t pos = 0;
-        while ((pos = processed.find("_3", pos)) != std::string::npos) {
-            processed.replace(pos, 2, replacement);
-            pos += replacement.length();
-        }
-    }
-    
-    // Try to parse as JSON
-    try {
-        return nlohmann::json::parse(processed);
-    } catch (const nlohmann::json::parse_error& e) {
-        throw std::runtime_error("Invalid expression: " + std::string(e.what()));
-    }
-}
-
-void ComputoREPL::print_history_label(size_t index) {
-    std::cout << "[" << index << "] ";
-}
-
-void ComputoREPL::print_help() {
-    std::cout << "\nComputo REPL Commands:\n";
-    std::cout << "  help, ?               Show this help message\n";
-    std::cout << "  quit, exit            Exit the REPL\n";
-    std::cout << "  history               Show evaluation history\n";
-    std::cout << "  clear                 Clear history\n";
-    std::cout << "  _1, _2, _3            Reference previous results\n\n";
-    std::cout << "Expression Examples:\n";
-    std::cout << "  42                    Literal number\n";
-    std::cout << "  \"hello world\"         Literal string\n";
-    std::cout << "  [1, 2, 3]             Literal array (use {\"array\": [1, 2, 3]} for evaluation)\n";
-    std::cout << "  {\"name\": \"Alice\"}      JSON object\n";
-    std::cout << "  [\"+\", 1, 2]           Addition operator\n";
-    std::cout << "  [\"let\", [[\"x\", 5]], [\"*\", [\"$\", \"/x\"], 2]]  Let binding\n";
-    std::cout << "  users                 Variable reference (becomes [\"$\", \"/users\"])\n";
-    std::cout << "  count + 1             Simple arithmetic (becomes [\"+\", [\"$\", \"/count\"], 1])\n\n";
-    std::cout << "Try pasting some JSON data and then working with it!\n";
-}
-
-void ComputoREPL::print_history() {
-    if (history_.empty()) {
-        std::cout << "No history available.\n";
-        return;
-    }
-    
-    std::cout << "\nEvaluation History:\n";
-    for (size_t i = 0; i < history_.size(); ++i) {
-        std::cout << "[" << (i + 1) << "] ";
-        if (history_[i].is_string() && history_[i].get<std::string>().size() > 50) {
-            std::cout << history_[i].dump().substr(0, 50) << "...\n";
-        } else {
-            std::cout << history_[i].dump() << "\n";
-        }
-    }
-    std::cout << "\nUse _1 for most recent, _2 for second most recent, etc.\n";
-}
-
-void ComputoREPL::run() {
-    std::cout << "Computo REPL v1.0 - Interactive JSON Processing\n";
-    std::cout << "Type 'help' for commands, 'quit' to exit\n";
-#ifdef COMPUTO_USE_READLINE
-    std::cout << "Arrow keys enabled for command history\n";
-#endif
-    std::cout << "\n";
-    
-    std::string line;
-    while (true) {
-        line = get_input("computo> ");
-        
-        // Handle EOF (Ctrl+D)
-        if (line.empty() && std::cin.eof()) {
-            std::cout << "\nGoodbye!\n";
-            break;
-        }
-        
-        std::string trimmed = trim(line);
-        
-        if (trimmed.empty()) {
-            continue;
-        }
-        
-        // Handle commands
-        if (trimmed == "quit" || trimmed == "exit") {
-            std::cout << "Goodbye!\n";
-            break;
-        }
-        
-        if (trimmed == "help" || trimmed == "?") {
-            print_help();
-            continue;
-        }
-        
-        if (trimmed == "history") {
-            print_history();
-            continue;
-        }
-        
-        if (trimmed == "clear") {
-            history_.clear();
-            std::cout << "History cleared.\n";
-            continue;
-        }
-        
-        // Evaluate expression
-        try {
-            auto expr = parse_repl_expression(trimmed);
-            
-            // Skip evaluation of null expressions
-            if (expr.is_null()) {
-                continue;
-            }
-            
-            // Set debugger if available
-            if (debugger_) {
-                set_debugger(std::unique_ptr<Debugger>(debugger_));
-            }
-            
-            auto result = evaluate(expr, context_);
-            
-            // Reset debugger (don't actually move it)
-            if (debugger_) {
-                set_debugger(nullptr);
-            }
-            
-            // Add to history
-            history_.push_back(result);
-            
-            // Print result with history label
-            print_history_label(history_.size());
-            
-            // Pretty print result
-            if (result.is_string()) {
-                std::cout << result.dump() << std::endl;
+    for (size_t i = 1; i <= len1; ++i) {
+        for (size_t j = 1; j <= len2; ++j) {
+            if (s1[i - 1] == s2[j - 1]) {
+                dp[i][j] = dp[i - 1][j - 1];
             } else {
-                std::cout << result.dump(2) << std::endl;
+                dp[i][j] = 1 + std::min({dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]});
             }
+        }
+    }
+    return dp[len1][len2];
+}
+
+// Suggest closest operator name
+std::string suggest_operator(const std::string& misspelled) {
+    static auto operators = computo::get_available_operators();
+    int min_distance = INT_MAX;
+    std::string best_match;
+    
+    for (const auto& op : operators) {
+        int distance = levenshtein_distance(misspelled, op);
+        if (distance < min_distance && distance <= 2) {  // Max 2 edits
+            min_distance = distance;
+            best_match = op;
+        }
+    }
+    return best_match;
+}
+
+// namespace for readline functions
+namespace ReadLine {
+    inline void add_history(const char* str) { ::add_history(str); }
+    inline char* readline(const char* prompt) { return ::readline(prompt); }
+    inline void using_history() { ::using_history(); }
+    inline void clear_history() { ::clear_history(); }
+}
+
+// Debug session states
+enum class DebugState {
+    RUNNING,    // Normal execution
+    PAUSED,     // Hit breakpoint, awaiting user command
+    STEPPING,   // Single-step mode
+    FINISHED    // Script completed
+};
+
+// Execution context for debugging
+struct DebugContext {
+    std::vector<std::string> execution_path;
+    std::string current_operator;
+    nlohmann::json current_expression;
+    std::map<std::string, nlohmann::json> current_variables;
+    int depth = 0;
+};
+
+class DebugExecutionWrapper {
+private:
+    bool trace_enabled_ = false;
+    bool step_mode_ = false;
+    bool profiling_enabled_ = false;
+    DebugState debug_state_ = DebugState::RUNNING;
+    
+    // Breakpoint management
+    std::set<std::string> operator_breakpoints_;
+    std::set<std::string> variable_breakpoints_;
+    
+    // Captured state
+    std::map<std::string, nlohmann::json> last_variables_;
+    std::vector<std::string> execution_trace_;
+    std::map<std::string, std::chrono::nanoseconds> operator_timings_;
+    std::string current_script_filename_;
+    
+    // Interactive debugging state
+    DebugContext current_debug_context_;
+    nlohmann::json current_script_;
+    std::vector<nlohmann::json> current_inputs_;
+    bool debug_session_active_ = false;
+    
+    // User interaction callback (set by REPL)
+    std::function<std::string()> user_input_callback_;
+    
+    
+    void print_debug_location() {
+        if (!g_current_debug_context) {
+            std::cout << "No active debug session\n";
+            return;
+        }
+        
+        std::cout << "Location: ";
+        if (g_current_debug_context->execution_path.empty()) {
+            std::cout << "/";
+        } else {
+            for (const auto& segment : g_current_debug_context->execution_path) {
+                std::cout << "/" << segment;
+            }
+        }
+        std::cout << "\n";
+        
+        std::cout << "Operator: " << g_current_debug_context->operator_name << "\n";
+        std::cout << "Expression: " << g_current_debug_context->expression.dump() << "\n";
+        std::cout << "Depth: " << g_current_debug_context->depth << "\n";
+    }
+    
+    void print_debug_variables() {
+        if (!g_current_debug_context) {
+            std::cout << "No active debug session\n";
+            return;
+        }
+        
+        if (g_current_debug_context->variables.empty()) {
+            std::cout << "No variables in scope\n";
+        } else {
+            std::cout << "Variables in scope:\n";
+            for (const auto& [name, value] : g_current_debug_context->variables) {
+                std::cout << "  " << name << " = " << value.dump() << "\n";
+            }
+        }
+    }
+    
+    
+public:
+    // Configuration methods
+    void enable_trace(bool enabled) { trace_enabled_ = enabled; }
+    void enable_step_mode(bool enabled) { step_mode_ = enabled; }
+    void enable_profiling(bool enabled) { profiling_enabled_ = enabled; }
+    
+    // Breakpoint management
+    void add_operator_breakpoint(const std::string& op) {
+        operator_breakpoints_.insert(op);
+    }
+    void add_variable_breakpoint(const std::string& var) {
+        variable_breakpoints_.insert(var);
+    }
+    void remove_operator_breakpoint(const std::string& op) {
+        operator_breakpoints_.erase(op);
+    }
+    void remove_variable_breakpoint(const std::string& var) {
+        variable_breakpoints_.erase(var);
+    }
+    void clear_all_breakpoints() {
+        operator_breakpoints_.clear();
+        variable_breakpoints_.clear();
+    }
+    
+    // State access
+    DebugState get_debug_state() const { return debug_state_; }
+    void set_debug_state(DebugState state) { debug_state_ = state; }
+    const std::set<std::string>& get_operator_breakpoints() const { return operator_breakpoints_; }
+    const std::set<std::string>& get_variable_breakpoints() const { return variable_breakpoints_; }
+    
+    // Interactive debugging
+    void set_user_input_callback(std::function<std::string()> callback) {
+        user_input_callback_ = callback;
+    }
+    bool is_debug_session_active() const { return debug_session_active_; }
+    const DebugContext& get_debug_context() const { return current_debug_context_; }
+    
+    // Debug session control
+    void debug_step() { debug_state_ = DebugState::STEPPING; }
+    void debug_continue() { debug_state_ = DebugState::RUNNING; }
+    void debug_finish() { 
+        debug_state_ = DebugState::RUNNING; 
+        operator_breakpoints_.clear();
+        variable_breakpoints_.clear();
+    }
+    
+public:
+    // Interactive debug method that is called by the standalone hook
+    void handle_interactive_debugging() {
+        debug_state_ = DebugState::PAUSED;
+        debug_session_active_ = true;
+        
+        // Enter debug mode
+        while (debug_state_ == DebugState::PAUSED) {
+            std::cout << "(debug) ";
+            std::string user_command = user_input_callback_();
+            
+            if (user_command == "step") {
+                debug_state_ = DebugState::STEPPING;
+            } else if (user_command == "continue") {
+                debug_state_ = DebugState::RUNNING;
+            } else if (user_command == "finish") {
+                debug_finish();
+            } else if (user_command == "where") {
+                print_debug_location();
+            } else if (user_command == "vars") {
+                print_debug_variables();
+            } else {
+                std::cout << "Debug commands: step, continue, finish, where, vars\n";
+            }
+        }
+        
+        debug_session_active_ = false;
+    }
+
+    // Execution with debugging
+    nlohmann::json execute_with_debug(const nlohmann::json& script, 
+                                      const std::vector<nlohmann::json>& inputs) {
+        auto start_time = std::chrono::high_resolution_clock::now();
+        
+        // Store current script and inputs for debugging
+        current_script_ = script;
+        current_inputs_ = inputs;
+        debug_session_active_ = false;
+        
+        // Create execution context with pre-evaluation hook
+        computo::ExecutionContext ctx(inputs);
+        
+        ctx.set_pre_evaluation_hook(debug_pre_evaluation_hook);
+        g_current_debug_wrapper = this;
+        
+        // Execute with debugging
+        nlohmann::json result;
+        try {
+            result = computo::evaluate(script, ctx);
+            debug_state_ = DebugState::FINISHED;
+        } catch (const std::exception& e) {
+            debug_state_ = DebugState::FINISHED;
+            throw;
+        }
+        
+        g_current_debug_wrapper = nullptr;
+        g_current_debug_context = nullptr;
+        
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time);
+        
+        if (profiling_enabled_) {
+            operator_timings_["total_execution"] = duration;
+        }
+        
+        debug_session_active_ = false;
+        return result;
+    }
+    
+    // State access for commands
+    const std::map<std::string, nlohmann::json>& get_last_variables() const {
+        return last_variables_;
+    }
+    const std::vector<std::string>& get_execution_trace() const {
+        return execution_trace_;
+    }
+    const std::map<std::string, std::chrono::nanoseconds>& get_timings() const {
+        return operator_timings_;
+    }
+    
+    // Run script from file
+    nlohmann::json run_script_file(const std::string& filename, const std::vector<nlohmann::json>& inputs) {
+        current_script_filename_ = filename;
+        debug_state_ = DebugState::RUNNING;
+        
+        nlohmann::json script;
+        try {
+            // Use JSON with comments for .jsonc files, regular JSON for .json files
+            if (filename.size() >= 6 && filename.substr(filename.size() - 6) == ".jsonc") {
+                script = read_json_with_comments_from_file(filename);
+            } else {
+                script = read_json_from_file(filename);
+            }
+        } catch (const std::exception& e) {
+            debug_state_ = DebugState::FINISHED;
+            throw std::runtime_error("Failed to load script: " + std::string(e.what()));
+        }
+        
+        // Extract variables for debugging
+        extract_variables_from_let(script, inputs);
+        
+        // Execute the script
+        return execute_with_debug(script, inputs);
+    }
+    
+    // Extract and evaluate variables from let expressions
+    void extract_variables_from_let(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs) {
+        last_variables_.clear();
+        if (script.is_array() && script.size() > 0 && script[0].is_string()) {
+            std::string op = script[0].get<std::string>();
+            if (op == "let" && script.size() == 3 && script[1].is_array()) {
+                // Create execution context for evaluating bindings
+                computo::ExecutionContext ctx(inputs);
+                
+                // Extract and evaluate variable bindings from let expression
+                for (const auto& binding : script[1]) {
+                    if (binding.is_array() && binding.size() == 2 && binding[0].is_string()) {
+                        std::string var_name = binding[0].get<std::string>();
+                        try {
+                            // Evaluate the binding value in the current context
+                            nlohmann::json evaluated_value = computo::evaluate(binding[1], ctx);
+                            last_variables_[var_name] = evaluated_value;
+                            // Add to context for subsequent bindings
+                            ctx.variables[var_name] = evaluated_value;
+                        } catch (const std::exception& e) {
+                            // If evaluation fails, store the expression
+                            last_variables_[var_name] = binding[1];
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
+#ifdef REPL
+computo::EvaluationAction debug_pre_evaluation_hook(const computo::EvaluationContext& eval_ctx) {
+    g_current_debug_context = const_cast<computo::EvaluationContext*>(&eval_ctx);
+    
+    bool should_break = false;
+    if (g_current_debug_wrapper) {
+        const auto& op_breakpoints = g_current_debug_wrapper->get_operator_breakpoints();
+        if (op_breakpoints.count(eval_ctx.operator_name)) {
+            should_break = true;
+        }
+        
+        if (g_current_debug_wrapper->get_debug_state() == DebugState::STEPPING) {
+            should_break = true;
+        }
+        
+        if (should_break) {
+            std::cout << "\n*** Breakpoint hit ***\n";
+            std::cout << "Location: ";
+            if (eval_ctx.execution_path.empty()) {
+                std::cout << "/";
+            } else {
+                for (const auto& segment : eval_ctx.execution_path) {
+                    std::cout << "/" << segment;
+                }
+            }
+            std::cout << "\n";
+            std::cout << "Operator: " << eval_ctx.operator_name << "\n";
+            std::cout << "Expression: " << eval_ctx.expression.dump() << "\n";
+            std::cout << "Depth: " << eval_ctx.depth << "\n";
+            
+            g_current_debug_wrapper->handle_interactive_debugging();
+        }
+    }
+    
+    return computo::EvaluationAction::CONTINUE;
+}
+
+#endif
+
+class ComputoREPL {
+private:
+    bool debug_mode_ = false;
+    bool trace_mode_ = false;
+    std::vector<std::string> command_history_;
+    std::vector<nlohmann::json> input_data_;
+    DebugExecutionWrapper debug_wrapper_;
+    
+public:
+    ComputoREPL() {
+        // Enable history expansion
+        rl_bind_key('\t', rl_complete);
+        ReadLine::using_history();
+        
+        // Set up debug callback for user input
+        debug_wrapper_.set_user_input_callback([]() -> std::string {
+            char* line = ReadLine::readline("");
+            if (!line) return "continue";  // EOF defaults to continue
+            std::string input(line);
+            free(line);
+            return input;
+        });
+    }
+
+    static void print_version() {
+        std::cout << "Computo REPL v1.0.0" << std::endl;
+    }
+
+    void run(std::vector<std::string> input_filenames) {
+        print_version();
+        std::cout << "Type 'help' for commands, 'quit' to exit\n";
+        std::cout << "Use _1, _2, etc. to reference previous commands\n\n";
+
+        // Load input files and store for execution context
+        std::vector<nlohmann::json> loaded_inputs;
+        if (!input_filenames.empty()) {
+            for (const auto& input_filename : input_filenames) {
+                loaded_inputs.push_back(read_json_from_file(input_filename));
+            }
+        }
+        
+        // Store the loaded inputs for use in execute_expression
+        input_data_ = std::move(loaded_inputs);
+        
+        while (true) {
+
+            char* line = ReadLine::readline("computo> ");
+            if (!line) break; // EOF (Ctrl+D)
+            std::string input(line);
+            free(line);
+            
+            if (input.empty()) continue;
+            
+            // Process history expansion (_1, _2, etc.)
+            std::string processed_input = process_history_expansion(input);
+            
+            ReadLine::add_history(processed_input.c_str());
+            command_history_.push_back(processed_input);
+            
+            try {
+                if (processed_input == "quit" || processed_input == "exit") {
+                    break;
+                } else if (processed_input == "help") {
+                    print_help();
+                } else if (processed_input == "version") {
+                    print_version();
+                } else if (processed_input == "debug") {
+                    debug_mode_ = !debug_mode_;
+                    std::cout << "Debug mode: " << (debug_mode_ ? "ON" : "OFF") << "\n";
+                } else if (processed_input == "trace") {
+                    trace_mode_ = !trace_mode_;
+                    std::cout << "Trace mode: " << (trace_mode_ ? "ON" : "OFF") << "\n";
+                } else if (processed_input == "clear") {
+                    ReadLine::clear_history();
+                    command_history_.clear();
+                    std::cout << "History cleared\n";
+                } else if (processed_input == "history") {
+                    print_history();
+                } else if (processed_input == "vars") {
+                    print_variables();
+                } else if (processed_input.size() > 4 && processed_input.substr(0, 4) == "run ") {
+                    std::string filename = processed_input.substr(4);
+
+                    // remove surrounding whitespace
+                    filename = trim_whitespace(filename);
+
+                    // remove quotes if present
+                    if (filename.size() > 1 && filename[0] == '"' && filename[filename.size() - 1] == '"') {
+                        filename = filename.substr(1, filename.size() - 2);
+                    }
+
+                    run_script_file(filename);
+                } else if (processed_input.size() > 6 && processed_input.substr(0, 6) == "break ") {
+                    std::string target = processed_input.substr(6);
+                    add_breakpoint(target);
+                } else if (processed_input.size() > 8 && processed_input.substr(0, 8) == "nobreak ") {
+                    std::string target = processed_input.substr(8);
+                    remove_breakpoint(target);
+                } else if (processed_input == "nobreak") {
+                    remove_all_breakpoints();
+                } else if (processed_input == "breaks") {
+                    list_breakpoints();
+                } else if (processed_input == "continue") {
+                    continue_execution();
+                } else if (processed_input == "step") {
+                    step_execution();
+                } else if (processed_input == "finish") {
+                    finish_execution();
+                } else if (processed_input == "where") {
+                    show_execution_location();
+                } else {
+                    execute_expression(processed_input);
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "Error: " << e.what() << "\n";
+            }
+        }
+        
+        std::cout << "Goodbye!\n";
+    }
+    
+private:
+    std::string trim_whitespace(const std::string& str) {
+        
+        // spaces, tabs, newlines, etc.
+        std::string whitespace = " \t\n\r\f\v";
+        size_t first = str.find_first_not_of(whitespace);
+        size_t last = str.find_last_not_of(whitespace);
+        return first == std::string::npos ? "" : str.substr(first, last - first + 1);
+    }
+
+    std::string process_history_expansion(const std::string& input) {
+        std::string result = input;
+        
+        // Simple history expansion: _N where N is a number
+        size_t pos = 0;
+        while ((pos = result.find("_", pos)) != std::string::npos) {
+            if (pos > 0 && (std::isalnum(result[pos-1]) || result[pos-1] == '_')) {
+                pos++;
+                continue; // Not a history reference
+            }
+            
+            size_t start = pos;
+            pos++; // Skip the underscore
+            
+            // Find the number
+            size_t num_start = pos;
+            while (pos < result.size() && std::isdigit(result[pos])) {
+                pos++;
+            }
+            
+            if (pos == num_start) {
+                continue; // No number after underscore
+            }
+            
+            std::string num_str = result.substr(num_start, pos - num_start);
+            int history_index = std::stoi(num_str) - 1;
+            
+            if (history_index >= 0 && history_index < static_cast<int>(command_history_.size())) {
+                std::string replacement = command_history_[history_index];
+                result.replace(start, pos - start, replacement);
+                pos = start + replacement.size();
+            } else {
+                std::cerr << "Warning: History reference _" << history_index << " not found\n";
+                pos = start + 1;
+            }
+        }
+        
+        return result;
+    }
+    
+    void print_history() {
+        if (command_history_.empty()) {
+            std::cout << "No command history\n";
+            return;
+        }
+        
+        std::cout << "Command history:\n";
+        for (size_t i = 0; i < command_history_.size(); ++i) {
+            std::cout << "  " << (i + 1) << ": " << command_history_[i] << "\n";
+        }
+    }
+    
+    void print_help() {
+        std::cout << "Commands:\n";
+        std::cout << "  help         Show this help\n";
+        std::cout << "  debug        Toggle debug mode\n";
+        std::cout << "  trace        Toggle trace mode\n";
+        std::cout << "  clear        Clear history\n";
+        std::cout << "  history      Show command history\n";
+        std::cout << "  vars         Show variables in scope\n";
+        std::cout << "  quit         Exit REPL\n";
+        std::cout << "\n";
+        std::cout << "Script execution:\n";
+        std::cout << "  run FILE     Load and execute script file (.json or .jsonc)\n";
+        std::cout << "\n";
+        std::cout << "Breakpoint management:\n";
+        std::cout << "  break OP     Set breakpoint on operator (e.g., 'break map')\n";
+        std::cout << "  break /VAR   Set breakpoint on variable (e.g., 'break /users')\n";
+        std::cout << "  nobreak OP   Remove operator breakpoint\n";
+        std::cout << "  nobreak /VAR Remove variable breakpoint\n";
+        std::cout << "  nobreak      Remove all breakpoints\n";
+        std::cout << "  breaks       List active breakpoints\n";
+        std::cout << "\n";
+        std::cout << "Debug session (when paused):\n";
+        std::cout << "  step         Execute next operation\n";
+        std::cout << "  continue     Continue until next breakpoint\n";
+        std::cout << "  finish       Run to completion, ignoring breakpoints\n";
+        std::cout << "  where        Show current execution location\n";
+        std::cout << "\n";
+        std::cout << "History expansion:\n";
+        std::cout << "  _1           Reference the last command\n";
+        std::cout << "  _2           Reference the second-to-last command\n";
+        std::cout << "  etc.         Use _N to reference command N from the end\n";
+        std::cout << "\n";
+        std::cout << "Enter JSON expressions to evaluate.\n";
+        std::cout << "Examples:\n";
+        std::cout << "  [\"+\", 1, 2]\n";
+        std::cout << "  [\"map\", {\"array\": [1, 2, 3]}, [\"lambda\", [\"x\"], [\"*\", [\"$\", \"/x\"], 2]]]\n";
+        std::cout << "  run script.json\n";
+        std::cout << "  break map\n";
+    }
+    
+    void print_variables() {
+        const auto& variables = debug_wrapper_.get_last_variables();
+        if (variables.empty()) {
+            std::cout << "No variables in scope\n";
+            std::cout << "(Execute a 'let' expression to create variables)\n";
+            return;
+        }
+        
+        std::cout << "Variables in scope:\n";
+        for (const auto& [name, value] : variables) {
+            std::cout << "  " << name << " = " << value.dump() << "\n";
+        }
+    }
+    
+    void run_script_file(const std::string& filename) {
+        try {
+            // Check if file exists
+            if (!std::filesystem::exists(filename)) {
+                std::cerr << "Error: File not found: " << filename << "\n";
+                return;
+            }
+            
+            // Configure debug wrapper
+            debug_wrapper_.enable_trace(trace_mode_);
+            debug_wrapper_.enable_profiling(debug_mode_);
+            
+            // Run the script
+            auto result = debug_wrapper_.run_script_file(filename, input_data_);
+            
+            // Output result
+            std::cout << result.dump(2) << "\n";
+            
+        } catch (const computo::InvalidOperatorException& e) {
+            std::cerr << "Error: " << e.what();
+            
+            // Try to suggest a similar operator
+            std::string op_name = std::string(e.what()).substr(18); // Remove "Invalid operator: "
+            std::string suggestion = suggest_operator(op_name);
+            if (!suggestion.empty()) {
+                std::cerr << ". Did you mean '" << suggestion << "'?";
+            }
+            std::cerr << "\n";
             
         } catch (const std::exception& e) {
-            std::cout << "Error: " << e.what() << std::endl;
-            // Don't add errors to history
+            std::cerr << "Error: " << e.what() << "\n";
         }
     }
-}
+    
+    void add_breakpoint(const std::string& target) {
+        if (!target.empty() && target[0] == '/') {
+            debug_wrapper_.add_variable_breakpoint(target);
+            std::cout << "Added variable breakpoint: " << target << "\n";
+        } else {
+            debug_wrapper_.add_operator_breakpoint(target);
+            std::cout << "Added operator breakpoint: " << target << "\n";
+        }
+    }
+    
+    void remove_breakpoint(const std::string& target) {
+        if (!target.empty() && target[0] == '/') {
+            debug_wrapper_.remove_variable_breakpoint(target);
+            std::cout << "Removed variable breakpoint: " << target << "\n";
+        } else {
+            debug_wrapper_.remove_operator_breakpoint(target);
+            std::cout << "Removed operator breakpoint: " << target << "\n";
+        }
+    }
+    
+    void remove_all_breakpoints() {
+        debug_wrapper_.clear_all_breakpoints();
+        std::cout << "All breakpoints cleared\n";
+    }
+    
+    void list_breakpoints() {
+        const auto& op_breaks = debug_wrapper_.get_operator_breakpoints();
+        const auto& var_breaks = debug_wrapper_.get_variable_breakpoints();
+        
+        if (op_breaks.empty() && var_breaks.empty()) {
+            std::cout << "No breakpoints set\n";
+            return;
+        }
+        
+        std::cout << "Active breakpoints:\n";
+        for (const auto& op : op_breaks) {
+            std::cout << "  Operator: " << op << "\n";
+        }
+        for (const auto& var : var_breaks) {
+            std::cout << "  Variable: " << var << "\n";
+        }
+    }
+    
+    void continue_execution() {
+        if (debug_wrapper_.is_debug_session_active()) {
+            debug_wrapper_.debug_continue();
+            std::cout << "Continuing execution...\n";
+        } else {
+            std::cout << "No active debug session\n";
+        }
+    }
+    
+    void step_execution() {
+        if (debug_wrapper_.is_debug_session_active()) {
+            debug_wrapper_.debug_step();
+            std::cout << "Stepping to next operation...\n";
+        } else {
+            // Enable stepping for next execution
+            debug_wrapper_.debug_step();
+            std::cout << "Step mode enabled. Next script execution will step through.\n";
+        }
+    }
+    
+    void finish_execution() {
+        if (debug_wrapper_.is_debug_session_active()) {
+            debug_wrapper_.debug_finish();
+            std::cout << "Finishing execution (clearing all breakpoints)...\n";
+        } else {
+            debug_wrapper_.debug_finish();
+            std::cout << "All breakpoints cleared\n";
+        }
+    }
+    
+    void show_execution_location() {
+        if (debug_wrapper_.is_debug_session_active()) {
+            const auto& ctx = debug_wrapper_.get_debug_context();
+            std::cout << "Current execution location:\n";
+            std::cout << "  Operator: " << ctx.current_operator << "\n";
+            std::cout << "  Expression: " << ctx.current_expression.dump() << "\n";
+            std::cout << "  Depth: " << ctx.depth << "\n";
+            std::cout << "  Path: ";
+            if (ctx.execution_path.empty()) {
+                std::cout << "/";
+            } else {
+                for (const auto& segment : ctx.execution_path) {
+                    std::cout << "/" << segment;
+                }
+            }
+            std::cout << "\n";
+        } else {
+            std::cout << "No active debug session\n";
+        }
+    }
+    
+    void execute_expression(const std::string& input) {
+        // Parse JSON input
+        nlohmann::json script;
+        try {
+            script = nlohmann::json::parse(input);
+        } catch (const std::exception& e) {
+            std::cerr << "Invalid JSON: " << e.what() << "\n";
+            return;
+        }
+        
+        // Configure debug wrapper based on current modes
+        debug_wrapper_.enable_trace(trace_mode_);
+        debug_wrapper_.enable_profiling(debug_mode_);
+        
+        // Extract variables from let expressions for debugging
+        debug_wrapper_.extract_variables_from_let(script, input_data_);
+        
+        // Execute with debug wrapper
+        try {
+            auto result = debug_wrapper_.execute_with_debug(script, input_data_);
+            
+            // Output result
+            std::cout << result.dump(2) << "\n";
+            
+        } catch (const computo::InvalidOperatorException& e) {
+            std::cerr << "Error: " << e.what();
+            
+            // Try to suggest a similar operator
+            std::string op_name = std::string(e.what()).substr(18); // Remove "Invalid operator: "
+            std::string suggestion = suggest_operator(op_name);
+            if (!suggestion.empty()) {
+                std::cerr << ". Did you mean '" << suggestion << "'?";
+            }
+            std::cerr << "\n";
+            
+        } catch (const std::exception& e) {
+            std::cerr << "Error: " << e.what() << "\n";
+        }
+    }
+};
 
-} // namespace computo 
+struct REPLOptions {
+    bool help = false;
+    bool version = false;
+    bool perf = false;
+    std::string bad_option;
+    std::vector<std::string> input_filenames;
+};
+
+void print_cmdline_help(const char* program_name) {
+    std::cout << "Usage: " << program_name << " [OPTIONS] [INPUT_FILENAME [INPUT_FILENAME]...]\n"
+                << "Options:\n"
+                << "  -h, --help     Show this help message\n"
+                << "  -v, --version  Show version information"
+                << std::endl;
+}
+    
+int main(int argc, char* argv[]) {
+    REPLOptions options;
+
+    // parse command line options
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "-h" || arg == "--help") {
+            options.help = true;
+        } else if (arg == "-v" || arg == "--version") {
+            options.version = true;
+        } else if (arg == "-p" || arg == "--perf") {
+            options.perf = true;
+        } else if (arg[0] == '-') {
+            options.bad_option = arg;
+            break;
+        } else {
+            options.input_filenames.push_back(arg);
+        }
+    }
+
+    if (!options.bad_option.empty()) {
+        std::cerr << "Error: Invalid option: " << options.bad_option << std::endl;
+        print_cmdline_help(argv[0]);
+        return 1;
+    }
+
+    if (options.perf) {
+        run_performance_benchmarks();
+        return 0;
+    }
+    
+    if (options.help) {
+        print_cmdline_help(argv[0]);
+        return 0;
+    }
+
+    if (options.version) {
+        ComputoREPL::print_version();
+        return 0;
+    }
+
+    // make sure filenames exist before running
+    for (const auto& filename : options.input_filenames) {
+        if (!std::filesystem::exists(filename)) {
+            std::cerr << "Error: File not found: " << filename << std::endl;
+            return 1;
+        }
+    }
+
+    ComputoREPL repl;
+    repl.run(options.input_filenames);
+    return 0;
+} 
