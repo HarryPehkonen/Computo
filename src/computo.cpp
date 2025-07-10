@@ -56,6 +56,22 @@ void initialize_operators() {
         op_registry["strConcat"] = computo::operators::str_concat;
         op_registry["merge"] = computo::operators::merge_op;
         op_registry["approx"] = computo::operators::approx_op;
+        // object operations
+        op_registry["keys"] = computo::operators::keys_op;
+        op_registry["values"] = computo::operators::values_op;
+        op_registry["objFromPairs"] = computo::operators::objFromPairs_op;
+        op_registry["pick"] = computo::operators::pick_op;
+        op_registry["omit"] = computo::operators::omit_op;
+        // string operations
+        op_registry["split"] = computo::operators::split_op;
+        op_registry["join"] = computo::operators::join_op;
+        op_registry["trim"] = computo::operators::trim_op;
+        op_registry["upper"] = computo::operators::upper_op;
+        op_registry["lower"] = computo::operators::lower_op;
+        // array operations
+        op_registry["sort"] = computo::operators::sort_op;
+        op_registry["reverse"] = computo::operators::reverse_op;
+        op_registry["unique"] = computo::operators::unique_op;
     });
 }
 } // anonymous namespace
@@ -135,8 +151,8 @@ nlohmann::json evaluate_lazy_tco(nlohmann::json expr, ExecutionContext ctx) {
         
         // Handle special built-in operators
         if (op == "$input") {
-            if (expr.size() > 2) {
-                throw InvalidArgumentException("$input takes 0 or 1 argument", ctx.get_path_string());
+            if (expr.size() > 3) {
+                throw InvalidArgumentException("$input takes 0, 1, or 2 arguments", ctx.get_path_string());
             }
             if (expr.size() == 1) {
                 return ctx.input();
@@ -150,13 +166,17 @@ nlohmann::json evaluate_lazy_tco(nlohmann::json expr, ExecutionContext ctx) {
             try {
                 return ctx.input().at(nlohmann::json::json_pointer(path));
             } catch (const std::exception&) {
+                // If we have a default value (3rd argument), return it
+                if (expr.size() == 3) {
+                    return evaluate_lazy_tco(expr[2], ctx.with_path("default"));
+                }
                 throw InvalidArgumentException("Invalid JSON pointer or path not found: " + path, ctx.get_path_string());
             }
         }
         
         if (op == "$inputs") {
-            if (expr.size() > 2) {
-                throw InvalidArgumentException("$inputs takes 0 or 1 argument", ctx.get_path_string());
+            if (expr.size() > 3) {
+                throw InvalidArgumentException("$inputs takes 0, 1, or 2 arguments", ctx.get_path_string());
             }
             if (expr.size() == 1) {
                 return nlohmann::json(ctx.inputs());
@@ -171,6 +191,10 @@ nlohmann::json evaluate_lazy_tco(nlohmann::json expr, ExecutionContext ctx) {
                 nlohmann::json inputs_array = nlohmann::json(ctx.inputs());
                 return inputs_array.at(nlohmann::json::json_pointer(path));
             } catch (const std::exception&) {
+                // If we have a default value (3rd argument), return it
+                if (expr.size() == 3) {
+                    return evaluate_lazy_tco(expr[2], ctx.with_path("default"));
+                }
                 throw InvalidArgumentException("Invalid JSON pointer or path not found: " + path, ctx.get_path_string());
             }
         }

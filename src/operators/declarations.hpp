@@ -52,4 +52,23 @@ nlohmann::json call_operator(const nlohmann::json& args, ExecutionContext& ctx);
 nlohmann::json str_concat(const nlohmann::json& args, ExecutionContext& ctx);
 nlohmann::json merge_op(const nlohmann::json& args, ExecutionContext& ctx);
 nlohmann::json approx_op(const nlohmann::json& args, ExecutionContext& ctx);
+
+// Object operations
+nlohmann::json keys_op(const nlohmann::json& args, ExecutionContext& ctx);
+nlohmann::json values_op(const nlohmann::json& args, ExecutionContext& ctx);
+nlohmann::json objFromPairs_op(const nlohmann::json& args, ExecutionContext& ctx);
+nlohmann::json pick_op(const nlohmann::json& args, ExecutionContext& ctx);
+nlohmann::json omit_op(const nlohmann::json& args, ExecutionContext& ctx);
+
+// String operations
+nlohmann::json split_op(const nlohmann::json& args, ExecutionContext& ctx);
+nlohmann::json join_op(const nlohmann::json& args, ExecutionContext& ctx);
+nlohmann::json trim_op(const nlohmann::json& args, ExecutionContext& ctx);
+nlohmann::json upper_op(const nlohmann::json& args, ExecutionContext& ctx);
+nlohmann::json lower_op(const nlohmann::json& args, ExecutionContext& ctx);
+
+// Array operations
+nlohmann::json sort_op(const nlohmann::json& args, ExecutionContext& ctx);
+nlohmann::json reverse_op(const nlohmann::json& args, ExecutionContext& ctx);
+nlohmann::json unique_op(const nlohmann::json& args, ExecutionContext& ctx);
 } 

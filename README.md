@@ -87,24 +87,27 @@ All Computo scripts are valid JSON. The basic syntax is:
 // Access input data
 ["$input"]                   // Entire input object
 ["$input", "/path/to/data"]  // Navigate within input using JSON Pointer
+["$input", "/missing", "default"]  // With default value for missing paths
 
 // Access multiple inputs
 ["$inputs"]                  // Array of all inputs
 ["$inputs", "/0/path"]       // Navigate to specific input by index
+["$inputs", "/1/missing", "fallback"]  // With default for missing data
 
 // Variable access
 ["$", "/varname"]            // Access variable
 ["$", "/varname/path"]       // Navigate within variable using JSON Pointer  
+["$", "/missing", "default"] // With default value for missing variables
 ["$"]                        // All variables in current scope
 
 // Variable binding
 ["let", [["x", 10]], ["+", ["$", "/x"], 5]]  // 15
 ```
 
-### Object Construction
+### Object Operations
 
 ```json
-// Static keys
+// Object construction
 ["obj", ["name", "Alice"], ["age", 30]]
 // Result: {"name": "Alice", "age": 30}
 
@@ -113,6 +116,21 @@ All Computo scripts are valid JSON. The basic syntax is:
   ["obj", [["$", "/key"], "Manager"]]
 ]
 // Result: {"title": "Manager"}
+
+// Extract keys and values
+["keys", {"a": 1, "b": 2}]     // {"array": ["a", "b"]}
+["values", {"a": 1, "b": 2}]   // {"array": [1, 2]}
+
+// Create object from key-value pairs
+["objFromPairs", {"array": [["a", 1], ["b", 2]]}]  // {"a": 1, "b": 2}
+
+// Select specific keys
+["pick", {"a": 1, "b": 2, "c": 3}, {"array": ["a", "c"]}]
+// Result: {"a": 1, "c": 3}
+
+// Remove specific keys
+["omit", {"a": 1, "b": 2, "c": 3}, {"array": ["b"]}]
+// Result: {"a": 1, "c": 3}
 ```
 
 ### Control Flow
@@ -157,7 +175,42 @@ All Computo scripts are valid JSON. The basic syntax is:
 ["every", {"array": [1, 2, 3]},     // true
   ["lambda", ["x"], [">", ["$", "/x"], 0]]
 ]
+
+// Array manipulation
+["sort", {"array": [3, 1, 2]}]      // {"array": [1, 2, 3]}
+["sort", {"array": [3, 1, 2]}, "desc"] // {"array": [3, 2, 1]}
+["reverse", {"array": [1, 2, 3]}]   // {"array": [3, 2, 1]}
+
+// Enhanced unique operator (requires pre-sorted data)
+["unique", {"array": [1, 1, 2, 3, 3]}]  // {"array": [1, 2, 3]} - "firsts" mode
+["unique", {"array": [1, 1, 2, 3, 3]}, "lasts"]   // {"array": [1, 2, 3]} - last occurrences
+["unique", {"array": [1, 1, 2, 3, 3]}, "singles"] // {"array": [2]} - items appearing once
+["unique", {"array": [1, 1, 2, 3, 3]}, "multiples"] // {"array": [1, 3]} - items with duplicates
+
+// Object uniqueness by field (pre-sorted by field)
+["unique", pre_sorted_array, "/field"]           // Unique by field, keep first
+["unique", pre_sorted_array, "/field", "lasts"]  // Unique by field, keep last
+["unique", pre_sorted_array, "/field", "singles"] // Only objects with unique field values
+
+// Object array sorting with JSON Pointer field access
+["sort", {"array": [
+  {"name": "charlie", "age": 30},
+  {"name": "alice", "age": 25},
+  {"name": "bob", "age": 35}
+]}, "/name"]  // Sort by name ascending
+
+// Multi-field sorting
+["sort", {"array": [
+  {"dept": "eng", "level": 3, "salary": 90000},
+  {"dept": "hr", "level": 2, "salary": 70000},
+  {"dept": "eng", "level": 2, "salary": 80000}
+]}, "/dept", ["/level", "desc"], "/salary"]  // dept asc, level desc, salary asc
+
+// Sort with direction control
+["sort", {"array": [...]}, ["/field", "desc"]]  // Field descending
 ```
+
+**Sort Type Ordering**: When sorting mixed-type arrays, values are ordered by type first: `null < numbers < strings < booleans < arrays < objects`, then by value within each type.
 
 ### Functional Operations
 
@@ -181,6 +234,17 @@ Lambda expressions are used with array operations and can be called directly:
 
 ```json
 ["call", ["lambda", ["x"], ["*", ["$", "/x"], 2]], 5]  // 10
+```
+
+### String Operations
+
+```json
+// String manipulation
+["split", "hello world", " "]         // {"array": ["hello", "world"]}
+["join", {"array": ["hello", "world"]}, " "]  // "hello world"
+["trim", "  hello  "]                 // "hello"
+["upper", "hello"]                    // "HELLO"
+["lower", "HELLO"]                    // "hello"
 ```
 
 ### Utilities
@@ -215,21 +279,43 @@ Result: `{"array": ["Alice", "Bob"]}`
 ### Building Objects from Arrays
 
 ```json
-["reduce", 
-  ["zip", {"array": ["a", "b", "c"]}, {"array": [1, 2, 3]}],
-  ["lambda", ["x"], 
-    ["merge", 
-      ["$", "/x/0"],
-      ["obj", [
-        ["$", "/x/1/0"],
-        ["$", "/x/1/1"]
-      ]]
-    ]
-  ],
-  {}
+// Using the new objFromPairs operator (much simpler!)
+["objFromPairs", 
+  ["zip", {"array": ["a", "b", "c"]}, {"array": [1, 2, 3]}]
 ]
 ```
 Result: `{"a": 1, "b": 2, "c": 3}`
+
+### Data Cleaning Pipeline
+
+```json
+["let", [
+  ["raw_data", ["$input", "/users", {"array": []}]],
+  ["clean_names", ["map", ["$", "/raw_data"],
+    ["lambda", ["user"], 
+      ["trim", ["lower", ["$", "/user/name", "unknown"]]]
+    ]
+  ]]
+], [
+  "objFromPairs",
+  ["zip", 
+    ["$", "/clean_names"],
+    ["unique", ["sort", ["$", "/clean_names"]]]
+  ]
+]]
+```
+
+### Robust Error Handling
+
+```json
+// Graceful handling of missing data with defaults
+["obj",
+  ["name", ["$input", "/user/name", "Anonymous"]],
+  ["email", ["$input", "/user/email", "no-email@example.com"]],
+  ["age", ["$input", "/user/age", 0]],
+  ["roles", ["$input", "/user/roles", {"array": ["guest"]}]]
+]
+```
 
 ## C++ Library Usage
 
