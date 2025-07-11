@@ -141,4 +141,4 @@ The REPL uses a wrapper class that instruments core library calls without modify
 
 **Thread Safety**: Maintain pure functional design - no global mutable state, use ExecutionContext for all state management.
 
-**Documentation**: Update both language examples in README.md and architectural decisions in LESSONS.md for significant changes.
+**Documentation**: Update both language examples in README.md and architectural decisions in ./AI/LESSONS.md for significant changes.
