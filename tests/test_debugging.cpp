@@ -30,20 +30,6 @@ protected:
         }
     }
 
-    std::string find_repl_binary() {
-        std::vector<std::string> paths = {
-            "./build-unified/computo_repl",
-            "./build-repl/computo_repl",
-            "./computo_repl"
-        };
-        for (const auto& path : paths) {
-            if (std::filesystem::exists(path)) {
-                return path;
-            }
-        }
-        throw std::runtime_error("REPL binary not found");
-    }
-    
     std::string create_test_file(const std::string& filename, const std::string& content) {
         // Get current working directory and create absolute path
         std::string abs_filename = std::filesystem::current_path() / filename;
@@ -58,7 +44,7 @@ protected:
     }
     
     std::string run_repl_commands(const std::vector<std::string>& commands) {
-        std::string cmd = find_repl_binary();
+        std::string cmd = COMPUTO_REPL_PATH;
         
         // Create command script
         std::string command_script;

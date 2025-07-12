@@ -20,22 +20,9 @@ protected:
         std::filesystem::remove_all(temp_dir_);
     }
 
-    std::string find_cli_binary() {
-        std::vector<std::string> paths = {
-            "./build-unified/computo",
-            "./build-prod/computo",
-            "./computo"
-        };
-        for (const auto& path : paths) {
-            if (std::filesystem::exists(path)) {
-                return path;
-            }
-        }
-        throw std::runtime_error("CLI binary not found");
-    }
-    
     std::string create_temp_file(const std::string& content, const std::string& suffix = ".json") {
-        std::string filename = temp_dir_ + "/test" + suffix;
+        static int file_counter = 0;
+        std::string filename = temp_dir_ + "/test" + std::to_string(file_counter++) + suffix;
         std::ofstream file(filename);
         file << content;
         file.close();
@@ -43,7 +30,7 @@ protected:
     }
     
     std::string run_cli(const std::vector<std::string>& args) {
-        std::string cmd = find_cli_binary();
+        std::string cmd = COMPUTO_CLI_PATH;
 
         for (const auto& arg : args) {
             cmd += " " + arg;

@@ -8,30 +8,21 @@ using json = nlohmann::json;
 
 class REPLTest : public ::testing::Test {
 protected:
+    std::string temp_dir_;
     
     void SetUp() override {
+        temp_dir_ = std::filesystem::temp_directory_path().string() + "/computo_test_";
+        temp_dir_ += std::to_string(getpid());
+        std::filesystem::create_directories(temp_dir_);
     }
     
     void TearDown() override {
-    }
-    
-    std::string find_repl_binary() {
-        std::vector<std::string> paths = {
-            "./build-unified/computo_repl",
-            "./build-repl/computo_repl",
-            "./computo_repl"
-        };
-        for (const auto& path : paths) {
-            if (std::filesystem::exists(path)) {
-                return path;
-            }
-        }
-        throw std::runtime_error("REPL binary not found");
+        std::filesystem::remove_all(temp_dir_);
     }
     
     std::string create_temp_file(const std::string& content, const std::string& suffix = ".json") {
-        char *temp_name = std::tmpnam(nullptr);
-        std::string filename = temp_name + suffix;
+        static int file_counter = 0;
+        std::string filename = temp_dir_ + "/test" + std::to_string(file_counter++) + suffix;
         std::ofstream file(filename);
         file << content;
         file.close();
@@ -39,7 +30,7 @@ protected:
     }
     
     std::string run_repl(const std::string& script_content, const std::vector<std::string>& input_contents = {}) {
-        std::string cmd = find_repl_binary();
+        std::string cmd = COMPUTO_REPL_PATH;
 
         // save script to a temp file
         // yes, it's fine because we'll pipe the script to the repl
