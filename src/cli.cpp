@@ -1,11 +1,11 @@
+#include "read_json.hpp"
 #include <computo.hpp>
 #include <computo_version.hpp>
-#include "read_json.hpp"
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
-#include <nlohmann/json.hpp>
 
 // Forward declaration for benchmark function
 void run_performance_benchmarks();
@@ -38,11 +38,11 @@ struct CLIOptions {
 
 int main(int argc, char* argv[]) {
     CLIOptions options;
-    
+
     // Parse command line arguments
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
-        
+
         if (arg == "-h" || arg == "--help") {
             options.help = true;
         } else if (arg == "-v" || arg == "--version") {
@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
             }
         }
     }
-    
+
     if (!options.bad_option.empty()) {
         std::cerr << "Error: Unknown option: " << options.bad_option << "\n";
         print_usage(argv[0]);
@@ -74,24 +74,24 @@ int main(int argc, char* argv[]) {
         print_usage(argv[0]);
         return 0;
     }
-    
+
     if (options.version) {
         print_version();
         return 0;
     }
-    
+
     if (options.perf) {
         run_performance_benchmarks();
         return 0;
     }
-    
+
     try {
         // Read script
         nlohmann::json script;
         if (!options.script_filename.empty()) {
             script = read_json_from_file(options.script_filename);
         }
-        
+
         // Read input
         nlohmann::json inputs = nlohmann::json::array();
         if (!options.input_filenames.empty()) {
@@ -100,17 +100,17 @@ int main(int argc, char* argv[]) {
                 inputs.push_back(read_json_from_file(input_file));
             }
         }
-        
+
         // Execute script
         auto result = computo::execute(script, inputs);
-        
+
         // Output result
         std::cout << result.dump(2) << std::endl;
-        
+
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }
-    
+
     return 0;
-} 
+}

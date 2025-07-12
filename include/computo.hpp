@@ -1,11 +1,11 @@
 #pragma once
 
+#include <map>
+#include <memory>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <map>
-#include <memory>
 
 #ifdef REPL
 #include <functional>
@@ -19,9 +19,9 @@ namespace computo {
 // Pre-evaluation hook system (REPL builds only)
 // -----------------------------------------------------------------------------
 enum class EvaluationAction {
-    CONTINUE,     // Normal execution
-    PAUSE,        // Stop and wait (debugging)
-    ABORT         // Stop execution entirely
+    CONTINUE, // Normal execution
+    PAUSE, // Stop and wait (debugging)
+    ABORT // Stop execution entirely
 };
 
 struct EvaluationContext {
@@ -40,8 +40,10 @@ using PreEvaluationHook = std::function<EvaluationAction(const EvaluationContext
 // -----------------------------------------------------------------------------
 class ComputoException : public std::exception {
 public:
-    explicit ComputoException(const std::string& msg) : message_(msg) {}
+    explicit ComputoException(const std::string& msg)
+        : message_(msg) { }
     const char* what() const noexcept override { return message_.c_str(); }
+
 private:
     std::string message_;
 };
@@ -49,15 +51,15 @@ private:
 class InvalidOperatorException : public ComputoException {
 public:
     explicit InvalidOperatorException(const std::string& op)
-        : ComputoException("Invalid operator: " + op) {}
+        : ComputoException("Invalid operator: " + op) { }
 };
 
 class InvalidArgumentException : public ComputoException {
 public:
     explicit InvalidArgumentException(const std::string& msg)
-        : ComputoException("Invalid argument: " + msg) {}
+        : ComputoException("Invalid argument: " + msg) { }
     InvalidArgumentException(const std::string& msg, const std::string& path)
-        : ComputoException("Invalid argument: " + msg + " at " + path) {}
+        : ComputoException("Invalid argument: " + msg + " at " + path) { }
 };
 
 // -----------------------------------------------------------------------------
@@ -79,14 +81,14 @@ public:
 
     // Single input constructor
     explicit ExecutionContext(const nlohmann::json& input)
-        : input_ptr_(std::make_shared<nlohmann::json>(input)),
-          inputs_ptr_(std::make_shared<std::vector<nlohmann::json>>(std::vector<nlohmann::json>{input})) {}
+        : input_ptr_(std::make_shared<nlohmann::json>(input))
+        , inputs_ptr_(std::make_shared<std::vector<nlohmann::json>>(std::vector<nlohmann::json> { input })) { }
 
     // Multiple inputs constructor
     explicit ExecutionContext(const std::vector<nlohmann::json>& inputs)
         : input_ptr_(inputs.empty() ? std::make_shared<nlohmann::json>(null_input_)
-                                    : std::make_shared<nlohmann::json>(inputs[0])),
-          inputs_ptr_(std::make_shared<std::vector<nlohmann::json>>(inputs)) {}
+                                    : std::make_shared<nlohmann::json>(inputs[0]))
+        , inputs_ptr_(std::make_shared<std::vector<nlohmann::json>>(inputs)) { }
 
     // Accessors
     const nlohmann::json& input() const { return *input_ptr_; }
@@ -97,7 +99,8 @@ public:
         ExecutionContext new_ctx(*inputs_ptr_);
         new_ctx.variables = variables;
         new_ctx.path = path;
-        for (const auto& [k, v] : vars) new_ctx.variables[k] = v;
+        for (const auto& [k, v] : vars)
+            new_ctx.variables[k] = v;
 #ifdef REPL
         new_ctx.pre_evaluation_hook_ = pre_evaluation_hook_;
 #endif
@@ -111,9 +114,11 @@ public:
     }
 
     std::string get_path_string() const {
-        if (path.empty()) return "/";
+        if (path.empty())
+            return "/";
         std::string result;
-        for (const auto& seg : path) result += "/" + seg;
+        for (const auto& seg : path)
+            result += "/" + seg;
         return result;
     }
 
@@ -122,18 +127,18 @@ public:
     void set_pre_evaluation_hook(const PreEvaluationHook& hook) {
         pre_evaluation_hook_ = hook;
     }
-    
+
     bool has_pre_evaluation_hook() const {
         return static_cast<bool>(pre_evaluation_hook_);
     }
-    
+
     EvaluationAction call_pre_evaluation_hook(const EvaluationContext& ctx) const {
         if (pre_evaluation_hook_) {
             return pre_evaluation_hook_(ctx);
         }
         return EvaluationAction::CONTINUE;
     }
-    
+
 #endif
 };
 
@@ -152,4 +157,4 @@ inline const nlohmann::json ExecutionContext::null_input_ = nlohmann::json(nullp
 // Debugging support API
 [[nodiscard]] std::vector<std::string> get_available_operators();
 
-} // namespace computo 
+} // namespace computo

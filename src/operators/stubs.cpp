@@ -2,9 +2,9 @@
 
 namespace computo::operators {
 
-#define STUB_IMPL(name) \
+#define STUB_IMPL(name)                                             \
     nlohmann::json name(const nlohmann::json&, ExecutionContext&) { \
-        throw InvalidOperatorException(#name " not implemented"); \
+        throw InvalidOperatorException(#name " not implemented");   \
     }
 
 // Data access/control
@@ -19,4 +19,4 @@ namespace computo::operators {
 
 #undef STUB_IMPL
 
-} 
+}

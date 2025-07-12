@@ -1,25 +1,25 @@
-#include <gtest/gtest.h>
 #include <computo.hpp>
-#include <fstream>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
+#include <gtest/gtest.h>
 
 using json = nlohmann::json;
 
 class REPLTest : public ::testing::Test {
 protected:
     std::string temp_dir_;
-    
+
     void SetUp() override {
         temp_dir_ = std::filesystem::temp_directory_path().string() + "/computo_test_";
         temp_dir_ += std::to_string(getpid());
         std::filesystem::create_directories(temp_dir_);
     }
-    
+
     void TearDown() override {
         std::filesystem::remove_all(temp_dir_);
     }
-    
+
     std::string create_temp_file(const std::string& content, const std::string& suffix = ".json") {
         static int file_counter = 0;
         std::string filename = temp_dir_ + "/test" + std::to_string(file_counter++) + suffix;
@@ -28,7 +28,7 @@ protected:
         file.close();
         return filename;
     }
-    
+
     std::string run_repl(const std::string& script_content, const std::vector<std::string>& input_contents = {}) {
         std::string cmd = COMPUTO_REPL_PATH;
 
@@ -45,8 +45,9 @@ protected:
         cmd += " < " + script_file;
 
         FILE* pipe = popen(cmd.c_str(), "r");
-        if (!pipe) return "";
-        
+        if (!pipe)
+            return "";
+
         std::string result;
         char buffer[128];
         while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
@@ -70,7 +71,7 @@ TEST_F(REPLTest, SimpleScript) {
 // script with input
 TEST_F(REPLTest, ScriptWithInput) {
     std::string input_content = R"("Hello, World!")";
-    std::string output = run_repl(R"(["$input"])", {input_content});
+    std::string output = run_repl(R"(["$input"])", { input_content });
     EXPECT_NE(output.find("Hello, World!"), std::string::npos);
 }
 
@@ -84,6 +85,6 @@ TEST_F(REPLTest, HistoricalVariables) {
 }
 
 TEST_F(REPLTest, VersionOption) {
-    std::string output = run_repl({"version"});
+    std::string output = run_repl({ "version" });
     EXPECT_NE(output.find("Computo REPL v"), std::string::npos);
 }

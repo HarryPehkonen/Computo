@@ -71,4 +71,4 @@ nlohmann::json lower_op(const nlohmann::json& args, ExecutionContext& ctx);
 nlohmann::json sort_op(const nlohmann::json& args, ExecutionContext& ctx);
 nlohmann::json reverse_op(const nlohmann::json& args, ExecutionContext& ctx);
 nlohmann::json unique_op(const nlohmann::json& args, ExecutionContext& ctx);
-} 
+}

@@ -1,79 +1,79 @@
-#include <computo.hpp>
-#include <mutex>
-#include <functional>
-#include <map>
 #include "operators/declarations.hpp"
 #include "operators/shared.hpp"
+#include <computo.hpp>
+#include <functional>
+#include <map>
+#include <mutex>
 
 namespace computo {
 
 namespace {
-using OperatorFunc = std::function<nlohmann::json(const nlohmann::json&, ExecutionContext&)>;
-std::map<std::string, OperatorFunc> op_registry;
-std::once_flag init_flag;
+    using OperatorFunc = std::function<nlohmann::json(const nlohmann::json&, ExecutionContext&)>;
+    std::map<std::string, OperatorFunc> op_registry;
+    std::once_flag init_flag;
 
-void initialize_operators() {
-    std::call_once(init_flag, []() {
-        op_registry["+"] = computo::operators::addition;
-        op_registry["-"] = computo::operators::subtraction;
-        op_registry["*"] = computo::operators::multiplication;
-        op_registry["/"] = computo::operators::division;
-        op_registry["%"] = computo::operators::modulo;
-        // comparison
-        op_registry[">"] = computo::operators::greater_than;
-        op_registry["<"] = computo::operators::less_than;
-        op_registry[">="] = computo::operators::greater_equal;
-        op_registry["<="] = computo::operators::less_equal;
-        op_registry["=="] = computo::operators::equal;
-        op_registry["!="] = computo::operators::not_equal;
-        // logical
-        op_registry["&&"] = computo::operators::logical_and;
-        op_registry["||"] = computo::operators::logical_or;
-        op_registry["not"] = computo::operators::logical_not;
-        // data access etc.
-        op_registry["$"] = computo::operators::var_access;
-        op_registry["let"] = computo::operators::let_binding;
-        op_registry["obj"] = computo::operators::obj_construct;
-        op_registry["if"] = computo::operators::if_operator;
-        // array ops
-        op_registry["map"] = computo::operators::map_op;
-        op_registry["filter"] = computo::operators::filter_op;
-        op_registry["reduce"] = computo::operators::reduce_op;
-        op_registry["count"] = computo::operators::count_op;
-        op_registry["find"] = computo::operators::find_op;
-        op_registry["some"] = computo::operators::some_op;
-        op_registry["every"] = computo::operators::every_op;
-        op_registry["zip"] = computo::operators::zip_op;
-        // functional list
-        op_registry["car"] = computo::operators::car_op;
-        op_registry["cdr"] = computo::operators::cdr_op;
-        op_registry["cons"] = computo::operators::cons_op;
-        op_registry["append"] = computo::operators::append_op;
-        // functional programming
-        op_registry["lambda"] = computo::operators::lambda_operator;
-        op_registry["call"] = computo::operators::call_operator;
-        // utilities
-        op_registry["strConcat"] = computo::operators::str_concat;
-        op_registry["merge"] = computo::operators::merge_op;
-        op_registry["approx"] = computo::operators::approx_op;
-        // object operations
-        op_registry["keys"] = computo::operators::keys_op;
-        op_registry["values"] = computo::operators::values_op;
-        op_registry["objFromPairs"] = computo::operators::objFromPairs_op;
-        op_registry["pick"] = computo::operators::pick_op;
-        op_registry["omit"] = computo::operators::omit_op;
-        // string operations
-        op_registry["split"] = computo::operators::split_op;
-        op_registry["join"] = computo::operators::join_op;
-        op_registry["trim"] = computo::operators::trim_op;
-        op_registry["upper"] = computo::operators::upper_op;
-        op_registry["lower"] = computo::operators::lower_op;
-        // array operations
-        op_registry["sort"] = computo::operators::sort_op;
-        op_registry["reverse"] = computo::operators::reverse_op;
-        op_registry["unique"] = computo::operators::unique_op;
-    });
-}
+    void initialize_operators() {
+        std::call_once(init_flag, []() {
+            op_registry["+"] = computo::operators::addition;
+            op_registry["-"] = computo::operators::subtraction;
+            op_registry["*"] = computo::operators::multiplication;
+            op_registry["/"] = computo::operators::division;
+            op_registry["%"] = computo::operators::modulo;
+            // comparison
+            op_registry[">"] = computo::operators::greater_than;
+            op_registry["<"] = computo::operators::less_than;
+            op_registry[">="] = computo::operators::greater_equal;
+            op_registry["<="] = computo::operators::less_equal;
+            op_registry["=="] = computo::operators::equal;
+            op_registry["!="] = computo::operators::not_equal;
+            // logical
+            op_registry["&&"] = computo::operators::logical_and;
+            op_registry["||"] = computo::operators::logical_or;
+            op_registry["not"] = computo::operators::logical_not;
+            // data access etc.
+            op_registry["$"] = computo::operators::var_access;
+            op_registry["let"] = computo::operators::let_binding;
+            op_registry["obj"] = computo::operators::obj_construct;
+            op_registry["if"] = computo::operators::if_operator;
+            // array ops
+            op_registry["map"] = computo::operators::map_op;
+            op_registry["filter"] = computo::operators::filter_op;
+            op_registry["reduce"] = computo::operators::reduce_op;
+            op_registry["count"] = computo::operators::count_op;
+            op_registry["find"] = computo::operators::find_op;
+            op_registry["some"] = computo::operators::some_op;
+            op_registry["every"] = computo::operators::every_op;
+            op_registry["zip"] = computo::operators::zip_op;
+            // functional list
+            op_registry["car"] = computo::operators::car_op;
+            op_registry["cdr"] = computo::operators::cdr_op;
+            op_registry["cons"] = computo::operators::cons_op;
+            op_registry["append"] = computo::operators::append_op;
+            // functional programming
+            op_registry["lambda"] = computo::operators::lambda_operator;
+            op_registry["call"] = computo::operators::call_operator;
+            // utilities
+            op_registry["strConcat"] = computo::operators::str_concat;
+            op_registry["merge"] = computo::operators::merge_op;
+            op_registry["approx"] = computo::operators::approx_op;
+            // object operations
+            op_registry["keys"] = computo::operators::keys_op;
+            op_registry["values"] = computo::operators::values_op;
+            op_registry["objFromPairs"] = computo::operators::objFromPairs_op;
+            op_registry["pick"] = computo::operators::pick_op;
+            op_registry["omit"] = computo::operators::omit_op;
+            // string operations
+            op_registry["split"] = computo::operators::split_op;
+            op_registry["join"] = computo::operators::join_op;
+            op_registry["trim"] = computo::operators::trim_op;
+            op_registry["upper"] = computo::operators::upper_op;
+            op_registry["lower"] = computo::operators::lower_op;
+            // array operations
+            op_registry["sort"] = computo::operators::sort_op;
+            op_registry["reverse"] = computo::operators::reverse_op;
+            op_registry["unique"] = computo::operators::unique_op;
+        });
+    }
 } // anonymous namespace
 
 // Forward declaration of evaluator (implementation below) – needs external linkage for operator source files
@@ -123,32 +123,32 @@ nlohmann::json evaluate_lazy_tco(nlohmann::json expr, ExecutionContext ctx) {
         nlohmann::json expression;
         ExecutionContext context;
     };
-    
-    TailCall current{expr, ctx};
-    
+
+    TailCall current { expr, ctx };
+
     while (true) {
         initialize_operators();
-        
+
         expr = current.expression;
         ctx = current.context;
-        
+
         // Non-array literals or objects/arrays treated as data
         if (!expr.is_array()) {
             return expr;
         }
-        
+
         // Empty array is invalid
         if (expr.empty()) {
             throw InvalidArgumentException("Empty expression array", ctx.get_path_string());
         }
-        
+
         // If first element is not a string, treat as literal array
         if (!expr[0].is_string()) {
             return expr;
         }
-        
+
         std::string op = expr[0].get<std::string>();
-        
+
         // Handle special built-in operators
         if (op == "$input") {
             if (expr.size() > 3) {
@@ -173,7 +173,7 @@ nlohmann::json evaluate_lazy_tco(nlohmann::json expr, ExecutionContext ctx) {
                 throw InvalidArgumentException("Invalid JSON pointer or path not found: " + path, ctx.get_path_string());
             }
         }
-        
+
         if (op == "$inputs") {
             if (expr.size() > 3) {
                 throw InvalidArgumentException("$inputs takes 0, 1, or 2 arguments", ctx.get_path_string());
@@ -198,7 +198,7 @@ nlohmann::json evaluate_lazy_tco(nlohmann::json expr, ExecutionContext ctx) {
                 throw InvalidArgumentException("Invalid JSON pointer or path not found: " + path, ctx.get_path_string());
             }
         }
-        
+
         // Lazy debug hook - only called when debugging is active
         if (should_debug) {
 #ifdef REPL
@@ -208,30 +208,30 @@ nlohmann::json evaluate_lazy_tco(nlohmann::json expr, ExecutionContext ctx) {
             hook_ctx.execution_path = ctx.path;
             hook_ctx.depth = static_cast<int>(ctx.path.size());
             hook_ctx.variables = ctx.variables;
-            
+
             EvaluationAction action = ctx.call_pre_evaluation_hook(hook_ctx);
             if (action == EvaluationAction::ABORT) {
                 throw std::runtime_error("Execution aborted by pre-evaluation hook");
             }
 #endif
         }
-        
+
         // Handle tail-call optimizable operators
         if (op == "if") {
             if (expr.size() != 4) {
                 throw InvalidArgumentException("if requires exactly 3 arguments", ctx.get_path_string());
             }
-            
+
             // Evaluate condition
             auto condition = evaluate_lazy_tco(expr[1], ctx.with_path("condition"));
             bool is_true = is_truthy(condition);
-            
+
             // Tail call to the appropriate branch
             current.expression = is_true ? expr[2] : expr[3];
             current.context = ctx.with_path(is_true ? "then" : "else");
-            continue;  // Tail call optimization!
+            continue; // Tail call optimization!
         }
-        
+
         if (op == "let") {
             if (expr.size() != 3) {
                 throw InvalidArgumentException("let requires exactly 2 arguments", ctx.get_path_string());
@@ -239,7 +239,7 @@ nlohmann::json evaluate_lazy_tco(nlohmann::json expr, ExecutionContext ctx) {
             if (!expr[1].is_array()) {
                 throw InvalidArgumentException("let bindings must be array", ctx.get_path_string());
             }
-            
+
             // Evaluate all bindings
             std::map<std::string, nlohmann::json> new_vars;
             for (const auto& binding : expr[1]) {
@@ -252,27 +252,27 @@ nlohmann::json evaluate_lazy_tco(nlohmann::json expr, ExecutionContext ctx) {
                 std::string var_name = binding[0].get<std::string>();
                 new_vars[var_name] = evaluate_lazy_tco(binding[1], ctx.with_path("binding"));
             }
-            
+
             // Tail call to body with new variables
             current.expression = expr[2];
             current.context = ctx.with_path("body").with_variables(new_vars);
-            continue;  // Tail call optimization!
+            continue; // Tail call optimization!
         }
-        
+
         // Regular operators - not tail-call optimizable
         auto it = op_registry.find(op);
         if (it == op_registry.end()) {
             throw InvalidOperatorException(op);
         }
-        
+
         // Build argument list (leave unevaluated; operator implementations will evaluate as needed)
         nlohmann::json arg_exprs = nlohmann::json::array();
         for (size_t i = 1; i < expr.size(); ++i) {
             arg_exprs.push_back(expr[i]);
         }
-        
+
         return it->second(arg_exprs, ctx);
     }
 }
 
-} // namespace computo 
+} // namespace computo
