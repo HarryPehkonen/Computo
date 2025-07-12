@@ -1,4 +1,5 @@
 #include <computo.hpp>
+#include <computo_version.hpp>
 #include "read_json.hpp"
 #include <iostream>
 #include <string>
@@ -401,7 +402,8 @@ public:
     }
 
     static void print_version() {
-        std::cout << "Computo REPL v1.0.0" << std::endl;
+        std::cout << "Computo REPL v" << COMPUTO_VERSION << "\n"
+              << "JSON-native data transformation engine" << std::endl;
     }
 
     void run(std::vector<std::string> input_filenames) {
@@ -416,10 +418,10 @@ public:
                 loaded_inputs.push_back(read_json_from_file(input_filename));
             }
         }
-        
+
         // Store the loaded inputs for use in execute_expression
         input_data_ = std::move(loaded_inputs);
-        
+
         while (true) {
 
             char* line = ReadLine::readline("computo> ");

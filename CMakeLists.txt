@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(Computo VERSION 1.0.0)
+project(Computo VERSION 0.2.1)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -25,6 +25,13 @@ set(SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(TEST_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tests")
 
+# --- Version Header Generation ---
+configure_file(
+    "${INCLUDE_DIR}/computo_version.hpp.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/include/computo_version.hpp"
+    @ONLY
+)
+
 # --- Source File Definitions ---
 file(GLOB_RECURSE COMPUTO_SOURCES CONFIGURE_DEPENDS
     "${SRC_DIR}/computo.cpp"
@@ -35,12 +42,18 @@ file(GLOB_RECURSE COMPUTO_SOURCES CONFIGURE_DEPENDS
 
 # 1. Production Library (libcomputo.a)
 add_library(computo ${COMPUTO_SOURCES})
-target_include_directories(computo PUBLIC ${INCLUDE_DIR})
+target_include_directories(computo PUBLIC 
+    ${INCLUDE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}/include
+)
 target_link_libraries(computo PUBLIC nlohmann_json::nlohmann_json)
 
 # 2. REPL Library (libcomputorepl.a)
 add_library(computorepl ${COMPUTO_SOURCES})
-target_include_directories(computorepl PUBLIC ${INCLUDE_DIR})
+target_include_directories(computorepl PUBLIC 
+    ${INCLUDE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}/include
+)
 target_link_libraries(computorepl PUBLIC nlohmann_json::nlohmann_json)
 target_compile_definitions(computorepl PUBLIC REPL) # Apply REPL flag during compilation
 

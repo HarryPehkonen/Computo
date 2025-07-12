@@ -1,4 +1,5 @@
 #include <computo.hpp>
+#include <computo_version.hpp>
 #include "read_json.hpp"
 #include <iostream>
 #include <fstream>
@@ -21,8 +22,8 @@ void print_usage(const char* program_name) {
 }
 
 void print_version() {
-    std::cout << "Computo CLI v1.0.0\n"
-              << "JSON-native data transformation engine\n";
+    std::cout << "Computo CLI v" << COMPUTO_VERSION << "\n"
+              << "JSON-native data transformation engine" << std::endl;
 }
 
 // hold CLI options
