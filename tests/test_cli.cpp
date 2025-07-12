@@ -22,6 +22,7 @@ protected:
 
     std::string find_cli_binary() {
         std::vector<std::string> paths = {
+            "./build-unified/computo",
             "./build-prod/computo",
             "./computo"
         };

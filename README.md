@@ -437,20 +437,21 @@ Goodbye!
 ### Build Instructions
 
 ```bash
-# Create build directory
-mkdir build && cd build
+# Configure and build everything
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 
-# Configure (production build)
-cmake ..
-
-# Configure (with REPL)
-cmake -DREPL=ON ..
-
-# Build
-make
+# This creates:
+# - libcomputo.a (production library)
+# - libcomputorepl.a (REPL library with debug features)
+# - computo (production CLI)
+# - computo_repl (REPL CLI with debugging)
+# - test_computo (production tests)
+# - test_computo_repl (REPL tests)
 
 # Run tests
-./test_computo
+./build/test_computo        # Production tests
+./build/test_computo_repl   # REPL and debugging tests
 ```
 
 ## Performance Considerations

@@ -4,42 +4,52 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build System and Development Commands
 
-### Dual Build Architecture
-Computo uses conditional compilation to provide two distinct builds:
+### Unified Build Architecture
+Computo builds both production and REPL variants in a single build:
 
-**Production Build (Zero Debug Overhead)**:
+**Single Build Command**:
 ```bash
-cmake -B build-prod -DCMAKE_BUILD_TYPE=Release
-cmake --build build-prod
-./build-prod/computo script.json input.json
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
 
-**REPL Build (Full Debugging Features)**:
+**This creates**:
+- `libcomputo.a` - Production library (zero debug overhead)
+- `libcomputorepl.a` - REPL library (with debug features)
+- `computo` - Production CLI tool
+- `computo_repl` - REPL CLI tool with debugging
+- `test_computo` - Production tests (includes CLITest)
+- `test_computo_repl` - REPL tests (includes DebuggingTest & REPLTest)
+
+**Usage**:
 ```bash
-cmake -B build-repl -DREPL=ON -DCMAKE_BUILD_TYPE=Release  
-cmake --build build-repl
-./build-repl/computo_repl input.json
+./build/computo script.json input.json        # Production CLI
+./build/computo_repl input.json               # REPL with debugging
 ```
 
 ### Testing
 ```bash
-# Build and run all tests
-cmake --build build-prod
-./build-prod/test_computo
+# Run production tests
+./build/test_computo
+
+# Run REPL and debugging tests  
+./build/test_computo_repl
 
 # Run specific test by filtering
-./build-prod/test_computo --gtest_filter="*arithmetic*"
+./build/test_computo --gtest_filter="*arithmetic*"
+./build/test_computo_repl --gtest_filter="*REPL*"
 
 # Debug build with assertions enabled
 cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug
 cmake --build build-debug
 ./build-debug/test_computo
+./build-debug/test_computo_repl
 ```
 
 ### Performance Benchmarking
 ```bash
-./build-prod/computo --perf
-./build-repl/computo_repl --perf
+./build/computo --perf
+./build/computo_repl --perf
 ```
 
 ## Architecture Overview

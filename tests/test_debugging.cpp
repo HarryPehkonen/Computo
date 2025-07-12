@@ -32,6 +32,7 @@ protected:
 
     std::string find_repl_binary() {
         std::vector<std::string> paths = {
+            "./build-unified/computo_repl",
             "./build-repl/computo_repl",
             "./computo_repl"
         };
