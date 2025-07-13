@@ -909,6 +909,92 @@ for (size_t i = 0; i < array.size(); ++i) {
 
 **Key Insight**: **Simple algorithms can be more elegant than complex ones**. The sliding window approach with two booleans provides a beautiful solution that is both efficient and intuitive. Pre-sorting requirement promotes composable, functional programming patterns while achieving optimal O(n) performance for the uniqueness detection phase.
 
+## Critical Bug Fixes
+
+### CLI Input Handling Bug (2025-01-13) ✅ FIXED
+
+**Bug**: Production CLI incorrectly handled `$input` vs `$inputs` operators, causing both to return the same wrapped array format.
+
+**Root Cause**: Line 96 in `src/cli.cpp` used `nlohmann::json::array()` instead of `std::vector<nlohmann::json>` for inputs collection:
+
+```cpp
+// WRONG (caused the bug)
+nlohmann::json inputs = nlohmann::json::array();
+for (const auto& input_file : options.input_filenames) {
+    inputs.push_back(read_json_from_file(input_file));
+}
+auto result = computo::execute(script, inputs);  // Wrong type passed!
+
+// CORRECT (fixed version)  
+std::vector<nlohmann::json> inputs;
+for (const auto& input_file : options.input_filenames) {
+    inputs.push_back(read_json_from_file(input_file));  
+}
+auto result = computo::execute(script, inputs);  // Correct type
+```
+
+**Behavior Before Fix**:
+- `["$input"]` with single file → returned `[{"data": "..."}]` (wrapped in array)
+- `["$inputs"]` with single file → returned `[[{"data": "..."}]]` (double-wrapped)
+- REPL worked correctly because it already used `std::vector<nlohmann::json>`
+
+**Behavior After Fix**:
+- `["$input"]` with single file → returns `{"data": "..."}` (direct object)
+- `["$inputs"]` with single file → returns `[{"data": "..."}]` (array of objects)
+- Both CLI tools now behave identically
+
+**Impact**: 
+- **Severity**: High - Core functionality broken for CLI users
+- **Detection**: Manual testing revealed the inconsistency  
+- **Scope**: Only affected production CLI, not library or REPL
+
+**Regression Prevention**:
+Added comprehensive test `InputVsInputsRegression` in `tests/test_cli.cpp`:
+
+```cpp
+TEST_F(CLITest, InputVsInputsRegression) {
+    // Verifies $input returns object directly, not wrapped in array
+    // Verifies $inputs returns array of objects
+    // Tests both single and multiple input files
+    // Validates JSON structure types, not just content
+}
+```
+
+**Root Cause Analysis**:
+1. **Type Confusion**: `nlohmann::json::array()` creates a JSON array, but `computo::execute()` expects `std::vector<nlohmann::json>`
+2. **Implicit Conversion**: The JSON array was implicitly converted to vector, but with wrong semantics
+3. **Inconsistent Testing**: REPL tests used correct types, so the bug wasn't caught
+4. **Missing Integration Tests**: No CLI-specific tests for `$input`/`$inputs` behavior
+
+**Prevention Strategies**:
+1. **Type Safety**: Use explicit types (`std::vector<T>`) rather than auto-converting types
+2. **Comprehensive Testing**: Test both CLI tools with same scenarios
+3. **Integration Tests**: Test end-to-end CLI behavior, not just library functions  
+4. **Regression Tests**: Add tests for any manually discovered bugs
+
+**Files Changed**:
+- `src/cli.cpp:96` - Fixed input collection type
+- `tests/test_cli.cpp` - Added regression test `InputVsInputsRegression`
+
+**Testing Commands**:
+```bash
+# Run the specific regression test
+ctest -R computo_tests --verbose | grep InputVsInputsRegression
+
+# Manual verification
+echo '["$input"]' > test_script.json
+echo '{"test": true}' > test_data.json
+./build/computo test_script.json test_data.json  # Should return {"test": true}
+```
+
+**Key Lessons**:
+1. **Type safety matters**: Even with auto-conversion, semantic differences cause bugs
+2. **Test both interfaces**: Library correctness doesn't guarantee CLI correctness
+3. **Manual testing finds real bugs**: Automated tests missed this because of scope gaps
+4. **Regression tests are critical**: Once fixed, must prevent recurrence
+
+**Key Insight**: **Interface boundaries are bug magnets**. The CLI-to-library interface used different types (`nlohmann::json` vs `std::vector<nlohmann::json>`) with similar semantics but different behavior. Always verify that interface contracts match exactly, not just approximately.
+
 ## Conclusion
 
 The key to this project's success was maintaining clean architectural boundaries while building comprehensive development tools:

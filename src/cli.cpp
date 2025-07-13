@@ -93,7 +93,7 @@ int main(int argc, char* argv[]) {
         }
 
         // Read input
-        nlohmann::json inputs = nlohmann::json::array();
+        std::vector<nlohmann::json> inputs;
         if (!options.input_filenames.empty()) {
             // append all input files
             for (const auto& input_file : options.input_filenames) {

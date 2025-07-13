@@ -449,9 +449,17 @@ cmake --build build
 # - test_computo (production tests)
 # - test_computo_repl (REPL tests)
 
-# Run tests
+# Run tests directly
 ./build/test_computo        # Production tests
 ./build/test_computo_repl   # REPL and debugging tests
+
+# Or use ctest for integrated test management
+ctest                       # Run all tests
+ctest --verbose             # Show detailed test output
+ctest -R computo_tests      # Run only production tests
+ctest -R computo_repl_tests # Run only REPL tests
+ctest --output-on-failure   # Show output only for failed tests
+ctest -j4                   # Run tests in parallel (up to 4 concurrent)
 ```
 
 ## Performance Considerations
