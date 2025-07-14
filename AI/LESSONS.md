@@ -995,6 +995,82 @@ echo '{"test": true}' > test_data.json
 
 **Key Insight**: **Interface boundaries are bug magnets**. The CLI-to-library interface used different types (`nlohmann::json` vs `std::vector<nlohmann::json>`) with similar semantics but different behavior. Always verify that interface contracts match exactly, not just approximately.
 
+### REPL Multiline Input Investigation (2025-01-14) ❌ REJECTED
+
+**Feature Request**: Users wanted multiline JSON support directly in the interactive REPL.
+
+**Problem**: The REPL only accepted single-line input, making complex JSON expressions difficult to enter interactively:
+```
+computo> [
+...  "+",     # This would fail - each line parsed separately
+...  1, 2
+... ]
+```
+
+**Solutions Explored**:
+
+1. **TTY Detection + Stdin Mode** ⭐ Initially implemented
+   - Detect `isatty(STDIN_FILENO)` vs piped input
+   - Parse complete JSON from stdin vs line-by-line commands
+   - Cross-platform abstraction for Windows/POSIX
+
+2. **Bracket Counting** - Considered
+   - Buffer input until JSON brackets balance
+   - Visual `...` prompt for continuation
+   - Risk of getting stuck on invalid JSON
+
+3. **Delimiter Mode** - Considered  
+   - Use `;;` or similar to end multiline input
+   - Clear but non-intuitive workflow
+
+**Implementation Attempted**:
+```cpp
+namespace Platform {
+    bool is_stdin_tty() {
+#ifdef _WIN32
+        return _isatty(_fileno(stdin)) != 0;
+#else
+        return isatty(STDIN_FILENO) != 0;  
+#endif
+    }
+}
+
+if (!Platform::is_stdin_tty()) {
+    run_stdin_mode();  // Parse as complete JSON
+} else {
+    // Interactive REPL mode
+}
+```
+
+**Why It Failed**:
+1. **Command Duplication**: Created two separate REPL command processors
+2. **Broken Tests**: 6 debugging tests failed due to incomplete command handling
+3. **Complexity Explosion**: Simple feature required extensive refactoring
+4. **Maintenance Burden**: Two code paths to maintain for same functionality
+
+**Existing Solutions Realized**:
+The feature request was already solved by existing workflows:
+
+1. **File-based multiline**: `vim script.json` → `computo> run script.json` ✅
+2. **CLI mode**: `computo script.json input.json` ✅
+3. **Temp file workflow**: `echo "JSON" > temp.json && computo_repl temp.json` ✅
+
+**Decision**: **REVERT** - Complexity not justified by user benefit.
+
+**Key Lessons**:
+1. **Scope discipline matters**: REPLs should be Read-Eval-Print Loops, not editors
+2. **Existing solutions first**: Check if the problem is already solved before building
+3. **Feature creep detection**: When a "simple" feature breaks existing tests, reconsider
+4. **Separation of concerns**: Editors edit, REPLs evaluate - don't mix responsibilities
+5. **User workflows**: Users already had good multiline workflows via files and run command
+
+**Alternative Recommendation**: **Editor Integration**
+- VSCode/Vim plugins for Computo syntax highlighting
+- Send selection to REPL via pipe: `:!echo '%' | computo_repl`
+- Language Server Protocol support for any editor
+
+**Key Insight**: **Sometimes the best feature is the one you don't implement**. When a feature request requires significant complexity but existing workflows already solve the problem adequately, it's often better to improve documentation and tooling around existing solutions rather than add new features.
+
 ## Conclusion
 
 The key to this project's success was maintaining clean architectural boundaries while building comprehensive development tools:
