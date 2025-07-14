@@ -97,18 +97,28 @@ TEST_F(ZipObjectCreationTest, ZipToObjectUnequalLengths) {
 
 TEST_F(ZipObjectCreationTest, ZipToObjectWithComplexValues) {
     // Test with complex values (nested objects and arrays)
-    json script = json::array({ "reduce",
-        json::array({ "zip",
-            json::object({ { "array", json::array({ "data", "meta" }) } }),
-            json::object({ { "array", json::array({ json::object({ { "array", json::array({ 1, 2, 3 }) } }), json::object({ { "version", "1.0" }, { "author", "test" } }) }) } }) }),
-        json::array({ "lambda", json::array({ "x" }),
-            json::array({ "merge",
-                json::array({ "$", "/x/0" }),
-                json::array({ "obj", json::array({ json::array({ "$", "/x/1/0" }), json::array({ "$", "/x/1/1" }) }) }) }) }),
-        json::object() });
+    json script = R"([
+        "reduce",
+        ["zip",
+            {"array": ["data", "meta"]},
+            {"array": [
+                {"array": [1, 2, 3]},
+                {"version": "1.0", "author": "test"}
+            ]}
+        ],
+        ["lambda", ["x"],
+            ["merge",
+                ["$", "/x/0"],
+                ["obj", [["$", "/x/1/0"], ["$", "/x/1/1"]]]
+            ]
+        ],
+        {}
+    ])"_json;
 
-    json expected = json::object({ { "data", json::object({ { "array", json::array({ 1, 2, 3 }) } }) },
-        { "meta", json::object({ { "version", "1.0" }, { "author", "test" } }) } });
+    json expected = R"({
+        "data": [1, 2, 3],
+        "meta": {"version": "1.0", "author": "test"}
+    })"_json;  // Array objects unwrap to clean arrays
     EXPECT_EQ(exec(script), expected);
 }
 

@@ -151,6 +151,10 @@ inline const nlohmann::json ExecutionContext::null_input_ = nlohmann::json(nullp
 [[nodiscard]] nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input);
 [[nodiscard]] nlohmann::json execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs);
 
+// Overloads with custom array key for unwrapping
+[[nodiscard]] nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input, const std::string& array_key);
+[[nodiscard]] nlohmann::json execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs, const std::string& array_key);
+
 // Core evaluation function (exposed for advanced use cases like debugging)
 [[nodiscard]] nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx);
 

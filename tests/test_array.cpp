@@ -13,7 +13,7 @@ TEST_F(ArrayOperatorTest, MapOperator) {
     json script = json::array({ "map",
         json::object({ { "array", json::array({ 1, 2, 3 }) } }),
         json::array({ "lambda", json::array({ "x" }), json::array({ "*", json::array({ "$", "/x" }), 2 }) }) });
-    json expected = json::object({ { "array", json::array({ 2, 4, 6 }) } });
+    json expected = json::array({ 2, 4, 6 });  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -21,7 +21,7 @@ TEST_F(ArrayOperatorTest, FilterOperator) {
     json script = json::array({ "filter",
         json::object({ { "array", json::array({ 1, 2, 3, 4, 5 }) } }),
         json::array({ "lambda", json::array({ "x" }), json::array({ ">", json::array({ "$", "/x" }), 2 }) }) });
-    json expected = json::object({ { "array", json::array({ 3, 4, 5 }) } });
+    json expected = json::array({ 3, 4, 5 });  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -63,7 +63,7 @@ TEST_F(ArrayOperatorTest, ZipOperator) {
     json script = json::array({ "zip",
         json::object({ { "array", json::array({ "a", "b", "c" }) } }),
         json::object({ { "array", json::array({ 1, 2, 3 }) } }) });
-    json expected = json::object({ { "array", json::array({ json::array({ "a", 1 }), json::array({ "b", 2 }), json::array({ "c", 3 }) }) } });
+    json expected = json::array({ json::array({ "a", 1 }), json::array({ "b", 2 }), json::array({ "c", 3 }) });  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -71,7 +71,7 @@ TEST_F(ArrayOperatorTest, ZipOperatorUnequalLengths) {
     json script = json::array({ "zip",
         json::object({ { "array", json::array({ "a", "b", "c", "d" }) } }),
         json::object({ { "array", json::array({ 1, 2 }) } }) });
-    json expected = json::object({ { "array", json::array({ json::array({ "a", 1 }), json::array({ "b", 2 }) }) } });
+    json expected = json::array({ json::array({ "a", 1 }), json::array({ "b", 2 }) });  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -79,6 +79,7 @@ TEST_F(ArrayOperatorTest, ZipOperatorEmptyArrays) {
     json script = json::array({ "zip",
         json::object({ { "array", json::array({}) } }),
         json::object({ { "array", json::array({}) } }) });
-    json expected = json::object({ { "array", json::array({}) } });
+    json expected = json::array({});  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
+

@@ -94,14 +94,13 @@ TEST_F(TCOValidationTest, DeepListProcessing) {
     auto [result, exec_time] = measure_time([&]() { return exec(script); });
 
     std::cout << "Deep list processing (1000 elements, 3 nested maps) took: " << exec_time << " μs" << std::endl;
-    EXPECT_TRUE(result.is_object());
-    EXPECT_TRUE(result.contains("array"));
-    EXPECT_EQ(result["array"].size(), 1000);
+    EXPECT_TRUE(result.is_array());  // Clean array output
+    EXPECT_EQ(result.size(), 1000);
 
     // Check first few elements: ((0+1)*2)-1 = 1, ((1+1)*2)-1 = 3, etc.
-    EXPECT_EQ(result["array"][0], 1);
-    EXPECT_EQ(result["array"][1], 3);
-    EXPECT_EQ(result["array"][2], 5);
+    EXPECT_EQ(result[0], 1);
+    EXPECT_EQ(result[1], 3);
+    EXPECT_EQ(result[2], 5);
 
     EXPECT_LT(exec_time, 5000000); // Should complete in under 5 seconds
 }

@@ -10,31 +10,54 @@ protected:
 };
 
 TEST_F(FunctionalOperatorTest, CarOperator) {
-    json script = json::array({ "car", json::object({ { "array", json::array({ 1, 2, 3 }) } }) });
+    json script = R"([
+        "car", 
+        {"array": [1, 2, 3]}
+    ])"_json;
     EXPECT_EQ(exec(script), 1);
 }
 
 TEST_F(FunctionalOperatorTest, CdrOperator) {
-    json script = json::array({ "cdr", json::object({ { "array", json::array({ 1, 2, 3 }) } }) });
-    EXPECT_EQ(exec(script), json::object({ { "array", json::array({ 2, 3 }) } }));
+    json script = R"([
+        "cdr", 
+        {"array": [1, 2, 3]}
+    ])"_json;
+    json expected = R"([2, 3])"_json;  // Clean array output
+    EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(FunctionalOperatorTest, ConsOperator) {
-    json script = json::array({ "cons", 0, json::object({ { "array", json::array({ 1, 2, 3 }) } }) });
-    EXPECT_EQ(exec(script), json::object({ { "array", json::array({ 0, 1, 2, 3 }) } }));
+    json script = R"([
+        "cons", 
+        0, 
+        {"array": [1, 2, 3]}
+    ])"_json;
+    json expected = R"([0, 1, 2, 3])"_json;  // Clean array output
+    EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(FunctionalOperatorTest, AppendOperator) {
-    json script = json::array({ "append", json::object({ { "array", json::array({ 1, 2 }) } }), json::object({ { "array", json::array({ 3, 4 }) } }) });
-    EXPECT_EQ(exec(script), json::object({ { "array", json::array({ 1, 2, 3, 4 }) } }));
+    json script = R"([
+        "append", 
+        {"array": [1, 2]}, 
+        {"array": [3, 4]}
+    ])"_json;
+    json expected = R"([1, 2, 3, 4])"_json;  // Clean array output
+    EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(FunctionalOperatorTest, CarThrowsOnEmpty) {
-    json script = json::array({ "car", json::object({ { "array", json::array({}) } }) });
+    json script = R"([
+        "car", 
+        {"array": []}
+    ])"_json;
     EXPECT_THROW(exec(script), std::exception);
 }
 
 TEST_F(FunctionalOperatorTest, CdrThrowsOnEmpty) {
-    json script = json::array({ "cdr", json::object({ { "array", json::array({}) } }) });
+    json script = R"([
+        "cdr", 
+        {"array": []}
+    ])"_json;
     EXPECT_THROW(exec(script), std::exception);
 }

@@ -11,81 +11,91 @@ protected:
 
 // Test split operator
 TEST_F(StringArrayOperationsTest, SplitOperatorBasic) {
-    json script = json::array({ "split", "hello world", " " });
-    json expected = json::object({ { "array", json::array({ "hello", "world" }) } });
+    json script = R"(["split", "hello world", " "])"_json;
+    json expected = R"(["hello", "world"])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, SplitOperatorMultipleDelimiters) {
-    json script = json::array({ "split", "a,b,c", "," });
-    json expected = json::object({ { "array", json::array({ "a", "b", "c" }) } });
+    json script = R"(["split", "a,b,c", ","])"_json;
+    json expected = R"(["a", "b", "c"])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, SplitOperatorEmptyDelimiter) {
-    json script = json::array({ "split", "abc", "" });
-    json expected = json::object({ { "array", json::array({ "a", "b", "c" }) } });
+    json script = R"(["split", "abc", ""])"_json;
+    json expected = R"(["a", "b", "c"])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, SplitOperatorEmptyString) {
-    json script = json::array({ "split", "", "," });
-    json expected = json::object({ { "array", json::array({ "" }) } });
+    json script = R"(["split", "", ","])"_json;
+    json expected = R"([""])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, SplitOperatorNoDelimiterFound) {
-    json script = json::array({ "split", "hello", "," });
-    json expected = json::object({ { "array", json::array({ "hello" }) } });
+    json script = R"(["split", "hello", ","])"_json;
+    json expected = R"(["hello"])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, SplitOperatorInvalidArguments) {
-    EXPECT_THROW(exec(json::array({ "split", "hello" })), computo::InvalidArgumentException);
-    EXPECT_THROW(exec(json::array({ "split", 123, " " })), computo::InvalidArgumentException);
-    EXPECT_THROW(exec(json::array({ "split", "hello", 123 })), computo::InvalidArgumentException);
+    EXPECT_THROW(exec(R"(["split", "hello"])"_json), computo::InvalidArgumentException);
+    EXPECT_THROW(exec(R"(["split", 123, " "])"_json), computo::InvalidArgumentException);
+    EXPECT_THROW(exec(R"(["split", "hello", 123])"_json), computo::InvalidArgumentException);
 }
 
 // Test join operator
 TEST_F(StringArrayOperationsTest, JoinOperatorBasic) {
-    json script = json::array({ "join",
-        json::object({ { "array", json::array({ "hello", "world" }) } }),
-        " " });
+    json script = R"([
+        "join",
+        {"array": ["hello", "world"]},
+        " "
+    ])"_json;
     EXPECT_EQ(exec(script), "hello world");
 }
 
 TEST_F(StringArrayOperationsTest, JoinOperatorEmptySeparator) {
-    json script = json::array({ "join",
-        json::object({ { "array", json::array({ "a", "b", "c" }) } }),
-        "" });
+    json script = R"([
+        "join",
+        {"array": ["a", "b", "c"]},
+        ""
+    ])"_json;
     EXPECT_EQ(exec(script), "abc");
 }
 
 TEST_F(StringArrayOperationsTest, JoinOperatorEmptyArray) {
-    json script = json::array({ "join",
-        json::object({ { "array", json::array() } }),
-        "," });
+    json script = R"([
+        "join",
+        {"array": []},
+        ","
+    ])"_json;
     EXPECT_EQ(exec(script), "");
 }
 
 TEST_F(StringArrayOperationsTest, JoinOperatorMixedTypes) {
-    json script = json::array({ "join",
-        json::object({ { "array", json::array({ "hello", 42, true, json(nullptr) }) } }),
-        "," });
+    json script = R"([
+        "join",
+        {"array": ["hello", 42, true, null]},
+        ","
+    ])"_json;
     EXPECT_EQ(exec(script), "hello,42,true,null");
 }
 
 TEST_F(StringArrayOperationsTest, JoinOperatorComplexElements) {
-    json script = json::array({ "join",
-        json::object({ { "array", json::array({ json::array({ 1, 2, 3 }), json { { "key", "value" } } }) } }),
-        " | " });
+    json script = R"([
+        "join",
+        {"array": [[1, 2, 3], {"key": "value"}]},
+        " | "
+    ])"_json;
     EXPECT_EQ(exec(script), "[1,2,3] | {\"key\":\"value\"}");
 }
 
 TEST_F(StringArrayOperationsTest, JoinOperatorInvalidArguments) {
-    EXPECT_THROW(exec(json::array({ "join", json::object({ { "array", json::array({ "a" }) } }) })), computo::InvalidArgumentException);
-    EXPECT_THROW(exec(json::array({ "join", "not_an_array", "," })), computo::InvalidArgumentException);
-    EXPECT_THROW(exec(json::array({ "join", json::object({ { "array", json::array({ "a" }) } }), 123 })), computo::InvalidArgumentException);
+    EXPECT_THROW(exec(R"(["join", {"array": ["a"]}])"_json), computo::InvalidArgumentException);
+    EXPECT_THROW(exec(R"(["join", "not_an_array", ","])"_json), computo::InvalidArgumentException);
+    EXPECT_THROW(exec(R"(["join", {"array": ["a"]}, 123])"_json), computo::InvalidArgumentException);
 }
 
 // Test trim operator
@@ -171,109 +181,127 @@ TEST_F(StringArrayOperationsTest, LowerOperatorInvalidArguments) {
 
 // Test sort operator - updated for new API
 TEST_F(StringArrayOperationsTest, SortOperatorBasic) {
-    json script = json::array({ "sort",
-        json::object({ { "array", json::array({ "charlie", "alice", "bob" }) } }) });
-    json expected = json::object({ { "array", json::array({ "alice", "bob", "charlie" }) } });
+    json script = R"([
+        "sort",
+        {"array": ["charlie", "alice", "bob"]}
+    ])"_json;
+    json expected = R"(["alice", "bob", "charlie"])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, SortOperatorNumbers) {
-    json script = json::array({ "sort",
-        json::object({ { "array", json::array({ 3, 1, 2 }) } }) });
-    json expected = json::object({ { "array", json::array({ 1, 2, 3 }) } });
+    json script = R"([
+        "sort",
+        {"array": [3, 1, 2]}
+    ])"_json;
+    json expected = R"([1, 2, 3])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, SortOperatorDescending) {
-    json script = json::array({ "sort",
-        json::object({ { "array", json::array({ 3, 1, 2 }) } }),
-        "desc" });
-    json expected = json::object({ { "array", json::array({ 3, 2, 1 }) } });
+    json script = R"([
+        "sort",
+        {"array": [3, 1, 2]},
+        "desc"
+    ])"_json;
+    json expected = R"([3, 2, 1])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, SortOperatorAscendingExplicit) {
-    json script = json::array({ "sort",
-        json::object({ { "array", json::array({ "charlie", "alice", "bob" }) } }),
-        "asc" });
-    json expected = json::object({ { "array", json::array({ "alice", "bob", "charlie" }) } });
+    json script = R"([
+        "sort",
+        {"array": ["charlie", "alice", "bob"]},
+        "asc"
+    ])"_json;
+    json expected = R"(["alice", "bob", "charlie"])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, SortOperatorTypeAware) {
     // Type ordering: null < numbers < strings < booleans < arrays < objects
-    json script = json::array({ "sort",
-        json::object({ { "array", json::array({ "b", 2, nullptr, true, json::array({ 1 }), "a", 1 }) } }) });
+    json script = R"([
+        "sort",
+        {"array": ["b", 2, null, true, [1], "a", 1]}
+    ])"_json;
     auto result = exec(script);
-    ASSERT_TRUE(result.is_object());
-    ASSERT_TRUE(result.contains("array"));
-    auto arr = result["array"];
-    ASSERT_TRUE(arr.is_array());
-    EXPECT_EQ(arr.size(), 7);
+    ASSERT_TRUE(result.is_array());  // Clean array output
+    EXPECT_EQ(result.size(), 7);
     // Check ordering: null first, then numbers, then strings, then booleans, then arrays
-    EXPECT_TRUE(arr[0].is_null());
-    EXPECT_TRUE(arr[1].is_number());
-    EXPECT_TRUE(arr[2].is_number());
-    EXPECT_TRUE(arr[3].is_string());
-    EXPECT_TRUE(arr[4].is_string());
-    EXPECT_TRUE(arr[5].is_boolean());
-    EXPECT_TRUE(arr[6].is_array());
+    EXPECT_TRUE(result[0].is_null());
+    EXPECT_TRUE(result[1].is_number());
+    EXPECT_TRUE(result[2].is_number());
+    EXPECT_TRUE(result[3].is_string());
+    EXPECT_TRUE(result[4].is_string());
+    EXPECT_TRUE(result[5].is_boolean());
+    EXPECT_TRUE(result[6].is_array());
 }
 
 TEST_F(StringArrayOperationsTest, SortOperatorObjectSingleField) {
-    json script = json::array({ "sort",
-        json::object({ { "array", json::array({ json::object({ { "name", "charlie" }, { "age", 30 } }), json::object({ { "name", "alice" }, { "age", 25 } }), json::object({ { "name", "bob" }, { "age", 35 } }) }) } }),
-        "/name" });
+    json script = R"([
+        "sort",
+        {"array": [
+            {"name": "charlie", "age": 30},
+            {"name": "alice", "age": 25},
+            {"name": "bob", "age": 35}
+        ]},
+        "/name"
+    ])"_json;
     auto result = exec(script);
-    ASSERT_TRUE(result.is_object());
-    ASSERT_TRUE(result.contains("array"));
-    auto arr = result["array"];
-    ASSERT_TRUE(arr.is_array());
-    EXPECT_EQ(arr.size(), 3);
-    EXPECT_EQ(arr[0]["name"], "alice");
-    EXPECT_EQ(arr[1]["name"], "bob");
-    EXPECT_EQ(arr[2]["name"], "charlie");
+    ASSERT_TRUE(result.is_array());  // Clean array output
+    EXPECT_EQ(result.size(), 3);
+    EXPECT_EQ(result[0]["name"], "alice");
+    EXPECT_EQ(result[1]["name"], "bob");
+    EXPECT_EQ(result[2]["name"], "charlie");
 }
 
 TEST_F(StringArrayOperationsTest, SortOperatorObjectSingleFieldDesc) {
-    json script = json::array({ "sort",
-        json::object({ { "array", json::array({ json::object({ { "name", "charlie" }, { "age", 30 } }), json::object({ { "name", "alice" }, { "age", 25 } }), json::object({ { "name", "bob" }, { "age", 35 } }) }) } }),
-        json::array({ "/name", "desc" }) });
+    json script = R"([
+        "sort",
+        {"array": [
+            {"name": "charlie", "age": 30},
+            {"name": "alice", "age": 25},
+            {"name": "bob", "age": 35}
+        ]},
+        ["/name", "desc"]
+    ])"_json;
     auto result = exec(script);
-    ASSERT_TRUE(result.is_object());
-    ASSERT_TRUE(result.contains("array"));
-    auto arr = result["array"];
-    ASSERT_TRUE(arr.is_array());
-    EXPECT_EQ(arr.size(), 3);
-    EXPECT_EQ(arr[0]["name"], "charlie");
-    EXPECT_EQ(arr[1]["name"], "bob");
-    EXPECT_EQ(arr[2]["name"], "alice");
+    ASSERT_TRUE(result.is_array());  // Clean array output
+    EXPECT_EQ(result.size(), 3);
+    EXPECT_EQ(result[0]["name"], "charlie");
+    EXPECT_EQ(result[1]["name"], "bob");
+    EXPECT_EQ(result[2]["name"], "alice");
 }
 
 TEST_F(StringArrayOperationsTest, SortOperatorObjectMultiField) {
-    json script = json::array({ "sort",
-        json::object({ { "array", json::array({ json::object({ { "name", "alice" }, { "age", 30 } }), json::object({ { "name", "bob" }, { "age", 25 } }), json::object({ { "name", "alice" }, { "age", 25 } }) }) } }),
+    json script = R"([
+        "sort",
+        {"array": [
+            {"name": "alice", "age": 30},
+            {"name": "bob", "age": 25},
+            {"name": "alice", "age": 25}
+        ]},
         "/name",
-        json::array({ "/age", "desc" }) });
+        ["/age", "desc"]
+    ])"_json;
     auto result = exec(script);
-    ASSERT_TRUE(result.is_object());
-    ASSERT_TRUE(result.contains("array"));
-    auto arr = result["array"];
-    ASSERT_TRUE(arr.is_array());
-    EXPECT_EQ(arr.size(), 3);
+    ASSERT_TRUE(result.is_array());  // Clean array output
+    EXPECT_EQ(result.size(), 3);
     // First alice (age 30), then alice (age 25), then bob (age 25)
-    EXPECT_EQ(arr[0]["name"], "alice");
-    EXPECT_EQ(arr[0]["age"], 30);
-    EXPECT_EQ(arr[1]["name"], "alice");
-    EXPECT_EQ(arr[1]["age"], 25);
-    EXPECT_EQ(arr[2]["name"], "bob");
-    EXPECT_EQ(arr[2]["age"], 25);
+    EXPECT_EQ(result[0]["name"], "alice");
+    EXPECT_EQ(result[0]["age"], 30);
+    EXPECT_EQ(result[1]["name"], "alice");
+    EXPECT_EQ(result[1]["age"], 25);
+    EXPECT_EQ(result[2]["name"], "bob");
+    EXPECT_EQ(result[2]["age"], 25);
 }
 
 TEST_F(StringArrayOperationsTest, SortOperatorEmptyArray) {
-    json script = json::array({ "sort",
-        json::object({ { "array", json::array() } }) });
-    json expected = json::object({ { "array", json::array() } });
+    json script = R"([
+        "sort",
+        {"array": []}
+    ])"_json;
+    json expected = R"([])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -285,30 +313,38 @@ TEST_F(StringArrayOperationsTest, SortOperatorInvalidArguments) {
 
 // Test reverse operator
 TEST_F(StringArrayOperationsTest, ReverseOperatorBasic) {
-    json script = json::array({ "reverse",
-        json::object({ { "array", json::array({ 1, 2, 3, 4 }) } }) });
-    json expected = json::object({ { "array", json::array({ 4, 3, 2, 1 }) } });
+    json script = R"([
+        "reverse",
+        {"array": [1, 2, 3, 4]}
+    ])"_json;
+    json expected = R"([4, 3, 2, 1])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, ReverseOperatorStrings) {
-    json script = json::array({ "reverse",
-        json::object({ { "array", json::array({ "a", "b", "c" }) } }) });
-    json expected = json::object({ { "array", json::array({ "c", "b", "a" }) } });
+    json script = R"([
+        "reverse",
+        {"array": ["a", "b", "c"]}
+    ])"_json;
+    json expected = R"(["c", "b", "a"])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, ReverseOperatorEmptyArray) {
-    json script = json::array({ "reverse",
-        json::object({ { "array", json::array() } }) });
-    json expected = json::object({ { "array", json::array() } });
+    json script = R"([
+        "reverse",
+        {"array": []}
+    ])"_json;
+    json expected = R"([])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, ReverseOperatorSingleElement) {
-    json script = json::array({ "reverse",
-        json::object({ { "array", json::array({ "only" }) } }) });
-    json expected = json::object({ { "array", json::array({ "only" }) } });
+    json script = R"([
+        "reverse",
+        {"array": ["only"]}
+    ])"_json;
+    json expected = R"(["only"])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -322,77 +358,98 @@ TEST_F(StringArrayOperationsTest, ReverseOperatorInvalidArguments) {
 // Test enhanced unique operator - requires pre-sorted data
 TEST_F(StringArrayOperationsTest, UniqueOperatorBasicFirsts) {
     // Pre-sorted array for unique processing: ["a", "a", "b", "c", "c"]
-    json script = json::array({ "unique",
-        json::object({ { "array", json::array({ "a", "a", "b", "c", "c" }) } }) });
-    json expected = json::object({ { "array", json::array({ "a", "b", "c" }) } });
+    json script = R"([
+        "unique",
+        {"array": ["a", "a", "b", "c", "c"]}
+    ])"_json;
+    json expected = R"(["a", "b", "c"])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, UniqueOperatorLasts) {
-    json script = json::array({ "unique",
-        json::object({ { "array", json::array({ 1, 1, 2, 3, 3, 3 }) } }),
-        "lasts" });
-    json expected = json::object({ { "array", json::array({ 1, 2, 3 }) } });
+    json script = R"([
+        "unique",
+        {"array": [1, 1, 2, 3, 3, 3]},
+        "lasts"
+    ])"_json;
+    json expected = R"([1, 2, 3])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, UniqueOperatorSingles) {
-    json script = json::array({ "unique",
-        json::object({ { "array", json::array({ 1, 1, 2, 3, 3, 3 }) } }),
-        "singles" });
-    json expected = json::object({ { "array", json::array({ 2 }) } });
+    json script = R"([
+        "unique",
+        {"array": [1, 1, 2, 3, 3, 3]},
+        "singles"
+    ])"_json;
+    json expected = R"([2])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, UniqueOperatorMultiples) {
-    json script = json::array({ "unique",
-        json::object({ { "array", json::array({ 1, 1, 2, 3, 3, 3 }) } }),
-        "multiples" });
-    json expected = json::object({ { "array", json::array({ 1, 3 }) } });
+    json script = R"([
+        "unique",
+        {"array": [1, 1, 2, 3, 3, 3]},
+        "multiples"
+    ])"_json;
+    json expected = R"([1, 3])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, UniqueOperatorObjectByField) {
-    json script = json::array({ "unique",
-        json::object({ { "array", json::array({ json::object({ { "name", "alice" }, { "dept", "eng" } }), json::object({ { "name", "alice" }, { "dept", "sales" } }), json::object({ { "name", "bob" }, { "dept", "hr" } }), json::object({ { "name", "charlie" }, { "dept", "eng" } }) }) } }),
-        "/name" });
+    json script = R"([
+        "unique",
+        {"array": [
+            {"name": "alice", "dept": "eng"},
+            {"name": "alice", "dept": "sales"},
+            {"name": "bob", "dept": "hr"},
+            {"name": "charlie", "dept": "eng"}
+        ]},
+        "/name"
+    ])"_json;
     auto result = exec(script);
-    ASSERT_TRUE(result.is_object());
-    ASSERT_TRUE(result.contains("array"));
-    auto arr = result["array"];
-    ASSERT_TRUE(arr.is_array());
-    EXPECT_EQ(arr.size(), 3);
-    EXPECT_EQ(arr[0]["name"], "alice");
-    EXPECT_EQ(arr[1]["name"], "bob");
-    EXPECT_EQ(arr[2]["name"], "charlie");
+    ASSERT_TRUE(result.is_array());  // Clean array output
+    EXPECT_EQ(result.size(), 3);
+    EXPECT_EQ(result[0]["name"], "alice");
+    EXPECT_EQ(result[1]["name"], "bob");
+    EXPECT_EQ(result[2]["name"], "charlie");
 }
 
 TEST_F(StringArrayOperationsTest, UniqueOperatorObjectFieldSingles) {
-    json script = json::array({ "unique",
-        json::object({ { "array", json::array({ json::object({ { "dept", "eng" } }), json::object({ { "dept", "eng" } }), json::object({ { "dept", "hr" } }), json::object({ { "dept", "sales" } }), json::object({ { "dept", "sales" } }) }) } }),
+    json script = R"([
+        "unique",
+        {"array": [
+            {"dept": "eng"},
+            {"dept": "eng"},
+            {"dept": "hr"},
+            {"dept": "sales"},
+            {"dept": "sales"}
+        ]},
         "/dept",
-        "singles" });
+        "singles"
+    ])"_json;
     auto result = exec(script);
-    ASSERT_TRUE(result.is_object());
-    ASSERT_TRUE(result.contains("array"));
-    auto arr = result["array"];
-    ASSERT_TRUE(arr.is_array());
-    EXPECT_EQ(arr.size(), 1);
-    EXPECT_EQ(arr[0]["dept"], "hr");
+    ASSERT_TRUE(result.is_array());  // Clean array output
+    EXPECT_EQ(result.size(), 1);
+    EXPECT_EQ(result[0]["dept"], "hr");
 }
 
 TEST_F(StringArrayOperationsTest, UniqueOperatorEmptyArray) {
-    json script = json::array({ "unique",
-        json::object({ { "array", json::array() } }) });
-    json expected = json::object({ { "array", json::array() } });
+    json script = R"([
+        "unique",
+        {"array": []}
+    ])"_json;
+    json expected = R"([])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, UniqueOperatorSingleElement) {
-    json script = json::array({ "unique",
-        json::object({ { "array", json::array({ 42 }) } }),
-        "singles" });
-    json expected = json::object({ { "array", json::array({ 42 }) } });
+    json script = R"([
+        "unique",
+        {"array": [42]},
+        "singles"
+    ])"_json;
+    json expected = R"([42])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -431,15 +488,19 @@ TEST_F(StringArrayOperationsTest, ComplexStringProcessing) {
 }
 
 TEST_F(StringArrayOperationsTest, ArrayProcessingPipeline) {
-    json script = json::array({ "let",
-        json::array({ json::array({ "data", json::object({ { "array", json::array({ 3, 1, 4, 1, 5, 9, 2, 6, 5, 3 }) } }) }) }),
-        json::array({ "unique",
-            json::array({ "sort",
-                json::array({ "$", "/data" }) }) }) });
+    json script = R"([
+        "let",
+        [["data", {"array": [3, 1, 4, 1, 5, 9, 2, 6, 5, 3]}]],
+        ["unique",
+            ["sort",
+                ["$", "/data"]
+            ]
+        ]
+    ])"_json;
 
     // Should: sort -> unique (firsts mode)
     // [3,1,4,1,5,9,2,6,5,3] -> [1,1,2,3,3,4,5,5,6,9] -> [1,2,3,4,5,6,9]
-    json expected = json::object({ { "array", json::array({ 1, 2, 3, 4, 5, 6, 9 }) } });
+    json expected = R"([1, 2, 3, 4, 5, 6, 9])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -458,56 +519,65 @@ TEST_F(StringArrayOperationsTest, SplitJoinRoundTrip) {
 
 // Additional sort tests for enhanced API
 TEST_F(StringArrayOperationsTest, SortOperatorNestedField) {
-    json script = json::array({ "sort",
-        json::object({ { "array", json::array({ json::object({ { "user", json::object({ { "name", "charlie" } }) }, { "score", 90 } }), json::object({ { "user", json::object({ { "name", "alice" } }) }, { "score", 85 } }), json::object({ { "user", json::object({ { "name", "bob" } }) }, { "score", 95 } }) }) } }),
-        "/user/name" });
+    json script = R"([
+        "sort",
+        {"array": [
+            {"user": {"name": "charlie"}, "score": 90},
+            {"user": {"name": "alice"}, "score": 85},
+            {"user": {"name": "bob"}, "score": 95}
+        ]},
+        "/user/name"
+    ])"_json;
     auto result = exec(script);
-    ASSERT_TRUE(result.is_object());
-    ASSERT_TRUE(result.contains("array"));
-    auto arr = result["array"];
-    ASSERT_TRUE(arr.is_array());
-    EXPECT_EQ(arr.size(), 3);
-    EXPECT_EQ(arr[0]["user"]["name"], "alice");
-    EXPECT_EQ(arr[1]["user"]["name"], "bob");
-    EXPECT_EQ(arr[2]["user"]["name"], "charlie");
+    ASSERT_TRUE(result.is_array());  // Clean array output
+    EXPECT_EQ(result.size(), 3);
+    EXPECT_EQ(result[0]["user"]["name"], "alice");
+    EXPECT_EQ(result[1]["user"]["name"], "bob");
+    EXPECT_EQ(result[2]["user"]["name"], "charlie");
 }
 
 TEST_F(StringArrayOperationsTest, SortOperatorMissingField) {
-    json script = json::array({ "sort",
-        json::object({ { "array", json::array({ json::object({ { "name", "alice" }, { "age", 30 } }), json::object({ { "name", "bob" } }), // missing age
-                                      json::object({ { "name", "charlie" }, { "age", 25 } }) }) } }),
-        "/age" });
+    json script = R"([
+        "sort",
+        {"array": [
+            {"name": "alice", "age": 30},
+            {"name": "bob"},
+            {"name": "charlie", "age": 25}
+        ]},
+        "/age"
+    ])"_json;
     auto result = exec(script);
-    ASSERT_TRUE(result.is_object());
-    ASSERT_TRUE(result.contains("array"));
-    auto arr = result["array"];
-    ASSERT_TRUE(arr.is_array());
-    EXPECT_EQ(arr.size(), 3);
+    ASSERT_TRUE(result.is_array());  // Clean array output
+    EXPECT_EQ(result.size(), 3);
     // Objects with missing fields should sort first (null < numbers)
-    EXPECT_EQ(arr[0]["name"], "bob");
-    EXPECT_EQ(arr[1]["name"], "charlie");
-    EXPECT_EQ(arr[2]["name"], "alice");
+    EXPECT_EQ(result[0]["name"], "bob");
+    EXPECT_EQ(result[1]["name"], "charlie");
+    EXPECT_EQ(result[2]["name"], "alice");
 }
 
 TEST_F(StringArrayOperationsTest, SortOperatorComplexMultiField) {
-    json script = json::array({ "sort",
-        json::object({ { "array", json::array({ json::object({ { "dept", "eng" }, { "level", 3 }, { "salary", 90000 } }), json::object({ { "dept", "hr" }, { "level", 2 }, { "salary", 70000 } }), json::object({ { "dept", "eng" }, { "level", 2 }, { "salary", 80000 } }), json::object({ { "dept", "hr" }, { "level", 3 }, { "salary", 85000 } }) }) } }),
+    json script = R"([
+        "sort",
+        {"array": [
+            {"dept": "eng", "level": 3, "salary": 90000},
+            {"dept": "hr", "level": 2, "salary": 70000},
+            {"dept": "eng", "level": 2, "salary": 80000},
+            {"dept": "hr", "level": 3, "salary": 85000}
+        ]},
         "/dept",
-        json::array({ "/level", "desc" }),
-        "/salary" });
+        ["/level", "desc"],
+        "/salary"
+    ])"_json;
     auto result = exec(script);
-    ASSERT_TRUE(result.is_object());
-    ASSERT_TRUE(result.contains("array"));
-    auto arr = result["array"];
-    ASSERT_TRUE(arr.is_array());
-    EXPECT_EQ(arr.size(), 4);
+    ASSERT_TRUE(result.is_array());  // Clean array output
+    EXPECT_EQ(result.size(), 4);
     // Sort by: dept asc, level desc, salary asc
-    EXPECT_EQ(arr[0]["dept"], "eng");
-    EXPECT_EQ(arr[0]["level"], 3);
-    EXPECT_EQ(arr[1]["dept"], "eng");
-    EXPECT_EQ(arr[1]["level"], 2);
-    EXPECT_EQ(arr[2]["dept"], "hr");
-    EXPECT_EQ(arr[2]["level"], 3);
-    EXPECT_EQ(arr[3]["dept"], "hr");
-    EXPECT_EQ(arr[3]["level"], 2);
+    EXPECT_EQ(result[0]["dept"], "eng");
+    EXPECT_EQ(result[0]["level"], 3);
+    EXPECT_EQ(result[1]["dept"], "eng");
+    EXPECT_EQ(result[1]["level"], 2);
+    EXPECT_EQ(result[2]["dept"], "hr");
+    EXPECT_EQ(result[2]["level"], 3);
+    EXPECT_EQ(result[3]["dept"], "hr");
+    EXPECT_EQ(result[3]["level"], 2);
 }

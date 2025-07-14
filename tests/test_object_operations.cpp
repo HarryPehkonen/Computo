@@ -11,63 +11,86 @@ protected:
 
 // Test keys operator
 TEST_F(ObjectOperationsTest, KeysOperator) {
-    json script = json::array({ "keys", json { { "a", 1 }, { "b", 2 }, { "c", 3 } } });
-    json expected = json::object({ { "array", json::array({ "a", "b", "c" }) } });
+    json script = R"([
+        "keys", 
+        {"a": 1, "b": 2, "c": 3}
+    ])"_json;
+    json expected = R"(["a", "b", "c"])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(ObjectOperationsTest, KeysOperatorEmptyObject) {
-    json script = json::array({ "keys", json::object() });
-    json expected = json::object({ { "array", json::array() } });
+    json script = R"([
+        "keys", 
+        {}
+    ])"_json;
+    json expected = R"([])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(ObjectOperationsTest, KeysOperatorInvalidArgument) {
-    json script = json::array({ "keys", json::array({ 1, 2, 3 }) });
+    json script = R"([
+        "keys", 
+        [1, 2, 3]
+    ])"_json;
     EXPECT_THROW(exec(script), computo::InvalidArgumentException);
 }
 
 TEST_F(ObjectOperationsTest, KeysOperatorWithVariables) {
-    json script = json::array({ "let",
-        json::array({ json::array({ "obj", json { { "x", 10 }, { "y", 20 } } }) }),
-        json::array({ "keys", json::array({ "$", "/obj" }) }) });
-    json expected = json::object({ { "array", json::array({ "x", "y" }) } });
+    json script = R"([
+        "let",
+        [["obj", {"x": 10, "y": 20}]],
+        ["keys", ["$", "/obj"]]
+    ])"_json;
+    json expected = R"(["x", "y"])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 // Test values operator
 TEST_F(ObjectOperationsTest, ValuesOperator) {
-    json script = json::array({ "values", json { { "a", 1 }, { "b", 2 }, { "c", 3 } } });
-    json expected = json::object({ { "array", json::array({ 1, 2, 3 }) } });
+    json script = R"([
+        "values", 
+        {"a": 1, "b": 2, "c": 3}
+    ])"_json;
+    json expected = R"([1, 2, 3])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(ObjectOperationsTest, ValuesOperatorEmptyObject) {
-    json script = json::array({ "values", json::object() });
-    json expected = json::object({ { "array", json::array() } });
+    json script = R"([
+        "values", 
+        {}
+    ])"_json;
+    json expected = R"([])"_json;  // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(ObjectOperationsTest, ValuesOperatorInvalidArgument) {
-    json script = json::array({ "values", json::array({ 1, 2, 3 }) });
+    json script = R"([
+        "values", 
+        [1, 2, 3]
+    ])"_json;
     EXPECT_THROW(exec(script), computo::InvalidArgumentException);
 }
 
 TEST_F(ObjectOperationsTest, ValuesOperatorWithComplexValues) {
-    json script = json::array({ "values", json { { "data", json::array({ 1, 2, 3 }) }, { "meta", json { { "version", "1.0" } } }, { "flag", true } } });
+    json script = R"([
+        "values", 
+        {
+            "data": [1, 2, 3], 
+            "meta": {"version": "1.0"}, 
+            "flag": true
+        }
+    ])"_json;
     auto result = exec(script);
 
-    // Check that result is an array container
-    ASSERT_TRUE(result.is_object());
-    ASSERT_TRUE(result.contains("array"));
-    ASSERT_TRUE(result["array"].is_array());
+    // Check that result is a clean array
+    ASSERT_TRUE(result.is_array());
+    EXPECT_EQ(result.size(), 3);
 
     // Check that all expected values are present (order doesn't matter)
-    auto values = result["array"];
-    EXPECT_EQ(values.size(), 3);
-
     bool found_data = false, found_meta = false, found_flag = false;
-    for (const auto& value : values) {
+    for (const auto& value : result) {
         if (value == json::array({ 1, 2, 3 }))
             found_data = true;
         else if (value == json { { "version", "1.0" } })
@@ -83,30 +106,48 @@ TEST_F(ObjectOperationsTest, ValuesOperatorWithComplexValues) {
 
 // Test objFromPairs operator
 TEST_F(ObjectOperationsTest, ObjFromPairsOperator) {
-    json script = json::array({ "objFromPairs", json::object({ { "array", json::array({ json::array({ "a", 1 }), json::array({ "b", 2 }), json::array({ "c", 3 }) }) } }) });
-    json expected = json { { "a", 1 }, { "b", 2 }, { "c", 3 } };
+    json script = R"([
+        "objFromPairs", 
+        {"array": [["a", 1], ["b", 2], ["c", 3]]}
+    ])"_json;
+    json expected = R"({"a": 1, "b": 2, "c": 3})"_json;
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(ObjectOperationsTest, ObjFromPairsOperatorEmptyArray) {
-    json script = json::array({ "objFromPairs", json::object({ { "array", json::array() } }) });
-    json expected = json::object();
+    json script = R"([
+        "objFromPairs", 
+        {"array": []}
+    ])"_json;
+    json expected = R"({})"_json;
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(ObjectOperationsTest, ObjFromPairsOperatorInvalidPair) {
-    json script = json::array({ "objFromPairs", json::object({ { "array", json::array({ json::array({ "a", 1, 2 }) }) } }) });
+    json script = R"([
+        "objFromPairs", 
+        {"array": [["a", 1, 2]]}
+    ])"_json;
     EXPECT_THROW(exec(script), computo::InvalidArgumentException);
 }
 
 TEST_F(ObjectOperationsTest, ObjFromPairsOperatorNonStringKey) {
-    json script = json::array({ "objFromPairs", json::object({ { "array", json::array({ json::array({ 1, "value" }) }) } }) });
+    json script = R"([
+        "objFromPairs", 
+        {"array": [[1, "value"]]}
+    ])"_json;
     EXPECT_THROW(exec(script), computo::InvalidArgumentException);
 }
 
 TEST_F(ObjectOperationsTest, ObjFromPairsOperatorWithZip) {
-    json script = json::array({ "objFromPairs", json::array({ "zip", json::object({ { "array", json::array({ "name", "age", "city" }) } }), json::object({ { "array", json::array({ "Alice", 30, "NYC" }) } }) }) });
-    json expected = json { { "name", "Alice" }, { "age", 30 }, { "city", "NYC" } };
+    json script = R"([
+        "objFromPairs", 
+        ["zip", 
+            {"array": ["name", "age", "city"]}, 
+            {"array": ["Alice", 30, "NYC"]}
+        ]
+    ])"_json;
+    json expected = R"({"name": "Alice", "age": 30, "city": "NYC"})"_json;
     EXPECT_EQ(exec(script), expected);
 }
 

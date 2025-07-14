@@ -377,12 +377,13 @@ private:
     bool debug_mode_ = false;
     bool trace_mode_ = false;
     bool comments_enabled_ = false;
+    std::string array_key_ = "array";
     std::vector<std::string> command_history_;
     std::vector<nlohmann::json> input_data_;
     DebugExecutionWrapper debug_wrapper_;
 
 public:
-    ComputoREPL() {
+    ComputoREPL(const std::string& array_key = "array") : array_key_(array_key) {
         // Enable history expansion
         rl_bind_key('\t', rl_complete);
         ReadLine::using_history();
@@ -766,7 +767,14 @@ private:
 
         // Execute with debug wrapper
         try {
-            auto result = debug_wrapper_.execute_with_debug(script, input_data_);
+            nlohmann::json result;
+            if (array_key_ != "array") {
+                // Transform custom array syntax to standard "array" syntax, then execute
+                result = computo::execute(script, input_data_, array_key_);
+            } else {
+                // Use debug wrapper for default array key
+                result = debug_wrapper_.execute_with_debug(script, input_data_);
+            }
 
             // Output result
             std::cout << result.dump(2) << "\n";
@@ -793,6 +801,7 @@ struct REPLOptions {
     bool version = false;
     bool perf = false;
     bool comments = false;
+    std::string array_key = "array";  // Default array key
     std::string bad_option;
     std::vector<std::string> input_filenames;
 };
@@ -803,6 +812,7 @@ void print_cmdline_help(const char* program_name) {
               << "  -h, --help     Show this help message\n"
               << "  -v, --version  Show version information\n"
               << "  --comments     Allow comments in script files and direct input\n"
+              << "  --array KEY    Use custom array key syntax in scripts (default: 'array')\n"
               << std::endl;
 }
 
@@ -820,6 +830,17 @@ int main(int argc, char* argv[]) {
             options.perf = true;
         } else if (arg == "--comments") {
             options.comments = true;
+        } else if (arg.substr(0, 7) == "--array") {
+            if (arg == "--array" && i + 1 < argc) {
+                // --array custom_key
+                options.array_key = argv[++i];
+            } else if (arg.substr(0, 8) == "--array=") {
+                // --array=custom_key
+                options.array_key = arg.substr(8);
+            } else {
+                options.bad_option = arg;
+                break;
+            }
         } else if (arg[0] == '-') {
             options.bad_option = arg;
             break;
@@ -857,7 +878,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    ComputoREPL repl;
+    ComputoREPL repl(options.array_key);
     repl.run(options.input_filenames, options.comments);
     return 0;
 }

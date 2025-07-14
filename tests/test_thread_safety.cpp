@@ -53,7 +53,7 @@ TEST_F(ThreadSafetyTest, ConcurrentArrayOperations) {
                 json::object({ { "array", json::array({ 1, 2, 3, 4, 5 }) } }),
                 json::array({ "lambda", json::array({ "x" }), json::array({ "*", json::array({ "$", "/x" }), 2 }) }) });
             auto result = exec(script);
-            json expected = json::object({ { "array", json::array({ 2, 4, 6, 8, 10 }) } });
+            json expected = R"([2, 4, 6, 8, 10])"_json;  // Clean array output
             EXPECT_EQ(result, expected);
         }
     };
@@ -83,7 +83,7 @@ TEST_F(ThreadSafetyTest, ConcurrentComplexExpressions) {
                         json::object({ { "array", json::array({ 1, 2, 3 }) } }),
                         json::array({ "lambda", json::array({ "n" }), json::array({ "*", json::array({ "$", "/n" }), json::array({ "$", "/z" }) }) }) }) }) });
             auto result = exec(script);
-            json expected = json::object({ { "array", json::array({ 30, 60, 90 }) } });
+            json expected = R"([30, 60, 90])"_json;  // Clean array output
             EXPECT_EQ(result, expected);
         }
     };

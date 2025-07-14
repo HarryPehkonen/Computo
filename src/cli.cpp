@@ -18,6 +18,7 @@ void print_usage(const char* program_name) {
               << "  -v, --version  Show version information\n"
               << "  --perf         Run performance benchmarks\n"
               << "  --comments     Allow comments in script files\n"
+              << "  --array KEY    Use custom array key syntax in scripts (default: 'array')\n"
               << "\n"
               << "If no input file is specified, uses null input.\n";
 }
@@ -33,6 +34,7 @@ struct CLIOptions {
     bool version = false;
     bool perf = false;
     bool comments = false;
+    std::string array_key = "array";  // Default array key
     std::string bad_option;
     std::string script_filename;
     std::vector<std::string> input_filenames;
@@ -53,6 +55,17 @@ int main(int argc, char* argv[]) {
             options.perf = true;
         } else if (arg == "--comments") {
             options.comments = true;
+        } else if (arg.substr(0, 7) == "--array") {
+            if (arg == "--array" && i + 1 < argc) {
+                // --array custom_key
+                options.array_key = argv[++i];
+            } else if (arg.substr(0, 8) == "--array=") {
+                // --array=custom_key
+                options.array_key = arg.substr(8);
+            } else {
+                options.bad_option = arg;
+                break;
+            }
         } else if (arg[0] == '-') {
             // unknown option
             options.bad_option = arg;
@@ -105,8 +118,13 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        // Execute script
-        auto result = computo::execute(script, inputs);
+        // Execute script with custom array key
+        nlohmann::json result;
+        if (inputs.empty()) {
+            result = computo::execute(script, nlohmann::json(nullptr), options.array_key);
+        } else {
+            result = computo::execute(script, inputs, options.array_key);
+        }
 
         // Output result
         std::cout << result.dump(2) << std::endl;
