@@ -43,8 +43,11 @@ protected:
         return abs_filename;
     }
 
-    std::string run_repl_commands(const std::vector<std::string>& commands) {
+    std::string run_repl_commands(const std::vector<std::string>& commands, const std::string& extra_args = "") {
         std::string cmd = COMPUTO_REPL_PATH;
+        if (!extra_args.empty()) {
+            cmd += " " + extra_args;
+        }
 
         // Create command script
         std::string command_script;
@@ -132,28 +135,6 @@ TEST_F(DebuggingTest, RunCommandWithVars) {
 }
 
 // Test JSON with comments support
-TEST_F(DebuggingTest, RunCommandWithComments) {
-    std::string script_content = R"({
-        // This is a comment
-        "script": [
-            "+",  // Addition operator
-            1,    /* first number */
-            2,    /* second number */
-            3     // third number
-        ]
-    })";
-    create_test_file("test_comments_debug.jsonc", script_content);
-
-    std::vector<std::string> commands = {
-        "run test_comments_debug.jsonc"
-    };
-
-    std::string output = run_repl_commands(commands);
-    // Note: This test may need adjustment based on actual JSON structure with comments
-    // The above JSON is not valid - let me fix it
-}
-
-// Test JSON with comments support (corrected)
 TEST_F(DebuggingTest, RunCommandWithCommentsCorrect) {
     std::string script_content = R"([
         "+",  // Addition operator
@@ -161,14 +142,34 @@ TEST_F(DebuggingTest, RunCommandWithCommentsCorrect) {
         2,    /* second number */
         3     // third number
     ])";
-    create_test_file("test_comments_debug.jsonc", script_content);
+    create_test_file("test_comments_debug.json", script_content);
 
     std::vector<std::string> commands = {
-        "run test_comments_debug.jsonc"
+        "run test_comments_debug.json"
     };
 
-    std::string output = run_repl_commands(commands);
-    EXPECT_NE(output.find("6"), std::string::npos);
+    std::string output = run_repl_commands(commands, "--comments");
+    // Find "6" in the output
+    auto pos = output.find("6");
+    EXPECT_NE(pos, std::string::npos);
+}
+
+// Test that comments are rejected without --comments flag
+TEST_F(DebuggingTest, RunCommandWithCommentsRejected) {
+    std::string script_content = R"([
+        "+",  // Addition operator
+        1,    /* first number */
+        2,    /* second number */
+        3     // third number
+    ])";
+    create_test_file("test_comments_debug.json", script_content);
+
+    std::vector<std::string> commands = {
+        "run test_comments_debug.json"
+    };
+
+    std::string output = run_repl_commands(commands);  // No --comments flag
+    EXPECT_NE(output.find("Error"), std::string::npos);  // Should fail
 }
 
 // Test operator suggestion for typos

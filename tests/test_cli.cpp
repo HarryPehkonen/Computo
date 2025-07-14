@@ -35,6 +35,7 @@ protected:
         for (const auto& arg : args) {
             cmd += " " + arg;
         }
+	cmd += " 2>&1";
 
         FILE* pipe = popen(cmd.c_str(), "r");
         if (!pipe)
@@ -126,4 +127,34 @@ TEST_F(CLITest, InputVsInputsRegression) {
     EXPECT_EQ(multi_inputs_result.size(), 2);
     EXPECT_EQ(multi_inputs_result[0]["name"], "test");
     EXPECT_EQ(multi_inputs_result[1]["name"], "second");
+}
+
+// Test CLI with comments support
+TEST_F(CLITest, CLIWithCommentsFlag) {
+    std::string script_content = R"([
+        "+",  // Addition operator
+        1,    /* first number */
+        2,    /* second number */
+        3     // third number
+    ])";
+    std::string script_file = create_temp_file(script_content);
+    
+    std::string output = run_cli({ "--comments", script_file });
+    json result = json::parse(output);
+    EXPECT_EQ(result, 6);
+}
+
+// Test CLI rejects comments without --comments flag
+TEST_F(CLITest, CLIRejectsCommentsWithoutFlag) {
+    std::string script_content = R"([
+        "+",  // Addition operator
+        1,    /* first number */
+        2,    /* second number */
+        3     // third number
+    ])";
+    std::string script_file = create_temp_file(script_content);
+    
+    std::string output = run_cli({ script_file });
+    // Should contain error message
+    EXPECT_NE(output.find("Error"), std::string::npos);
 }

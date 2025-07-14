@@ -284,18 +284,13 @@ public:
     }
 
     // Run script from file
-    nlohmann::json run_script_file(const std::string& filename, const std::vector<nlohmann::json>& inputs) {
+    nlohmann::json run_script_file(const std::string& filename, const std::vector<nlohmann::json>& inputs, bool allow_comments = false) {
         current_script_filename_ = filename;
         debug_state_ = DebugState::RUNNING;
 
         nlohmann::json script;
         try {
-            // Use JSON with comments for .jsonc files, regular JSON for .json files
-            if (filename.size() >= 6 && filename.substr(filename.size() - 6) == ".jsonc") {
-                script = read_json_with_comments_from_file(filename);
-            } else {
-                script = read_json_from_file(filename);
-            }
+            script = read_json(filename, allow_comments);
         } catch (const std::exception& e) {
             debug_state_ = DebugState::FINISHED;
             throw std::runtime_error("Failed to load script: " + std::string(e.what()));
@@ -381,6 +376,7 @@ class ComputoREPL {
 private:
     bool debug_mode_ = false;
     bool trace_mode_ = false;
+    bool comments_enabled_ = false;
     std::vector<std::string> command_history_;
     std::vector<nlohmann::json> input_data_;
     DebugExecutionWrapper debug_wrapper_;
@@ -407,7 +403,8 @@ public:
                   << "JSON-native data transformation engine" << std::endl;
     }
 
-    void run(std::vector<std::string> input_filenames) {
+    void run(std::vector<std::string> input_filenames, bool comments_enabled = false) {
+        comments_enabled_ = comments_enabled;
         print_version();
         std::cout << "Type 'help' for commands, 'quit' to exit\n";
         std::cout << "Use _1, _2, etc. to reference previous commands\n\n";
@@ -416,7 +413,7 @@ public:
         std::vector<nlohmann::json> loaded_inputs;
         if (!input_filenames.empty()) {
             for (const auto& input_filename : input_filenames) {
-                loaded_inputs.push_back(read_json_from_file(input_filename));
+                loaded_inputs.push_back(read_json(input_filename, false)); // Input files never allow comments
             }
         }
 
@@ -575,7 +572,7 @@ private:
         std::cout << "  quit         Exit REPL\n";
         std::cout << "\n";
         std::cout << "Script execution:\n";
-        std::cout << "  run FILE     Load and execute script file (.json or .jsonc)\n";
+        std::cout << "  run FILE     Load and execute script file\n";
         std::cout << "\n";
         std::cout << "Breakpoint management:\n";
         std::cout << "  break OP     Set breakpoint on operator (e.g., 'break map')\n";
@@ -631,7 +628,7 @@ private:
             debug_wrapper_.enable_profiling(debug_mode_);
 
             // Run the script
-            auto result = debug_wrapper_.run_script_file(filename, input_data_);
+            auto result = debug_wrapper_.run_script_file(filename, input_data_, comments_enabled_);
 
             // Output result
             std::cout << result.dump(2) << "\n";
@@ -750,7 +747,11 @@ private:
         // Parse JSON input
         nlohmann::json script;
         try {
-            script = nlohmann::json::parse(input);
+            if (comments_enabled_) {
+                script = nlohmann::json::parse(input, nullptr, true, true); // allow exceptions, allow comments
+            } else {
+                script = nlohmann::json::parse(input);
+            }
         } catch (const std::exception& e) {
             std::cerr << "Invalid JSON: " << e.what() << "\n";
             return;
@@ -791,6 +792,7 @@ struct REPLOptions {
     bool help = false;
     bool version = false;
     bool perf = false;
+    bool comments = false;
     std::string bad_option;
     std::vector<std::string> input_filenames;
 };
@@ -799,7 +801,8 @@ void print_cmdline_help(const char* program_name) {
     std::cout << "Usage: " << program_name << " [OPTIONS] [INPUT_FILENAME [INPUT_FILENAME]...]\n"
               << "Options:\n"
               << "  -h, --help     Show this help message\n"
-              << "  -v, --version  Show version information"
+              << "  -v, --version  Show version information\n"
+              << "  --comments     Allow comments in script files and direct input\n"
               << std::endl;
 }
 
@@ -815,6 +818,8 @@ int main(int argc, char* argv[]) {
             options.version = true;
         } else if (arg == "-p" || arg == "--perf") {
             options.perf = true;
+        } else if (arg == "--comments") {
+            options.comments = true;
         } else if (arg[0] == '-') {
             options.bad_option = arg;
             break;
@@ -853,6 +858,6 @@ int main(int argc, char* argv[]) {
     }
 
     ComputoREPL repl;
-    repl.run(options.input_filenames);
+    repl.run(options.input_filenames, options.comments);
     return 0;
 }

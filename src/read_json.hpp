@@ -4,38 +4,42 @@
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <optional>
 
 // namespace computo {
 
-nlohmann::json read_json_from_file(const std::string& filename) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        throw std::runtime_error("Cannot open file: " + filename);
-    }
-
+nlohmann::json read_json(std::optional<std::string> filename = std::nullopt, bool allow_comments = false) {
     nlohmann::json result;
-    file >> result;
-    return result;
-}
-
-nlohmann::json read_json_from_stdin() {
-    nlohmann::json result;
-    std::cin >> result;
-    return result;
-}
-
-nlohmann::json read_json_with_comments_from_file(const std::string& filename) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        throw std::runtime_error("Cannot open file: " + filename);
+    
+    if (filename.has_value()) {
+        // Read from file
+        std::ifstream file(filename.value());
+        if (!file.is_open()) {
+            throw std::runtime_error("Cannot open file: " + filename.value());
+        }
+        
+        try {
+            if (allow_comments) {
+                result = nlohmann::json::parse(file, nullptr, true, true); // allow exceptions, allow comments
+            } else {
+                file >> result;
+            }
+        } catch (const nlohmann::json::parse_error& e) {
+            throw std::runtime_error("JSON parse error in " + filename.value() + " at byte " + std::to_string(e.byte) + ": " + e.what());
+        }
+    } else {
+        // Read from stdin
+        try {
+            if (allow_comments) {
+                result = nlohmann::json::parse(std::cin, nullptr, true, true); // allow exceptions, allow comments
+            } else {
+                std::cin >> result;
+            }
+        } catch (const nlohmann::json::parse_error& e) {
+            throw std::runtime_error("JSON parse error from stdin at byte " + std::to_string(e.byte) + ": " + e.what());
+        }
     }
-
-    nlohmann::json result;
-    try {
-        result = nlohmann::json::parse(file, nullptr, true, true); // allow exceptions, allow comments
-    } catch (const nlohmann::json::parse_error& e) {
-        throw std::runtime_error("JSON parse error in " + filename + " at byte " + std::to_string(e.byte) + ": " + e.what());
-    }
+    
     return result;
 }
 

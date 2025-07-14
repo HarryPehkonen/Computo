@@ -17,6 +17,7 @@ void print_usage(const char* program_name) {
               << "  -h, --help     Show this help message\n"
               << "  -v, --version  Show version information\n"
               << "  --perf         Run performance benchmarks\n"
+              << "  --comments     Allow comments in script files\n"
               << "\n"
               << "If no input file is specified, uses null input.\n";
 }
@@ -31,6 +32,7 @@ struct CLIOptions {
     bool help = false;
     bool version = false;
     bool perf = false;
+    bool comments = false;
     std::string bad_option;
     std::string script_filename;
     std::vector<std::string> input_filenames;
@@ -49,6 +51,8 @@ int main(int argc, char* argv[]) {
             options.version = true;
         } else if (arg == "--perf") {
             options.perf = true;
+        } else if (arg == "--comments") {
+            options.comments = true;
         } else if (arg[0] == '-') {
             // unknown option
             options.bad_option = arg;
@@ -89,7 +93,7 @@ int main(int argc, char* argv[]) {
         // Read script
         nlohmann::json script;
         if (!options.script_filename.empty()) {
-            script = read_json_from_file(options.script_filename);
+            script = read_json(options.script_filename, options.comments);
         }
 
         // Read input
@@ -97,7 +101,7 @@ int main(int argc, char* argv[]) {
         if (!options.input_filenames.empty()) {
             // append all input files
             for (const auto& input_file : options.input_filenames) {
-                inputs.push_back(read_json_from_file(input_file));
+                inputs.push_back(read_json(input_file, false)); // Input files never allow comments
             }
         }
 
