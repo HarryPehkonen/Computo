@@ -13,6 +13,8 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
+**Important**: Please do not use `--parallel` when compiling as it seems to do bad things on this computer.
+
 **This creates**:
 - `libcomputo.a` - Production library (zero debug overhead)
 - `libcomputorepl.a` - REPL library (with debug features)
