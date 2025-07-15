@@ -4,7 +4,7 @@ using json = nlohmann::json;
 
 class DebugTest : public ::testing::Test {
 protected:
-    auto exec(const json& script, const json& input = json(nullptr)) {
+    static auto exec(const json& script, const json& input = json(nullptr)) {
         return computo::execute(script, input);
     }
 };
@@ -24,7 +24,7 @@ TEST_F(DebugTest, LambdaInMap) {
         {"array": [1]},
         ["lambda", ["x"], ["$", "/x"]]
     ])"_json;
-    json expected = R"([1])"_json;  // Clean array output
+    json expected = R"([1])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -45,7 +45,7 @@ TEST_F(DebugTest, SimpleLambdaReturn) {
         {"array": [1]},
         ["lambda", ["x"], 42]
     ])"_json;
-    json expected = R"([42])"_json;  // Clean array output
+    json expected = R"([42])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -74,7 +74,7 @@ TEST_F(DebugTest, LambdaVariableInMap) {
         [["double", ["lambda", ["x"], ["*", ["$", "/x"], 2]]]],
         ["map", {"array": [1, 2, 3]}, ["$", "/double"]]
     ])"_json;
-    json expected = R"([2, 4, 6])"_json;  // Clean array output
+    json expected = R"([2, 4, 6])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -84,7 +84,7 @@ TEST_F(DebugTest, LambdaVariableInFilter) {
         [["is_even", ["lambda", ["x"], ["==", ["%", ["$", "/x"], 2], 0]]]],
         ["filter", {"array": [1, 2, 3, 4, 5]}, ["$", "/is_even"]]
     ])"_json;
-    json expected = R"([2, 4])"_json;  // Clean array output
+    json expected = R"([2, 4])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 

@@ -4,28 +4,32 @@
 
 namespace computo {
 // Forward declaration so operator helpers can recursively evaluate expressions
-nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx);
+auto evaluate(nlohmann::json expr, ExecutionContext ctx) -> nlohmann::json;
 }
 
 namespace computo::operators {
 
 // Return JSON truthiness consistent with spec
-inline bool is_truthy(const nlohmann::json& value) {
-    if (value.is_boolean())
+inline auto is_truthy(const nlohmann::json& value) -> bool {
+    if (value.is_boolean()) {
         return value.get<bool>();
-    if (value.is_number())
+}
+    if (value.is_number()) {
         return value.get<double>() != 0.0;
-    if (value.is_string())
+}
+    if (value.is_string()) {
         return !value.get<std::string>().empty();
-    if (value.is_null())
+}
+    if (value.is_null()) {
         return false;
+}
     return !value.empty(); // arrays/objects
 }
 
 // Evaluate a simple single-parameter lambda expression against arg
-inline nlohmann::json evaluate_lambda(const nlohmann::json& lambda,
+inline auto evaluate_lambda(const nlohmann::json& lambda,
     const nlohmann::json& arg,
-    ExecutionContext& ctx) {
+    ExecutionContext& ctx) -> nlohmann::json {
     if (!lambda.is_array() || lambda.size() != 3 || lambda[0] != "lambda") {
         throw InvalidArgumentException("Invalid lambda expression");
     }

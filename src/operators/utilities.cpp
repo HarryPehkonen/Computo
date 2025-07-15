@@ -5,9 +5,10 @@
 namespace computo::operators {
 using computo::evaluate;
 
-nlohmann::json str_concat(const nlohmann::json& args, ExecutionContext& ctx) {
-    if (args.size() < 2)
+auto str_concat(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+    if (args.size() < 2) {
         throw InvalidArgumentException("strConcat requires at least 2 arguments");
+}
 
     std::string result;
     for (const auto& arg : args) {
@@ -20,9 +21,10 @@ nlohmann::json str_concat(const nlohmann::json& args, ExecutionContext& ctx) {
     return result;
 }
 
-nlohmann::json merge_op(const nlohmann::json& args, ExecutionContext& ctx) {
-    if (args.size() < 2)
+auto merge_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+    if (args.size() < 2) {
         throw InvalidArgumentException("merge requires at least 2 arguments");
+}
 
     nlohmann::json result = nlohmann::json::object();
 
@@ -40,9 +42,10 @@ nlohmann::json merge_op(const nlohmann::json& args, ExecutionContext& ctx) {
     return result;
 }
 
-nlohmann::json approx_op(const nlohmann::json& args, ExecutionContext& ctx) {
-    if (args.size() != 2)
+auto approx_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+    if (args.size() != 2) {
         throw InvalidArgumentException("approx requires exactly 2 arguments");
+}
 
     auto val1 = evaluate(args[0], ctx);
     auto val2 = evaluate(args[1], ctx);

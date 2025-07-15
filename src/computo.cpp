@@ -4,6 +4,7 @@
 #include <functional>
 #include <map>
 #include <mutex>
+#include <utility>
 
 namespace computo {
 
@@ -11,8 +12,6 @@ namespace {
     using OperatorFunc = std::function<nlohmann::json(const nlohmann::json&, ExecutionContext&)>;
     std::map<std::string, OperatorFunc> op_registry;
     std::once_flag init_flag;
-    
-    
 
     void initialize_operators() {
         std::call_once(init_flag, []() {
@@ -79,76 +78,76 @@ namespace {
 } // anonymous namespace
 
 // Forward declaration of evaluator (implementation below) – needs external linkage for operator source files
-nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx);
-nlohmann::json evaluate_lazy_tco(nlohmann::json expr, ExecutionContext ctx);
+
+auto evaluate_lazy_tco(nlohmann::json expr, ExecutionContext ctx) -> nlohmann::json;
 
 // Forward declarations
-nlohmann::json unwrap_array_objects(const nlohmann::json& value, const std::string& array_key = "array");
-nlohmann::json transform_array_keys(const nlohmann::json& value, const std::string& from_key, const std::string& to_key);
-
+auto unwrap_array_objects(const nlohmann::json& value, const std::string& array_key = "array") -> nlohmann::json;
+auto transform_array_keys(const nlohmann::json& value, const std::string& from_key, const std::string& to_key) -> nlohmann::json;
 
 // Simple evaluator for Phase 1 (handles literals and $input)
-nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx) {
+auto evaluate(nlohmann::json expr, ExecutionContext ctx) -> nlohmann::json {
     // Use lazy debug TCO approach (Solution 3)
-    return evaluate_lazy_tco(expr, ctx);
+    return evaluate_lazy_tco(std::move(expr), std::move(ctx));
 }
 
 // Public API
-nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input) {
+auto execute(const nlohmann::json& script, const nlohmann::json& input) -> nlohmann::json {
     ExecutionContext ctx(input);
     nlohmann::json result = evaluate(script, ctx);
-    
+
     // Apply final array unwrapping
     return unwrap_array_objects(result);
 }
 
-nlohmann::json execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs) {
+auto execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs) -> nlohmann::json {
     ExecutionContext ctx(inputs);
     nlohmann::json result = evaluate(script, ctx);
-    
+
     // Apply final array unwrapping
     return unwrap_array_objects(result);
 }
 
 // Overloads with custom array key syntax
-nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input, const std::string& array_key) {
+auto execute(const nlohmann::json& script, const nlohmann::json& input, const std::string& array_key) -> nlohmann::json {
     // If using default "array" key, use regular execution
     if (array_key == "array") {
         return execute(script, input);
     }
-    
+
     // Transform script and input to use "array" key internally, then process normally
     nlohmann::json transformed_script = transform_array_keys(script, array_key, "array");
     nlohmann::json transformed_input = transform_array_keys(input, array_key, "array");
-    
+
     ExecutionContext ctx(transformed_input);
     nlohmann::json result = evaluate(transformed_script, ctx);
-    
+
     // Apply final array unwrapping (always unwrap "array" objects)
     return unwrap_array_objects(result);
 }
 
-nlohmann::json execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs, const std::string& array_key) {
+auto execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs, const std::string& array_key) -> nlohmann::json {
     // If using default "array" key, use regular execution
     if (array_key == "array") {
         return execute(script, inputs);
     }
-    
+
     // Transform script and inputs to use "array" key internally
     nlohmann::json transformed_script = transform_array_keys(script, array_key, "array");
     std::vector<nlohmann::json> transformed_inputs;
+    transformed_inputs.reserve(inputs.size());
     for (const auto& input : inputs) {
         transformed_inputs.push_back(transform_array_keys(input, array_key, "array"));
     }
-    
+
     ExecutionContext ctx(transformed_inputs);
     nlohmann::json result = evaluate(transformed_script, ctx);
-    
+
     // Apply final array unwrapping (always unwrap "array" objects)
     return unwrap_array_objects(result);
 }
 
-std::vector<std::string> get_available_operators() {
+auto get_available_operators() -> std::vector<std::string> {
     initialize_operators();
     std::vector<std::string> operators;
     operators.reserve(op_registry.size());
@@ -162,7 +161,7 @@ std::vector<std::string> get_available_operators() {
 using computo::operators::is_truthy;
 
 // Enhanced evaluator with lazy debug TCO (Solution 3)
-nlohmann::json evaluate_lazy_tco(nlohmann::json expr, ExecutionContext ctx) {
+auto evaluate_lazy_tco(nlohmann::json expr, ExecutionContext ctx) -> nlohmann::json {
     // Lazy debug tracking - only track if debugging is actually needed
     bool should_debug = false;
 #ifdef REPL
@@ -196,8 +195,7 @@ nlohmann::json evaluate_lazy_tco(nlohmann::json expr, ExecutionContext ctx) {
                         if (element.is_array() && !element.empty() && element[0].is_string()) {
                             initialize_operators();
                             std::string potential_op = element[0].get<std::string>();
-                            if (op_registry.find(potential_op) != op_registry.end() || 
-                                potential_op == "$input" || potential_op == "$inputs") {
+                            if (op_registry.find(potential_op) != op_registry.end() || potential_op == "$input" || potential_op == "$inputs") {
                                 // Valid expression - evaluate it
                                 evaluated_content.push_back(evaluate_lazy_tco(element, ctx));
                             } else {
@@ -210,7 +208,7 @@ nlohmann::json evaluate_lazy_tco(nlohmann::json expr, ExecutionContext ctx) {
                         }
                     }
                     // Return wrapper with evaluated content
-                    return nlohmann::json::object({{"array", evaluated_content}});
+                    return nlohmann::json::object({ { "array", evaluated_content } });
                 }
             }
             return expr;
@@ -355,58 +353,55 @@ nlohmann::json evaluate_lazy_tco(nlohmann::json expr, ExecutionContext ctx) {
 }
 
 // Transform array keys recursively (e.g., convert "@array" to "array" for internal processing)
-nlohmann::json transform_array_keys(const nlohmann::json& value, const std::string& from_key, const std::string& to_key) {
+auto transform_array_keys(const nlohmann::json& value, const std::string& from_key, const std::string& to_key) -> nlohmann::json {
     if (value.is_object()) {
         if (value.size() == 1 && value.contains(from_key)) {
             // Transform this object key
             nlohmann::json result = nlohmann::json::object();
             result[to_key] = transform_array_keys(value[from_key], from_key, to_key);
             return result;
-        } else {
-            // Process each value in the object
-            nlohmann::json result = nlohmann::json::object();
-            for (auto it = value.begin(); it != value.end(); ++it) {
-                result[it.key()] = transform_array_keys(it.value(), from_key, to_key);
-            }
-            return result;
+        } // Process each value in the object
+        nlohmann::json result = nlohmann::json::object();
+        for (auto it = value.begin(); it != value.end(); ++it) {
+            result[it.key()] = transform_array_keys(it.value(), from_key, to_key);
         }
-    } else if (value.is_array()) {
+        return result;
+    }
+    if (value.is_array()) {
         // Process each element in the array
         nlohmann::json result = nlohmann::json::array();
         for (const auto& element : value) {
             result.push_back(transform_array_keys(element, from_key, to_key));
         }
         return result;
-    } else {
-        // Primitive values are returned as-is
-        return value;
-    }
+    } // Primitive values are returned as-is
+    return value;
 }
 
 // Clean final-pass array unwrapping (after all evaluation is complete)
-nlohmann::json unwrap_array_objects(const nlohmann::json& value, const std::string& array_key) {
+auto unwrap_array_objects(const nlohmann::json& value, const std::string& array_key) -> nlohmann::json {
     if (value.is_object() && value.size() == 1 && value.contains(array_key)) {
         // This is an array object - unwrap it and recursively process the content
-        nlohmann::json unwrapped = value[array_key];
+        const nlohmann::json& unwrapped = value[array_key];
         return unwrap_array_objects(unwrapped, array_key);
-    } else if (value.is_array()) {
+    }
+    if (value.is_array()) {
         // Process each element in the array
         nlohmann::json result = nlohmann::json::array();
         for (const auto& element : value) {
             result.push_back(unwrap_array_objects(element, array_key));
         }
         return result;
-    } else if (value.is_object()) {
+    }
+    if (value.is_object()) {
         // Process each value in the object (but don't unwrap multi-key objects)
         nlohmann::json result = nlohmann::json::object();
         for (auto it = value.begin(); it != value.end(); ++it) {
             result[it.key()] = unwrap_array_objects(it.value(), array_key);
         }
         return result;
-    } else {
-        // Primitive values are returned as-is
-        return value;
-    }
+    } // Primitive values are returned as-is
+    return value;
 }
 
 } // namespace computo

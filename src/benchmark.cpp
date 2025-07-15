@@ -23,18 +23,18 @@ class BenchmarkRunner {
 private:
     std::vector<BenchmarkResult> results_;
 
-    double to_ms(std::chrono::microseconds us) {
+    static auto to_ms(std::chrono::microseconds us) -> double {
         return us.count() / 1000.0;
     }
 
-    double to_us(std::chrono::microseconds us) {
+    static auto to_us(std::chrono::microseconds us) -> double {
         return us.count();
     }
 
-    nlohmann::json run_benchmark(const std::string& name,
+    auto run_benchmark(const std::string& name,
         const nlohmann::json& script,
         const nlohmann::json& expected = nullptr,
-        int iterations = 1000) {
+        int iterations = 1000) -> nlohmann::json {
         std::vector<double> times;
         nlohmann::json last_result;
 

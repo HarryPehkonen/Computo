@@ -25,7 +25,7 @@ void print_usage(const char* program_name) {
 
 void print_version() {
     std::cout << "Computo CLI v" << COMPUTO_VERSION << "\n"
-              << "JSON-native data transformation engine" << std::endl;
+              << "JSON-native data transformation engine" << '\n';
 }
 
 // hold CLI options
@@ -34,14 +34,18 @@ struct CLIOptions {
     bool version = false;
     bool perf = false;
     bool comments = false;
-    std::string array_key = "array";  // Default array key
+    std::string array_key = "array"; // Default array key
     std::string bad_option;
     std::string script_filename;
     std::vector<std::string> input_filenames;
 };
 
-int main(int argc, char* argv[]) {
+auto main(int argc, char* argv[]) -> int {
     CLIOptions options;
+
+    // CLI option constants
+    const std::string ARRAY_OPT = "--array";
+    const std::string ARRAY_OPT_WITH_EQUALS = "--array=";
 
     // Parse command line arguments
     for (int i = 1; i < argc; ++i) {
@@ -55,13 +59,13 @@ int main(int argc, char* argv[]) {
             options.perf = true;
         } else if (arg == "--comments") {
             options.comments = true;
-        } else if (arg.substr(0, 7) == "--array") {
-            if (arg == "--array" && i + 1 < argc) {
+        } else if (arg.substr(0, ARRAY_OPT.length()) == ARRAY_OPT) {
+            if (arg == ARRAY_OPT && i + 1 < argc) {
                 // --array custom_key
                 options.array_key = argv[++i];
-            } else if (arg.substr(0, 8) == "--array=") {
+            } else if (arg.substr(0, ARRAY_OPT_WITH_EQUALS.length()) == ARRAY_OPT_WITH_EQUALS) {
                 // --array=custom_key
-                options.array_key = arg.substr(8);
+                options.array_key = arg.substr(ARRAY_OPT_WITH_EQUALS.length());
             } else {
                 options.bad_option = arg;
                 break;
@@ -127,10 +131,10 @@ int main(int argc, char* argv[]) {
         }
 
         // Output result
-        std::cout << result.dump(2) << std::endl;
+        std::cout << result.dump(2) << '\n';
 
     } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+        std::cerr << "Error: " << e.what() << '\n';
         return 1;
     }
 

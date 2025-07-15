@@ -4,11 +4,11 @@ using json = nlohmann::json;
 
 class ArrayPrefixTest : public ::testing::Test {
 protected:
-    auto exec(const json& script, const json& input = json(nullptr)) {
+    static auto exec(const json& script, const json& input = json(nullptr)) {
         return computo::execute(script, input);
     }
-    
-    auto exec_with_prefix(const json& script, const json& input = json(nullptr), [[maybe_unused]] const std::string& prefix = "$") {
+
+    static auto exec_with_prefix(const json& script, const json& input = json(nullptr), [[maybe_unused]] const std::string& prefix = "$") {
         // TODO: This will use the new prefix-aware execute function
         return computo::execute(script, input);
     }
@@ -41,27 +41,18 @@ TEST_F(ArrayPrefixTest, MixedTypeArray) {
 
 // Nested array tests
 TEST_F(ArrayPrefixTest, NestedArrays) {
-    json script = json::object({ { "array", json::array({ 
-        json::object({ { "array", json::array({ 1, 2 }) } }),
-        json::object({ { "array", json::array({ 3, 4 }) } })
-    }) } });
-    json expected = json::array({ 
-        json::array({ 1, 2 }),
-        json::array({ 3, 4 })
-    });
+    json script = json::object({ { "array", json::array({ json::object({ { "array", json::array({ 1, 2 }) } }), json::object({ { "array", json::array({ 3, 4 }) } }) }) } });
+    json expected = json::array({ json::array({ 1, 2 }),
+        json::array({ 3, 4 }) });
     EXPECT_EQ(exec(script), expected);
 }
 
 // Objects with array should not unwrap if they have other keys
 TEST_F(ArrayPrefixTest, ObjectWithMultipleKeys) {
-    json script = json::object({ 
-        { "array", json::array({ 1, 2, 3 }) }, 
-        { "other", "value" } 
-    });
-    json expected = json::object({ 
-        { "array", json::array({ 1, 2, 3 }) }, 
-        { "other", "value" } 
-    });
+    json script = json::object({ { "array", json::array({ 1, 2, 3 }) },
+        { "other", "value" } });
+    json expected = json::object({ { "array", json::array({ 1, 2, 3 }) },
+        { "other", "value" } });
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -76,18 +67,16 @@ TEST_F(ArrayPrefixTest, RegularObjectsUnchanged) {
 TEST_F(ArrayPrefixTest, ArrayInMapOperator) {
     json script = json::array({ "map",
         json::object({ { "array", json::array({ 1, 2, 3 }) } }),
-        json::array({ "lambda", json::array({ "x" }), json::array({ "*", json::array({ "$", "/x" }), 2 }) }) 
-    });
+        json::array({ "lambda", json::array({ "x" }), json::array({ "*", json::array({ "$", "/x" }), 2 }) }) });
     json expected = json::array({ 2, 4, 6 });
     EXPECT_EQ(exec(script), expected);
 }
 
 // Dynamically created array objects should ALSO unwrap consistently
 TEST_F(ArrayPrefixTest, DynamicallyCreatedArrayObjectShouldAlsoUnwrap) {
-    json script = json::array({ "let", 
+    json script = json::array({ "let",
         json::array({ json::array({ "obj_with_array", json::object({ { "array", json::array({ 1, 2, 3 }) } }) }) }),
-        json::object({ { "array", json::array({ json::array({ "$", "/obj_with_array" }) }) } })
-    });
+        json::object({ { "array", json::array({ json::array({ "$", "/obj_with_array" }) }) } }) });
     // The variable contains {"array": [1,2,3]} which should unwrap to [1,2,3]
     // The outer {"array": [...]} unwraps to an array containing that unwrapped result
     json expected = json::array({ json::array({ 1, 2, 3 }) });

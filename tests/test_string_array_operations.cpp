@@ -4,7 +4,7 @@ using json = nlohmann::json;
 
 class StringArrayOperationsTest : public ::testing::Test {
 protected:
-    auto exec(const json& script, const json& input = json(nullptr)) {
+    static auto exec(const json& script, const json& input = json(nullptr)) {
         return computo::execute(script, input);
     }
 };
@@ -12,31 +12,31 @@ protected:
 // Test split operator
 TEST_F(StringArrayOperationsTest, SplitOperatorBasic) {
     json script = R"(["split", "hello world", " "])"_json;
-    json expected = R"(["hello", "world"])"_json;  // Clean array output
+    json expected = R"(["hello", "world"])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, SplitOperatorMultipleDelimiters) {
     json script = R"(["split", "a,b,c", ","])"_json;
-    json expected = R"(["a", "b", "c"])"_json;  // Clean array output
+    json expected = R"(["a", "b", "c"])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, SplitOperatorEmptyDelimiter) {
     json script = R"(["split", "abc", ""])"_json;
-    json expected = R"(["a", "b", "c"])"_json;  // Clean array output
+    json expected = R"(["a", "b", "c"])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, SplitOperatorEmptyString) {
     json script = R"(["split", "", ","])"_json;
-    json expected = R"([""])"_json;  // Clean array output
+    json expected = R"([""])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(StringArrayOperationsTest, SplitOperatorNoDelimiterFound) {
     json script = R"(["split", "hello", ","])"_json;
-    json expected = R"(["hello"])"_json;  // Clean array output
+    json expected = R"(["hello"])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -185,7 +185,7 @@ TEST_F(StringArrayOperationsTest, SortOperatorBasic) {
         "sort",
         {"array": ["charlie", "alice", "bob"]}
     ])"_json;
-    json expected = R"(["alice", "bob", "charlie"])"_json;  // Clean array output
+    json expected = R"(["alice", "bob", "charlie"])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -194,7 +194,7 @@ TEST_F(StringArrayOperationsTest, SortOperatorNumbers) {
         "sort",
         {"array": [3, 1, 2]}
     ])"_json;
-    json expected = R"([1, 2, 3])"_json;  // Clean array output
+    json expected = R"([1, 2, 3])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -204,7 +204,7 @@ TEST_F(StringArrayOperationsTest, SortOperatorDescending) {
         {"array": [3, 1, 2]},
         "desc"
     ])"_json;
-    json expected = R"([3, 2, 1])"_json;  // Clean array output
+    json expected = R"([3, 2, 1])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -214,7 +214,7 @@ TEST_F(StringArrayOperationsTest, SortOperatorAscendingExplicit) {
         {"array": ["charlie", "alice", "bob"]},
         "asc"
     ])"_json;
-    json expected = R"(["alice", "bob", "charlie"])"_json;  // Clean array output
+    json expected = R"(["alice", "bob", "charlie"])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -225,7 +225,7 @@ TEST_F(StringArrayOperationsTest, SortOperatorTypeAware) {
         {"array": ["b", 2, null, true, [1], "a", 1]}
     ])"_json;
     auto result = exec(script);
-    ASSERT_TRUE(result.is_array());  // Clean array output
+    ASSERT_TRUE(result.is_array()); // Clean array output
     EXPECT_EQ(result.size(), 7);
     // Check ordering: null first, then numbers, then strings, then booleans, then arrays
     EXPECT_TRUE(result[0].is_null());
@@ -248,7 +248,7 @@ TEST_F(StringArrayOperationsTest, SortOperatorObjectSingleField) {
         "/name"
     ])"_json;
     auto result = exec(script);
-    ASSERT_TRUE(result.is_array());  // Clean array output
+    ASSERT_TRUE(result.is_array()); // Clean array output
     EXPECT_EQ(result.size(), 3);
     EXPECT_EQ(result[0]["name"], "alice");
     EXPECT_EQ(result[1]["name"], "bob");
@@ -266,7 +266,7 @@ TEST_F(StringArrayOperationsTest, SortOperatorObjectSingleFieldDesc) {
         ["/name", "desc"]
     ])"_json;
     auto result = exec(script);
-    ASSERT_TRUE(result.is_array());  // Clean array output
+    ASSERT_TRUE(result.is_array()); // Clean array output
     EXPECT_EQ(result.size(), 3);
     EXPECT_EQ(result[0]["name"], "charlie");
     EXPECT_EQ(result[1]["name"], "bob");
@@ -285,7 +285,7 @@ TEST_F(StringArrayOperationsTest, SortOperatorObjectMultiField) {
         ["/age", "desc"]
     ])"_json;
     auto result = exec(script);
-    ASSERT_TRUE(result.is_array());  // Clean array output
+    ASSERT_TRUE(result.is_array()); // Clean array output
     EXPECT_EQ(result.size(), 3);
     // First alice (age 30), then alice (age 25), then bob (age 25)
     EXPECT_EQ(result[0]["name"], "alice");
@@ -301,7 +301,7 @@ TEST_F(StringArrayOperationsTest, SortOperatorEmptyArray) {
         "sort",
         {"array": []}
     ])"_json;
-    json expected = R"([])"_json;  // Clean array output
+    json expected = R"([])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -317,7 +317,7 @@ TEST_F(StringArrayOperationsTest, ReverseOperatorBasic) {
         "reverse",
         {"array": [1, 2, 3, 4]}
     ])"_json;
-    json expected = R"([4, 3, 2, 1])"_json;  // Clean array output
+    json expected = R"([4, 3, 2, 1])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -326,7 +326,7 @@ TEST_F(StringArrayOperationsTest, ReverseOperatorStrings) {
         "reverse",
         {"array": ["a", "b", "c"]}
     ])"_json;
-    json expected = R"(["c", "b", "a"])"_json;  // Clean array output
+    json expected = R"(["c", "b", "a"])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -335,7 +335,7 @@ TEST_F(StringArrayOperationsTest, ReverseOperatorEmptyArray) {
         "reverse",
         {"array": []}
     ])"_json;
-    json expected = R"([])"_json;  // Clean array output
+    json expected = R"([])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -344,7 +344,7 @@ TEST_F(StringArrayOperationsTest, ReverseOperatorSingleElement) {
         "reverse",
         {"array": ["only"]}
     ])"_json;
-    json expected = R"(["only"])"_json;  // Clean array output
+    json expected = R"(["only"])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -362,7 +362,7 @@ TEST_F(StringArrayOperationsTest, UniqueOperatorBasicFirsts) {
         "unique",
         {"array": ["a", "a", "b", "c", "c"]}
     ])"_json;
-    json expected = R"(["a", "b", "c"])"_json;  // Clean array output
+    json expected = R"(["a", "b", "c"])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -372,7 +372,7 @@ TEST_F(StringArrayOperationsTest, UniqueOperatorLasts) {
         {"array": [1, 1, 2, 3, 3, 3]},
         "lasts"
     ])"_json;
-    json expected = R"([1, 2, 3])"_json;  // Clean array output
+    json expected = R"([1, 2, 3])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -382,7 +382,7 @@ TEST_F(StringArrayOperationsTest, UniqueOperatorSingles) {
         {"array": [1, 1, 2, 3, 3, 3]},
         "singles"
     ])"_json;
-    json expected = R"([2])"_json;  // Clean array output
+    json expected = R"([2])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -392,7 +392,7 @@ TEST_F(StringArrayOperationsTest, UniqueOperatorMultiples) {
         {"array": [1, 1, 2, 3, 3, 3]},
         "multiples"
     ])"_json;
-    json expected = R"([1, 3])"_json;  // Clean array output
+    json expected = R"([1, 3])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -408,7 +408,7 @@ TEST_F(StringArrayOperationsTest, UniqueOperatorObjectByField) {
         "/name"
     ])"_json;
     auto result = exec(script);
-    ASSERT_TRUE(result.is_array());  // Clean array output
+    ASSERT_TRUE(result.is_array()); // Clean array output
     EXPECT_EQ(result.size(), 3);
     EXPECT_EQ(result[0]["name"], "alice");
     EXPECT_EQ(result[1]["name"], "bob");
@@ -429,7 +429,7 @@ TEST_F(StringArrayOperationsTest, UniqueOperatorObjectFieldSingles) {
         "singles"
     ])"_json;
     auto result = exec(script);
-    ASSERT_TRUE(result.is_array());  // Clean array output
+    ASSERT_TRUE(result.is_array()); // Clean array output
     EXPECT_EQ(result.size(), 1);
     EXPECT_EQ(result[0]["dept"], "hr");
 }
@@ -439,7 +439,7 @@ TEST_F(StringArrayOperationsTest, UniqueOperatorEmptyArray) {
         "unique",
         {"array": []}
     ])"_json;
-    json expected = R"([])"_json;  // Clean array output
+    json expected = R"([])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -449,7 +449,7 @@ TEST_F(StringArrayOperationsTest, UniqueOperatorSingleElement) {
         {"array": [42]},
         "singles"
     ])"_json;
-    json expected = R"([42])"_json;  // Clean array output
+    json expected = R"([42])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -500,7 +500,7 @@ TEST_F(StringArrayOperationsTest, ArrayProcessingPipeline) {
 
     // Should: sort -> unique (firsts mode)
     // [3,1,4,1,5,9,2,6,5,3] -> [1,1,2,3,3,4,5,5,6,9] -> [1,2,3,4,5,6,9]
-    json expected = R"([1, 2, 3, 4, 5, 6, 9])"_json;  // Clean array output
+    json expected = R"([1, 2, 3, 4, 5, 6, 9])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -529,7 +529,7 @@ TEST_F(StringArrayOperationsTest, SortOperatorNestedField) {
         "/user/name"
     ])"_json;
     auto result = exec(script);
-    ASSERT_TRUE(result.is_array());  // Clean array output
+    ASSERT_TRUE(result.is_array()); // Clean array output
     EXPECT_EQ(result.size(), 3);
     EXPECT_EQ(result[0]["user"]["name"], "alice");
     EXPECT_EQ(result[1]["user"]["name"], "bob");
@@ -547,7 +547,7 @@ TEST_F(StringArrayOperationsTest, SortOperatorMissingField) {
         "/age"
     ])"_json;
     auto result = exec(script);
-    ASSERT_TRUE(result.is_array());  // Clean array output
+    ASSERT_TRUE(result.is_array()); // Clean array output
     EXPECT_EQ(result.size(), 3);
     // Objects with missing fields should sort first (null < numbers)
     EXPECT_EQ(result[0]["name"], "bob");
@@ -569,7 +569,7 @@ TEST_F(StringArrayOperationsTest, SortOperatorComplexMultiField) {
         "/salary"
     ])"_json;
     auto result = exec(script);
-    ASSERT_TRUE(result.is_array());  // Clean array output
+    ASSERT_TRUE(result.is_array()); // Clean array output
     EXPECT_EQ(result.size(), 4);
     // Sort by: dept asc, level desc, salary asc
     EXPECT_EQ(result[0]["dept"], "eng");

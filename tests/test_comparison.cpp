@@ -4,7 +4,7 @@ using json = nlohmann::json;
 
 class ComparisonTest : public ::testing::Test {
 protected:
-    auto exec(const json& s) { return computo::execute(s, json(nullptr)); }
+    static auto exec(const json& s) { return computo::execute(s, json(nullptr)); }
 };
 
 TEST_F(ComparisonTest, GreaterThan) {

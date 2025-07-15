@@ -4,7 +4,7 @@ using json = nlohmann::json;
 
 class FunctionalOperatorTest : public ::testing::Test {
 protected:
-    auto exec(const json& script, const json& input = json(nullptr)) {
+    static auto exec(const json& script, const json& input = json(nullptr)) {
         return computo::execute(script, input);
     }
 };
@@ -22,7 +22,7 @@ TEST_F(FunctionalOperatorTest, CdrOperator) {
         "cdr", 
         {"array": [1, 2, 3]}
     ])"_json;
-    json expected = R"([2, 3])"_json;  // Clean array output
+    json expected = R"([2, 3])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -32,7 +32,7 @@ TEST_F(FunctionalOperatorTest, ConsOperator) {
         0, 
         {"array": [1, 2, 3]}
     ])"_json;
-    json expected = R"([0, 1, 2, 3])"_json;  // Clean array output
+    json expected = R"([0, 1, 2, 3])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -42,7 +42,7 @@ TEST_F(FunctionalOperatorTest, AppendOperator) {
         {"array": [1, 2]}, 
         {"array": [3, 4]}
     ])"_json;
-    json expected = R"([1, 2, 3, 4])"_json;  // Clean array output
+    json expected = R"([1, 2, 3, 4])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 

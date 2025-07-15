@@ -5,11 +5,64 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Enable compile commands database (required for clang-tidy)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Enable warnings and treat them as errors
 if (MSVC)
     add_compile_options(/W4 /WX)
 else()
     add_compile_options(-Wall -Wextra -Werror)
+endif()
+
+# --- Static Analysis and Formatting (Optional Targets) ---
+
+# Clang-Tidy target
+find_program(CLANG_TIDY_EXE NAMES clang-tidy-19 clang-tidy)
+if(CLANG_TIDY_EXE)
+    message(STATUS "Found clang-tidy: ${CLANG_TIDY_EXE}")
+    add_custom_target(clang-tidy
+        COMMAND ${CLANG_TIDY_EXE} -p ${CMAKE_BINARY_DIR} --fix
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Running clang-tidy with fixes"
+    )
+    # Read-only version for CI
+    add_custom_target(clang-tidy-check
+        COMMAND ${CLANG_TIDY_EXE} -p ${CMAKE_BINARY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Running clang-tidy (read-only)"
+    )
+else()
+    message(WARNING "clang-tidy not found. Static analysis targets will be unavailable.")
+endif()
+
+# Clang-Format target
+find_program(CLANG_FORMAT_EXE NAMES clang-format-19 clang-format)
+if(CLANG_FORMAT_EXE)
+    message(STATUS "Found clang-format: ${CLANG_FORMAT_EXE}")
+    add_custom_target(clang-format
+        COMMAND ${CLANG_FORMAT_EXE} -i
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Running clang-format"
+    )
+    # Read-only version for CI
+    add_custom_target(clang-format-check
+        COMMAND ${CLANG_FORMAT_EXE} --dry-run --Werror
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Checking clang-format (read-only)"
+    )
+else()
+    message(WARNING "clang-format not found. Formatting targets will be unavailable.")
 endif()
 
 # --- Dependencies ---

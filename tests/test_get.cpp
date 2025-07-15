@@ -4,20 +4,20 @@ using json = nlohmann::json;
 
 class EnhancedDataAccessTest : public ::testing::Test {
 protected:
-    auto exec(const json& script, const json& input = json(nullptr)) {
+    static auto exec(const json& script, const json& input = json(nullptr)) {
         return computo::execute(script, input);
     }
 };
 
 // Test enhanced $input operator
 TEST_F(EnhancedDataAccessTest, InputWithPath) {
-    json input = json { { "a", json { { "b", 42 } } } };
+    json input = json { { "a", json { { "b", 42 } } } }; // NOLINT(readability-magic-numbers)
     json script = json::array({ "$input", "/a/b" });
-    EXPECT_EQ(exec(script, input), 42);
+    EXPECT_EQ(exec(script, input), 42); // NOLINT(readability-magic-numbers)
 }
 
 TEST_F(EnhancedDataAccessTest, InputWithoutPath) {
-    json input = json { { "x", 1 } };
+    json input = json { { "x", 1 } }; // NOLINT(readability-magic-numbers)
     json script = json::array({ "$input" });
     EXPECT_EQ(exec(script, input), input);
 }
@@ -45,47 +45,47 @@ TEST_F(EnhancedDataAccessTest, InputsWithoutPath) {
 TEST_F(EnhancedDataAccessTest, InputsInvalidPathThrows) {
     std::vector<json> inputs = { json { { "a", 1 } } };
     json script = json::array({ "$inputs", "/1" });
-    EXPECT_THROW(computo::execute(script, inputs), computo::InvalidArgumentException);
+    EXPECT_THROW(computo::execute(script, inputs), computo::InvalidArgumentException); // NOLINT(clang-diagnostic-unused-result)
 }
 
 // Test enhanced $ operator
 TEST_F(EnhancedDataAccessTest, VariableWithPath) {
     json script = json::array({ "let",
-        json::array({ json::array({ "data", json { { "x", json { { "y", 42 } } } } }) }),
+        json::array({ json::array({ "data", json { { "x", json { { "y", 42 } } } } }) }), // NOLINT(readability-magic-numbers)
         json::array({ "$", "/data/x/y" }) });
     EXPECT_EQ(exec(script), 42);
 }
 
 TEST_F(EnhancedDataAccessTest, VariableWithoutPath) {
     json script = json::array({ "let",
-        json::array({ json::array({ "x", 10 }) }),
+        json::array({ json::array({ "x", 10 }) }), // NOLINT(readability-magic-numbers)
         json::array({ "$" }) });
-    json expected = json { { "x", 10 } };
+    json expected = json { { "x", 10 } }; // NOLINT(readability-magic-numbers)
     EXPECT_EQ(exec(script), expected);
 }
 
 TEST_F(EnhancedDataAccessTest, VariableInvalidPathThrows) {
     json script = json::array({ "let",
-        json::array({ json::array({ "x", 10 }) }),
+        json::array({ json::array({ "x", 10 }) }), // NOLINT(readability-magic-numbers)
         json::array({ "$", "/y" }) });
     EXPECT_THROW(exec(script), computo::InvalidArgumentException);
 }
 
 // Test enhanced $input operator with default values
 TEST_F(EnhancedDataAccessTest, InputWithDefault) {
-    json input = json { { "a", json { { "b", 42 } } } };
+    json input = json { { "a", json { { "b", 42 } } } }; // NOLINT(readability-magic-numbers)
     json script = json::array({ "$input", "/a/b", "default" });
     EXPECT_EQ(exec(script, input), 42);
 }
 
 TEST_F(EnhancedDataAccessTest, InputWithDefaultOnMissingPath) {
-    json input = json { { "a", json { { "b", 42 } } } };
+    json input = json { { "a", json { { "b", 42 } } } }; // NOLINT(readability-magic-numbers)
     json script = json::array({ "$input", "/missing", "default_value" });
     EXPECT_EQ(exec(script, input), "default_value");
 }
 
 TEST_F(EnhancedDataAccessTest, InputWithDefaultOnInvalidPath) {
-    json input = json { { "a", json { { "b", 42 } } } };
+    json input = json { { "a", json { { "b", 42 } } } }; // NOLINT(readability-magic-numbers)
     json script = json::array({ "$input", "/a/b/c", "fallback" });
     EXPECT_EQ(exec(script, input), "fallback");
 }
@@ -126,7 +126,7 @@ TEST_F(EnhancedDataAccessTest, InputsWithComplexDefault) {
 // Test enhanced $ operator with default values
 TEST_F(EnhancedDataAccessTest, VariableWithDefault) {
     json script = json::array({ "let",
-        json::array({ json::array({ "data", json { { "x", json { { "y", 42 } } } } }) }),
+        json::array({ json::array({ "data", json { { "x", json { { "y", 42 } } } } }) }), // NOLINT(readability-magic-numbers)
         json::array({ "$", "/data/x/y", "default" }) });
     EXPECT_EQ(exec(script), 42);
 }
@@ -178,8 +178,8 @@ TEST_F(EnhancedDataAccessTest, NestedDefaultsWithMultipleInputs) {
 
 // Test expression evaluation in defaults
 TEST_F(EnhancedDataAccessTest, DefaultWithExpressionEvaluation) {
-    json input = json { { "x", 5 } };
+    json input = json { { "x", 5 } }; // NOLINT(readability-magic-numbers)
     json script = json::array({ "$input", "/missing",
-        json::array({ "+", json::array({ "$input", "/x" }), 10 }) });
+        json::array({ "+", json::array({ "$input", "/x" }), 10 }) }); // NOLINT(readability-magic-numbers)
     EXPECT_EQ(exec(script, input), 15);
 }

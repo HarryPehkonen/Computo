@@ -4,7 +4,7 @@ using json = nlohmann::json;
 
 class ZipObjectCreationTest : public ::testing::Test {
 protected:
-    auto exec(const json& script, const json& input = json(nullptr)) {
+    static auto exec(const json& script, const json& input = json(nullptr)) {
         return computo::execute(script, input);
     }
 };
@@ -118,7 +118,7 @@ TEST_F(ZipObjectCreationTest, ZipToObjectWithComplexValues) {
     json expected = R"({
         "data": [1, 2, 3],
         "meta": {"version": "1.0", "author": "test"}
-    })"_json;  // Array objects unwrap to clean arrays
+    })"_json; // Array objects unwrap to clean arrays
     EXPECT_EQ(exec(script), expected);
 }
 

@@ -4,7 +4,7 @@ using json = nlohmann::json;
 
 class ObjectOperationsTest : public ::testing::Test {
 protected:
-    auto exec(const json& script, const json& input = json(nullptr)) {
+    static auto exec(const json& script, const json& input = json(nullptr)) {
         return computo::execute(script, input);
     }
 };
@@ -15,7 +15,7 @@ TEST_F(ObjectOperationsTest, KeysOperator) {
         "keys", 
         {"a": 1, "b": 2, "c": 3}
     ])"_json;
-    json expected = R"(["a", "b", "c"])"_json;  // Clean array output
+    json expected = R"(["a", "b", "c"])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -24,7 +24,7 @@ TEST_F(ObjectOperationsTest, KeysOperatorEmptyObject) {
         "keys", 
         {}
     ])"_json;
-    json expected = R"([])"_json;  // Clean array output
+    json expected = R"([])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -42,7 +42,7 @@ TEST_F(ObjectOperationsTest, KeysOperatorWithVariables) {
         [["obj", {"x": 10, "y": 20}]],
         ["keys", ["$", "/obj"]]
     ])"_json;
-    json expected = R"(["x", "y"])"_json;  // Clean array output
+    json expected = R"(["x", "y"])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -52,7 +52,7 @@ TEST_F(ObjectOperationsTest, ValuesOperator) {
         "values", 
         {"a": 1, "b": 2, "c": 3}
     ])"_json;
-    json expected = R"([1, 2, 3])"_json;  // Clean array output
+    json expected = R"([1, 2, 3])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -61,7 +61,7 @@ TEST_F(ObjectOperationsTest, ValuesOperatorEmptyObject) {
         "values", 
         {}
     ])"_json;
-    json expected = R"([])"_json;  // Clean array output
+    json expected = R"([])"_json; // Clean array output
     EXPECT_EQ(exec(script), expected);
 }
 
@@ -89,14 +89,17 @@ TEST_F(ObjectOperationsTest, ValuesOperatorWithComplexValues) {
     EXPECT_EQ(result.size(), 3);
 
     // Check that all expected values are present (order doesn't matter)
-    bool found_data = false, found_meta = false, found_flag = false;
+    bool found_data = false;
+    bool found_meta = false;
+    bool found_flag = false;
     for (const auto& value : result) {
-        if (value == json::array({ 1, 2, 3 }))
+        if (value == json::array({ 1, 2, 3 })) {
             found_data = true;
-        else if (value == json { { "version", "1.0" } })
+        } else if (value == json { { "version", "1.0" } }) {
             found_meta = true;
-        else if (value == true)
+        } else if (value == true) {
             found_flag = true;
+        }
     }
 
     EXPECT_TRUE(found_data);

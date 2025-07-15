@@ -8,7 +8,7 @@ using json = nlohmann::json;
 
 class PerformanceTest : public ::testing::Test {
 protected:
-    auto exec(const json& script, const json& input = json(nullptr)) {
+    static auto exec(const json& script, const json& input = json(nullptr)) {
         return computo::execute(script, input);
     }
 
@@ -19,7 +19,7 @@ protected:
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
-        std::cout << operation_name << ": " << duration.count() << " μs" << std::endl;
+        std::cout << operation_name << ": " << duration.count() << " μs" << '\n';
         return duration.count();
     }
 };

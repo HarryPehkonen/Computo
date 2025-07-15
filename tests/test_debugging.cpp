@@ -25,12 +25,12 @@ protected:
             if (std::filesystem::exists(file)) {
                 std::filesystem::remove(file);
             } else {
-                std::cout << "Warning: " << file << " not found" << std::endl;
+                std::cout << "Warning: " << file << " not found" << '\n';
             }
         }
     }
 
-    std::string create_test_file(const std::string& filename, const std::string& content) {
+    auto create_test_file(const std::string& filename, const std::string& content) -> std::string {
         // Get current working directory and create absolute path
         std::string abs_filename = std::filesystem::current_path() / filename;
         std::ofstream file(abs_filename);
@@ -43,7 +43,7 @@ protected:
         return abs_filename;
     }
 
-    std::string run_repl_commands(const std::vector<std::string>& commands, const std::string& extra_args = "") {
+    auto run_repl_commands(const std::vector<std::string>& commands, const std::string& extra_args = "") -> std::string {
         std::string cmd = COMPUTO_REPL_PATH;
         if (!extra_args.empty()) {
             cmd += " " + extra_args;
@@ -60,8 +60,9 @@ protected:
         cmd += " < " + script_file + " 2>&1"; // Redirect stderr to stdout
 
         FILE* pipe = popen(cmd.c_str(), "r");
-        if (!pipe)
+        if (pipe == nullptr) {
             return "";
+        }
 
         std::string result;
         char buffer[128];
@@ -150,7 +151,7 @@ TEST_F(DebuggingTest, RunCommandWithCommentsCorrect) {
 
     std::string output = run_repl_commands(commands, "--comments");
     // Find "6" in the output
-    auto pos = output.find("6");
+    auto pos = output.find('6');
     EXPECT_NE(pos, std::string::npos);
 }
 
@@ -168,8 +169,8 @@ TEST_F(DebuggingTest, RunCommandWithCommentsRejected) {
         "run test_comments_debug.json"
     };
 
-    std::string output = run_repl_commands(commands);  // No --comments flag
-    EXPECT_NE(output.find("Error"), std::string::npos);  // Should fail
+    std::string output = run_repl_commands(commands); // No --comments flag
+    EXPECT_NE(output.find("Error"), std::string::npos); // Should fail
 }
 
 // Test operator suggestion for typos

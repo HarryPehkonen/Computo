@@ -24,17 +24,17 @@ TEST_F(InfrastructureTest, ExecutionContextSingleInput) {
 
 TEST_F(InfrastructureTest, ExecuteLiteral) {
     json input = json { { "dummy", 0 } };
-    json script = 42;
-    EXPECT_EQ(computo::execute(script, input), 42);
+    json script = 42; // NOLINT(readability-magic-numbers)
+    EXPECT_EQ(computo::execute(script, input), 42); // NOLINT(readability-magic-numbers)
 }
 
 TEST_F(InfrastructureTest, ExecuteInputOperator) {
-    json input = json { { "value", 7 } };
+    json input = json { { "value", 7 } }; // NOLINT(readability-magic-numbers)
     json script = json::array({ "$input" });
     EXPECT_EQ(computo::execute(script, input), input);
 }
 
 TEST_F(InfrastructureTest, UnknownOperatorThrows) {
     json script = json::array({ "unknown" });
-    EXPECT_THROW(computo::execute(script, json {}), computo::InvalidOperatorException);
+    EXPECT_THROW(computo::execute(script, json {}), computo::InvalidOperatorException); // NOLINT(clang-diagnostic-unused-result)
 }

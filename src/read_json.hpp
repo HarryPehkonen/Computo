@@ -8,7 +8,7 @@
 
 // namespace computo {
 
-nlohmann::json read_json(std::optional<std::string> filename = std::nullopt, bool allow_comments = false) {
+auto read_json(std::optional<std::string> filename = std::nullopt, bool allow_comments = false) -> nlohmann::json {
     nlohmann::json result;
     
     if (filename.has_value()) {

@@ -5,6 +5,7 @@
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #ifdef REPL
@@ -40,9 +41,9 @@ using PreEvaluationHook = std::function<EvaluationAction(const EvaluationContext
 // -----------------------------------------------------------------------------
 class ComputoException : public std::exception {
 public:
-    explicit ComputoException(const std::string& msg)
-        : message_(msg) { }
-    const char* what() const noexcept override { return message_.c_str(); }
+    explicit ComputoException(std::string msg)
+        : message_(std::move(msg)) { }
+    [[nodiscard]] auto what() const noexcept -> const char* override { return message_.c_str(); }
 
 private:
     std::string message_;
@@ -91,34 +92,37 @@ public:
         , inputs_ptr_(std::make_shared<std::vector<nlohmann::json>>(inputs)) { }
 
     // Accessors
-    const nlohmann::json& input() const { return *input_ptr_; }
-    const std::vector<nlohmann::json>& inputs() const { return *inputs_ptr_; }
+    [[nodiscard]] auto input() const -> const nlohmann::json& { return *input_ptr_; }
+    [[nodiscard]] auto inputs() const -> const std::vector<nlohmann::json>& { return *inputs_ptr_; }
 
     // Scoped copies
-    ExecutionContext with_variables(const std::map<std::string, nlohmann::json>& vars) const {
+    [[nodiscard]] auto with_variables(const std::map<std::string, nlohmann::json>& vars) const -> ExecutionContext {
         ExecutionContext new_ctx(*inputs_ptr_);
         new_ctx.variables = variables;
         new_ctx.path = path;
-        for (const auto& [k, v] : vars)
+        for (const auto& [k, v] : vars) {
             new_ctx.variables[k] = v;
+        }
 #ifdef REPL
         new_ctx.pre_evaluation_hook_ = pre_evaluation_hook_;
 #endif
         return new_ctx;
     }
 
-    ExecutionContext with_path(const std::string& segment) const {
+    [[nodiscard]] auto with_path(const std::string& segment) const -> ExecutionContext {
         ExecutionContext new_ctx = *this;
         new_ctx.path.emplace_back(segment);
         return new_ctx;
     }
 
-    std::string get_path_string() const {
-        if (path.empty())
+    [[nodiscard]] auto get_path_string() const -> std::string {
+        if (path.empty()) {
             return "/";
+        }
         std::string result;
-        for (const auto& seg : path)
+        for (const auto& seg : path) {
             result += "/" + seg;
+        }
         return result;
     }
 
@@ -128,11 +132,11 @@ public:
         pre_evaluation_hook_ = hook;
     }
 
-    bool has_pre_evaluation_hook() const {
+    [[nodiscard]] auto has_pre_evaluation_hook() const -> bool {
         return static_cast<bool>(pre_evaluation_hook_);
     }
 
-    EvaluationAction call_pre_evaluation_hook(const EvaluationContext& ctx) const {
+    [[nodiscard]] auto call_pre_evaluation_hook(const EvaluationContext& ctx) const -> EvaluationAction {
         if (pre_evaluation_hook_) {
             return pre_evaluation_hook_(ctx);
         }
@@ -148,17 +152,17 @@ inline const nlohmann::json ExecutionContext::null_input_ = nlohmann::json(nullp
 // -----------------------------------------------------------------------------
 // Public API (declarations) – implemented in src/computo.cpp
 // -----------------------------------------------------------------------------
-[[nodiscard]] nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input);
-[[nodiscard]] nlohmann::json execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs);
+[[nodiscard]] auto execute(const nlohmann::json& script, const nlohmann::json& input) -> nlohmann::json;
+[[nodiscard]] auto execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs) -> nlohmann::json;
 
 // Overloads with custom array key for unwrapping
-[[nodiscard]] nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input, const std::string& array_key);
-[[nodiscard]] nlohmann::json execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs, const std::string& array_key);
+[[nodiscard]] auto execute(const nlohmann::json& script, const nlohmann::json& input, const std::string& array_key) -> nlohmann::json;
+[[nodiscard]] auto execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs, const std::string& array_key) -> nlohmann::json;
 
 // Core evaluation function (exposed for advanced use cases like debugging)
-[[nodiscard]] nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx);
+[[nodiscard]] auto evaluate(nlohmann::json expr, ExecutionContext ctx) -> nlohmann::json;
 
 // Debugging support API
-[[nodiscard]] std::vector<std::string> get_available_operators();
+[[nodiscard]] auto get_available_operators() -> std::vector<std::string>;
 
 } // namespace computo

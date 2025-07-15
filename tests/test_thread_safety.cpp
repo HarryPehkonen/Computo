@@ -10,7 +10,7 @@ using json = nlohmann::json;
 
 class ThreadSafetyTest : public ::testing::Test {
 protected:
-    auto exec(const json& script, const json& input = json(nullptr)) {
+    static auto exec(const json& script, const json& input = json(nullptr)) {
         return computo::execute(script, input);
     }
 };
@@ -19,7 +19,7 @@ TEST_F(ThreadSafetyTest, ConcurrentSimpleExecution) {
     const int num_threads = 10;
     const int iterations = 100;
 
-    auto worker = [this](int) {
+    auto worker = [](int) {
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_int_distribution<> dis(1, 100);
@@ -34,6 +34,7 @@ TEST_F(ThreadSafetyTest, ConcurrentSimpleExecution) {
     };
 
     std::vector<std::future<void>> futures;
+    futures.reserve(num_threads);
     for (int i = 0; i < num_threads; ++i) {
         futures.push_back(std::async(std::launch::async, worker, i));
     }
@@ -47,18 +48,19 @@ TEST_F(ThreadSafetyTest, ConcurrentArrayOperations) {
     const int num_threads = 5;
     const int iterations = 50;
 
-    auto worker = [this](int) {
+    auto worker = [](int) {
         for (int i = 0; i < iterations; ++i) {
             json script = json::array({ "map",
                 json::object({ { "array", json::array({ 1, 2, 3, 4, 5 }) } }),
                 json::array({ "lambda", json::array({ "x" }), json::array({ "*", json::array({ "$", "/x" }), 2 }) }) });
             auto result = exec(script);
-            json expected = R"([2, 4, 6, 8, 10])"_json;  // Clean array output
+            json expected = R"([2, 4, 6, 8, 10])"_json; // Clean array output
             EXPECT_EQ(result, expected);
         }
     };
 
     std::vector<std::future<void>> futures;
+    futures.reserve(num_threads);
     for (int i = 0; i < num_threads; ++i) {
         futures.push_back(std::async(std::launch::async, worker, i));
     }
@@ -72,7 +74,7 @@ TEST_F(ThreadSafetyTest, ConcurrentComplexExpressions) {
     const int num_threads = 3;
     const int iterations = 20;
 
-    auto worker = [this](int) {
+    auto worker = [](int) {
         for (int i = 0; i < iterations; ++i) {
             json script = json::array({ "let",
                 json::array({ json::array({ "x", 10 }),
@@ -83,12 +85,13 @@ TEST_F(ThreadSafetyTest, ConcurrentComplexExpressions) {
                         json::object({ { "array", json::array({ 1, 2, 3 }) } }),
                         json::array({ "lambda", json::array({ "n" }), json::array({ "*", json::array({ "$", "/n" }), json::array({ "$", "/z" }) }) }) }) }) });
             auto result = exec(script);
-            json expected = R"([30, 60, 90])"_json;  // Clean array output
+            json expected = R"([30, 60, 90])"_json; // Clean array output
             EXPECT_EQ(result, expected);
         }
     };
 
     std::vector<std::future<void>> futures;
+    futures.reserve(num_threads);
     for (int i = 0; i < num_threads; ++i) {
         futures.push_back(std::async(std::launch::async, worker, i));
     }
@@ -102,7 +105,7 @@ TEST_F(ThreadSafetyTest, StressTest) {
     const int num_threads = 20;
     const int iterations = 1000;
 
-    auto worker = [this](int) {
+    auto worker = [](int) {
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_int_distribution<> dis(1, 10);
@@ -143,6 +146,7 @@ TEST_F(ThreadSafetyTest, StressTest) {
     auto start = std::chrono::high_resolution_clock::now();
 
     std::vector<std::future<void>> futures;
+    futures.reserve(num_threads);
     for (int i = 0; i < num_threads; ++i) {
         futures.push_back(std::async(std::launch::async, worker, i));
     }
@@ -155,5 +159,5 @@ TEST_F(ThreadSafetyTest, StressTest) {
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
     std::cout << "Stress test completed: " << num_threads * iterations
-              << " operations in " << duration.count() << "ms" << std::endl;
+              << " operations in " << duration.count() << "ms" << '\n';
 }

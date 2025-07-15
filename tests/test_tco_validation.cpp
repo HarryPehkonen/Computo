@@ -7,12 +7,12 @@ using json = nlohmann::json;
 
 class TCOValidationTest : public ::testing::Test {
 protected:
-    auto exec(const json& script, const json& input = json(nullptr)) {
+    static auto exec(const json& script, const json& input = json(nullptr)) {
         return computo::execute(script, input);
     }
 
     // Helper to create large arrays for testing
-    json create_large_array(int size, int start = 0) {
+    static auto create_large_array(int size, int start = 0) -> json {
         json arr = json::array();
         for (int i = start; i < start + size; ++i) {
             arr.push_back(i);
@@ -22,7 +22,7 @@ protected:
 
     // Helper to measure execution time
     template <typename Func>
-    auto measure_time(Func func) {
+    auto measure_time(const Func& func) {
         auto start = std::chrono::high_resolution_clock::now();
         auto result = func();
         auto end = std::chrono::high_resolution_clock::now();
@@ -50,7 +50,7 @@ TEST_F(TCOValidationTest, DeepNestedLetExpressions) {
     // This should work with TCO but might fail without it
     auto [result, exec_time] = measure_time([&]() { return exec(script); });
 
-    std::cout << "Deep nested let (50 levels) took: " << exec_time << " μs" << std::endl;
+    std::cout << "Deep nested let (50 levels) took: " << exec_time << " μs" << '\n';
     EXPECT_EQ(result, 42);
     EXPECT_LT(exec_time, 1000000); // Should complete in under 1 second
 }
@@ -72,7 +72,7 @@ TEST_F(TCOValidationTest, TailRecursiveCountdown) {
 
     auto [result, exec_time] = measure_time([&]() { return exec(script); });
 
-    std::cout << "Countdown (20 levels) took: " << exec_time << " μs" << std::endl;
+    std::cout << "Countdown (20 levels) took: " << exec_time << " μs" << '\n';
     EXPECT_EQ(result, 0);
     EXPECT_LT(exec_time, 100000); // Should be fast
 }
@@ -93,8 +93,8 @@ TEST_F(TCOValidationTest, DeepListProcessing) {
 
     auto [result, exec_time] = measure_time([&]() { return exec(script); });
 
-    std::cout << "Deep list processing (1000 elements, 3 nested maps) took: " << exec_time << " μs" << std::endl;
-    EXPECT_TRUE(result.is_array());  // Clean array output
+    std::cout << "Deep list processing (1000 elements, 3 nested maps) took: " << exec_time << " μs" << '\n';
+    EXPECT_TRUE(result.is_array()); // Clean array output
     EXPECT_EQ(result.size(), 1000);
 
     // Check first few elements: ((0+1)*2)-1 = 1, ((1+1)*2)-1 = 3, etc.
@@ -123,7 +123,7 @@ TEST_F(TCOValidationTest, FibonacciStyleRecursion) {
 
     auto [result, exec_time] = measure_time([&]() { return exec(script); });
 
-    std::cout << "Fibonacci-style recursion (30 levels) took: " << exec_time << " μs" << std::endl;
+    std::cout << "Fibonacci-style recursion (30 levels) took: " << exec_time << " μs" << '\n';
     EXPECT_EQ(result, 2); // 1 + 1 = 2
     EXPECT_LT(exec_time, 500000); // Should complete in under 0.5 seconds
 }
@@ -145,7 +145,7 @@ TEST_F(TCOValidationTest, DeepConditionalNesting) {
 
     auto [result, exec_time] = measure_time([&]() { return exec(script); });
 
-    std::cout << "Deep conditional nesting (200 levels) took: " << exec_time << " μs" << std::endl;
+    std::cout << "Deep conditional nesting (200 levels) took: " << exec_time << " μs" << '\n';
     EXPECT_EQ(result, 0);
     EXPECT_LT(exec_time, 200000); // Should be fast since it's just following true branch
 }
@@ -162,7 +162,7 @@ TEST_F(TCOValidationTest, DeepVariableScoping) {
         // Create multiple variables at each level
         for (int var = 0; var < 10; ++var) {
             std::string var_name = "var_" + std::to_string(level) + "_" + std::to_string(var);
-            bindings.push_back(json::array({ var_name, level * 10 + var }));
+            bindings.push_back(json::array({ var_name, (level * 10) + var }));
         }
 
         // Add the final variable at the last level
@@ -175,7 +175,7 @@ TEST_F(TCOValidationTest, DeepVariableScoping) {
 
     auto [result, exec_time] = measure_time([&]() { return exec(script); });
 
-    std::cout << "Deep variable scoping (50 levels, 500 variables) took: " << exec_time << " μs" << std::endl;
+    std::cout << "Deep variable scoping (50 levels, 500 variables) took: " << exec_time << " μs" << '\n';
     EXPECT_EQ(result, 42);
     EXPECT_LT(exec_time, 1000000); // Should complete in under 1 second
 }
@@ -199,7 +199,7 @@ TEST_F(TCOValidationTest, MixedTailAndNonTailOperations) {
 
     auto [result, exec_time] = measure_time([&]() { return exec(script); });
 
-    std::cout << "Mixed tail/non-tail operations took: " << exec_time << " μs" << std::endl;
+    std::cout << "Mixed tail/non-tail operations took: " << exec_time << " μs" << '\n';
     EXPECT_EQ(result, 100); // (20 + 30) * 2 = 100
     EXPECT_LT(exec_time, 100000); // Should be fast
 }
@@ -224,10 +224,10 @@ TEST_F(TCOValidationTest, PerformanceBaseline) {
          } }
     };
 
-    std::cout << "\n=== Performance Baseline ===" << std::endl;
+    std::cout << "\n=== Performance Baseline ===" << '\n';
     for (const auto& [name, test] : tests) {
         auto [result, exec_time] = measure_time(test);
-        std::cout << name << ": " << exec_time << " μs" << std::endl;
+        std::cout << name << ": " << exec_time << " μs" << '\n';
         EXPECT_LT(exec_time, 10000); // Should be very fast
     }
 }

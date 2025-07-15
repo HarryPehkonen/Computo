@@ -6,39 +6,44 @@ namespace computo::operators {
 using computo::evaluate;
 
 // Helper to split JSON pointer-like path into segments (no escaping support yet)
-static std::vector<std::string> split_segments(const std::string& ptr) {
+static auto split_segments(const std::string& ptr) -> std::vector<std::string> {
     std::vector<std::string> segs;
     size_t start = 0;
     while (start < ptr.size()) {
         size_t slash = ptr.find('/', start);
         std::string part = ptr.substr(start, slash == std::string::npos ? std::string::npos : slash - start);
         segs.push_back(part);
-        if (slash == std::string::npos)
+        if (slash == std::string::npos) {
             break;
+}
         start = slash + 1;
     }
     return segs;
 }
 
-nlohmann::json var_access(const nlohmann::json& args, ExecutionContext& ctx) {
-    if (args.size() == 0) {
+auto var_access(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+    if (args.empty()) {
         // Return entire variable scope as object
         return nlohmann::json(ctx.variables);
     }
-    if (args.size() > 2)
+    if (args.size() > 2) {
         throw InvalidArgumentException("$ requires 0, 1, or 2 arguments");
+}
 
     auto path_expr = evaluate(args[0], ctx);
-    if (!path_expr.is_string())
+    if (!path_expr.is_string()) {
         throw InvalidArgumentException("$ requires string JSON pointer argument");
+}
     std::string ptr = path_expr.get<std::string>();
-    if (ptr.empty() || ptr[0] != '/')
+    if (ptr.empty() || ptr[0] != '/') {
         throw InvalidArgumentException("$ pointer must start with '/'");
+}
 
     auto segs = split_segments(ptr.substr(1));
     // First segment is variable name in ctx.variables
-    if (segs.empty())
+    if (segs.empty()) {
         throw InvalidArgumentException("$ pointer missing variable name");
+}
     auto it = ctx.variables.find(segs[0]);
     if (it == ctx.variables.end()) {
         // If we have a default value (2nd argument), return it
@@ -61,8 +66,9 @@ nlohmann::json var_access(const nlohmann::json& args, ExecutionContext& ctx) {
                 current = current[seg];
             } else if (current.is_array()) {
                 size_t idx = std::stoul(seg);
-                if (idx >= current.size())
+                if (idx >= current.size()) {
                     throw InvalidArgumentException("Array index out of bounds");
+}
                 current = current[idx];
             } else {
                 throw InvalidArgumentException("Cannot traverse non-container");
@@ -78,11 +84,13 @@ nlohmann::json var_access(const nlohmann::json& args, ExecutionContext& ctx) {
     return current;
 }
 
-nlohmann::json let_binding(const nlohmann::json& args, ExecutionContext& ctx) {
-    if (args.size() != 2)
+auto let_binding(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+    if (args.size() != 2) {
         throw InvalidArgumentException("let requires exactly 2 arguments");
-    if (!args[0].is_array())
+}
+    if (!args[0].is_array()) {
         throw InvalidArgumentException("let bindings must be array");
+}
 
     std::map<std::string, nlohmann::json> new_vars;
     for (const auto& binding : args[0]) {
@@ -99,9 +107,10 @@ nlohmann::json let_binding(const nlohmann::json& args, ExecutionContext& ctx) {
     return evaluate(args[1], ctx.with_variables(new_vars));
 }
 
-nlohmann::json obj_construct(const nlohmann::json& args, ExecutionContext& ctx) {
-    if (args.size() < 1)
+auto obj_construct(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+    if (args.empty()) {
         throw InvalidArgumentException("obj requires at least 1 argument");
+}
 
     nlohmann::json result = nlohmann::json::object();
 
@@ -126,7 +135,7 @@ nlohmann::json obj_construct(const nlohmann::json& args, ExecutionContext& ctx) 
     return result;
 }
 
-nlohmann::json if_operator(const nlohmann::json& args, ExecutionContext& ctx) {
+auto if_operator(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
     if (args.size() != 3) {
         throw InvalidArgumentException("if requires exactly 3 arguments: [condition, then_expr, else_expr]");
     }
@@ -134,13 +143,12 @@ nlohmann::json if_operator(const nlohmann::json& args, ExecutionContext& ctx) {
     auto condition = evaluate(args[0], ctx);
     if (is_truthy(condition)) {
         return evaluate(args[1], ctx);
-    } else {
-        return evaluate(args[2], ctx);
-    }
+    }         return evaluate(args[2], ctx);
+   
 }
 
 // Object operations
-nlohmann::json keys_op(const nlohmann::json& args, ExecutionContext& ctx) {
+auto keys_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
     if (args.size() != 1) {
         throw InvalidArgumentException("keys requires exactly 1 argument");
     }
@@ -158,7 +166,7 @@ nlohmann::json keys_op(const nlohmann::json& args, ExecutionContext& ctx) {
     return nlohmann::json::object({ { "array", result } });
 }
 
-nlohmann::json values_op(const nlohmann::json& args, ExecutionContext& ctx) {
+auto values_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
     if (args.size() != 1) {
         throw InvalidArgumentException("values requires exactly 1 argument");
     }
@@ -176,7 +184,7 @@ nlohmann::json values_op(const nlohmann::json& args, ExecutionContext& ctx) {
     return nlohmann::json::object({ { "array", result } });
 }
 
-nlohmann::json objFromPairs_op(const nlohmann::json& args, ExecutionContext& ctx) {
+auto objFromPairs_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
     if (args.size() != 1) {
         throw InvalidArgumentException("objFromPairs requires exactly 1 argument");
     }
@@ -210,7 +218,7 @@ nlohmann::json objFromPairs_op(const nlohmann::json& args, ExecutionContext& ctx
     return result;
 }
 
-nlohmann::json pick_op(const nlohmann::json& args, ExecutionContext& ctx) {
+auto pick_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
     if (args.size() != 2) {
         throw InvalidArgumentException("pick requires exactly 2 arguments: [object, keys_array]");
     }
@@ -245,7 +253,7 @@ nlohmann::json pick_op(const nlohmann::json& args, ExecutionContext& ctx) {
     return result;
 }
 
-nlohmann::json omit_op(const nlohmann::json& args, ExecutionContext& ctx) {
+auto omit_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
     if (args.size() != 2) {
         throw InvalidArgumentException("omit requires exactly 2 arguments: [object, keys_array]");
     }

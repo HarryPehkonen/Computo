@@ -3,72 +3,72 @@
 
 namespace computo::operators {
 // Arithmetic
-nlohmann::json addition(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json subtraction(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json multiplication(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json division(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json modulo(const nlohmann::json& args, ExecutionContext& ctx);
+auto addition(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto subtraction(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto multiplication(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto division(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto modulo(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
 
 // Comparison
-nlohmann::json greater_than(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json less_than(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json greater_equal(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json less_equal(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json equal(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json not_equal(const nlohmann::json& args, ExecutionContext& ctx);
+auto greater_than(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto less_than(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto greater_equal(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto less_equal(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto equal(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto not_equal(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
 
 // Logical
-nlohmann::json logical_and(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json logical_or(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json logical_not(const nlohmann::json& args, ExecutionContext& ctx);
+auto logical_and(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto logical_or(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto logical_not(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
 
 // Data access / construction / control (stubs for now)
-nlohmann::json var_access(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json let_binding(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json obj_construct(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json if_operator(const nlohmann::json& args, ExecutionContext& ctx);
+auto var_access(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto let_binding(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto obj_construct(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto if_operator(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
 
 // Array operations
-nlohmann::json map_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json filter_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json reduce_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json count_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json find_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json some_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json every_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json zip_op(const nlohmann::json& args, ExecutionContext& ctx);
+auto map_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto filter_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto reduce_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto count_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto find_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto some_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto every_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto zip_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
 
 // Functional
-nlohmann::json car_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json cdr_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json cons_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json append_op(const nlohmann::json& args, ExecutionContext& ctx);
+auto car_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto cdr_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto cons_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto append_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
 
 // Functional programming
-nlohmann::json lambda_operator(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json call_operator(const nlohmann::json& args, ExecutionContext& ctx);
+auto lambda_operator(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto call_operator(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
 
 // Utilities
-nlohmann::json str_concat(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json merge_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json approx_op(const nlohmann::json& args, ExecutionContext& ctx);
+auto str_concat(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto merge_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto approx_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
 
 // Object operations
-nlohmann::json keys_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json values_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json objFromPairs_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json pick_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json omit_op(const nlohmann::json& args, ExecutionContext& ctx);
+auto keys_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto values_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto objFromPairs_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto pick_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto omit_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
 
 // String operations
-nlohmann::json split_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json join_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json trim_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json upper_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json lower_op(const nlohmann::json& args, ExecutionContext& ctx);
+auto split_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto join_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto trim_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto upper_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto lower_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
 
 // Array operations
-nlohmann::json sort_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json reverse_op(const nlohmann::json& args, ExecutionContext& ctx);
-nlohmann::json unique_op(const nlohmann::json& args, ExecutionContext& ctx);
+auto sort_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto reverse_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
+auto unique_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json;
 }

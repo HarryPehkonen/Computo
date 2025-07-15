@@ -20,7 +20,7 @@ protected:
         std::filesystem::remove_all(temp_dir_);
     }
 
-    std::string create_temp_file(const std::string& content, const std::string& suffix = ".json") {
+    auto create_temp_file(const std::string& content, const std::string& suffix = ".json") -> std::string {
         static int file_counter = 0;
         std::string filename = temp_dir_ + "/test" + std::to_string(file_counter++) + suffix;
         std::ofstream file(filename);
@@ -29,7 +29,7 @@ protected:
         return filename;
     }
 
-    std::string run_repl(const std::string& script_content, const std::vector<std::string>& input_contents = {}) {
+    auto run_repl(const std::string& script_content, const std::vector<std::string>& input_contents = {}) -> std::string {
         std::string cmd = COMPUTO_REPL_PATH;
 
         // save script to a temp file
@@ -45,8 +45,9 @@ protected:
         cmd += " < " + script_file;
 
         FILE* pipe = popen(cmd.c_str(), "r");
-        if (!pipe)
+        if (pipe == nullptr) {
             return "";
+        }
 
         std::string result;
         char buffer[128];
@@ -65,7 +66,7 @@ TEST_F(REPLTest, Help) {
 
 TEST_F(REPLTest, SimpleScript) {
     std::string output = run_repl("[\"+\", 2, 3]");
-    EXPECT_NE(output.find("5"), std::string::npos);
+    EXPECT_NE(output.find('5'), std::string::npos);
 }
 
 // script with input

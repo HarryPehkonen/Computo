@@ -9,7 +9,7 @@ namespace computo::operators {
 using computo::evaluate;
 
 // String operations
-nlohmann::json split_op(const nlohmann::json& args, ExecutionContext& ctx) {
+auto split_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
     if (args.size() != 2) {
         throw InvalidArgumentException("split requires exactly 2 arguments: [string, delimiter]");
     }
@@ -51,7 +51,7 @@ nlohmann::json split_op(const nlohmann::json& args, ExecutionContext& ctx) {
     return nlohmann::json::object({ { "array", result } });
 }
 
-nlohmann::json join_op(const nlohmann::json& args, ExecutionContext& ctx) {
+auto join_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
     if (args.size() != 2) {
         throw InvalidArgumentException("join requires exactly 2 arguments: [array, separator]");
     }
@@ -99,7 +99,7 @@ nlohmann::json join_op(const nlohmann::json& args, ExecutionContext& ctx) {
     return nlohmann::json(result);
 }
 
-nlohmann::json trim_op(const nlohmann::json& args, ExecutionContext& ctx) {
+auto trim_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
     if (args.size() != 1) {
         throw InvalidArgumentException("trim requires exactly 1 argument");
     }
@@ -121,7 +121,7 @@ nlohmann::json trim_op(const nlohmann::json& args, ExecutionContext& ctx) {
     return nlohmann::json(str.substr(start, end - start + 1));
 }
 
-nlohmann::json upper_op(const nlohmann::json& args, ExecutionContext& ctx) {
+auto upper_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
     if (args.size() != 1) {
         throw InvalidArgumentException("upper requires exactly 1 argument");
     }
@@ -136,7 +136,7 @@ nlohmann::json upper_op(const nlohmann::json& args, ExecutionContext& ctx) {
     return nlohmann::json(str);
 }
 
-nlohmann::json lower_op(const nlohmann::json& args, ExecutionContext& ctx) {
+auto lower_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
     if (args.size() != 1) {
         throw InvalidArgumentException("lower requires exactly 1 argument");
     }
@@ -178,7 +178,7 @@ struct SortConfig {
 };
 
 // Parse a single field descriptor from string "/field" or array ["/field", "desc"]
-FieldDescriptor parse_field_descriptor(const nlohmann::json& field_spec) {
+auto parse_field_descriptor(const nlohmann::json& field_spec) -> FieldDescriptor {
     FieldDescriptor desc;
 
     if (field_spec.is_string()) {
@@ -186,7 +186,7 @@ FieldDescriptor parse_field_descriptor(const nlohmann::json& field_spec) {
         desc.pointer = field_spec.get<std::string>();
         desc.ascending = true;
     } else if (field_spec.is_array()) {
-        if (field_spec.size() == 0) {
+        if (field_spec.empty()) {
             throw InvalidArgumentException("Field descriptor array cannot be empty");
         }
 
@@ -212,7 +212,7 @@ FieldDescriptor parse_field_descriptor(const nlohmann::json& field_spec) {
 }
 
 // Parse sort arguments and determine whether simple array or object array sorting
-SortConfig parse_sort_arguments(const nlohmann::json& args) {
+auto parse_sort_arguments(const nlohmann::json& args) -> SortConfig {
     SortConfig config;
 
     if (args.size() == 1) {
@@ -255,21 +255,27 @@ SortConfig parse_sort_arguments(const nlohmann::json& args) {
 
 // Type-aware comparison (-1: a < b, 0: a == b, 1: a > b)
 // Ensures consistent ordering for mixed-type arrays
-int type_aware_compare(const nlohmann::json& a, const nlohmann::json& b) {
+auto type_aware_compare(const nlohmann::json& a, const nlohmann::json& b) -> int {
     // Type ordering: null < numbers < strings < booleans < arrays < objects
     auto get_type_order = [](const nlohmann::json& val) {
-        if (val.is_null())
+        if (val.is_null()) {
             return 0;
-        if (val.is_number())
+}
+        if (val.is_number()) {
             return 1;
-        if (val.is_string())
+}
+        if (val.is_string()) {
             return 2;
-        if (val.is_boolean())
+}
+        if (val.is_boolean()) {
             return 3;
-        if (val.is_array())
+}
+        if (val.is_array()) {
             return 4;
-        if (val.is_object())
+}
+        if (val.is_object()) {
             return 5;
+}
         return 6;
     };
 
@@ -281,16 +287,20 @@ int type_aware_compare(const nlohmann::json& a, const nlohmann::json& b) {
     }
 
     // Same type, compare values
-    if (a.is_null())
+    if (a.is_null()) {
         return 0;
-    if (a.is_number())
+}
+    if (a.is_number()) {
         return (a.get<double>() < b.get<double>()) ? -1 : (a.get<double>() > b.get<double>()) ? 1
                                                                                               : 0;
-    if (a.is_string())
+}
+    if (a.is_string()) {
         return a.get<std::string>().compare(b.get<std::string>());
-    if (a.is_boolean())
-        return (a.get<bool>() < b.get<bool>()) ? -1 : (a.get<bool>() > b.get<bool>()) ? 1
+}
+    if (a.is_boolean()) {
+        return (static_cast<int>(a.get<bool>()) < static_cast<int>(b.get<bool>())) ? -1 : (static_cast<int>(a.get<bool>()) > static_cast<int>(b.get<bool>())) ? 1
                                                                                       : 0;
+}
 
     // For arrays and objects, use JSON string representation
     std::string a_str = a.dump();
@@ -299,7 +309,7 @@ int type_aware_compare(const nlohmann::json& a, const nlohmann::json& b) {
 }
 
 // Extract field value using JSON Pointer, returns null if field not found
-nlohmann::json extract_field_value(const nlohmann::json& obj, const std::string& pointer) {
+auto extract_field_value(const nlohmann::json& obj, const std::string& pointer) -> nlohmann::json {
     if (pointer.empty()) {
         // Empty pointer means the value itself
         return obj;
@@ -309,13 +319,13 @@ nlohmann::json extract_field_value(const nlohmann::json& obj, const std::string&
         return obj.at(nlohmann::json::json_pointer(pointer));
     } catch (const std::exception&) {
         // Field not found, return null
-        return nlohmann::json(nullptr);
+        return {nullptr};
     }
 }
 
 // Create multi-field comparator that sorts by each field in sequence
-std::function<bool(const nlohmann::json&, const nlohmann::json&)>
-create_multi_field_comparator(const std::vector<FieldDescriptor>& fields) {
+auto
+create_multi_field_comparator(const std::vector<FieldDescriptor>& fields) -> std::function<bool(const nlohmann::json&, const nlohmann::json&)> {
     return [fields](const nlohmann::json& a, const nlohmann::json& b) -> bool {
         for (const auto& field : fields) {
             auto val_a = extract_field_value(a, field.pointer);
@@ -332,8 +342,8 @@ create_multi_field_comparator(const std::vector<FieldDescriptor>& fields) {
 }
 
 // Main sort implementation - orchestrates argument parsing and sorting
-nlohmann::json sort_op(const nlohmann::json& args, ExecutionContext& ctx) {
-    if (args.size() < 1) {
+auto sort_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+    if (args.empty()) {
         throw InvalidArgumentException("sort requires at least 1 argument");
     }
 
@@ -369,7 +379,7 @@ nlohmann::json sort_op(const nlohmann::json& args, ExecutionContext& ctx) {
     return nlohmann::json::object({ { "array", result } });
 }
 
-nlohmann::json reverse_op(const nlohmann::json& args, ExecutionContext& ctx) {
+auto reverse_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
     if (args.size() != 1) {
         throw InvalidArgumentException("reverse requires exactly 1 argument");
     }
@@ -394,11 +404,11 @@ nlohmann::json reverse_op(const nlohmann::json& args, ExecutionContext& ctx) {
 // Unique configuration for argument parsing
 struct UniqueConfig {
     std::string mode = "firsts"; // "firsts", "lasts", "multiples", "singles"
-    std::string field_pointer = ""; // JSON Pointer for object field uniqueness
+    std::string field_pointer; // JSON Pointer for object field uniqueness
 };
 
 // Parse unique arguments to determine mode and optional field
-UniqueConfig parse_unique_arguments(const nlohmann::json& args) {
+auto parse_unique_arguments(const nlohmann::json& args) -> UniqueConfig {
     UniqueConfig config;
 
     if (args.size() == 1) {
@@ -431,19 +441,18 @@ UniqueConfig parse_unique_arguments(const nlohmann::json& args) {
 }
 
 // Extract uniqueness key from array element using optional field pointer
-nlohmann::json extract_unique_key(const nlohmann::json& element, const std::string& field_pointer) {
+auto extract_unique_key(const nlohmann::json& element, const std::string& field_pointer) -> nlohmann::json {
     if (field_pointer.empty()) {
         // Simple value uniqueness
         return element;
-    } else {
-        // Field-based uniqueness (reuse extraction logic from sort)
+    }         // Field-based uniqueness (reuse extraction logic from sort)
         return extract_field_value(element, field_pointer);
-    }
+   
 }
 
 // Sliding window unique algorithm using two booleans
-nlohmann::json unique_op(const nlohmann::json& args, ExecutionContext& ctx) {
-    if (args.size() < 1 || args.size() > 3) {
+auto unique_op(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+    if (args.empty() || args.size() > 3) {
         throw InvalidArgumentException("unique requires 1-3 arguments");
     }
 
@@ -462,7 +471,7 @@ nlohmann::json unique_op(const nlohmann::json& args, ExecutionContext& ctx) {
 
     nlohmann::json result = nlohmann::json::array();
 
-    if (array.size() == 0) {
+    if (array.empty()) {
         return nlohmann::json::object({ { "array", result } });
     }
 
