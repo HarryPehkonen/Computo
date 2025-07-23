@@ -564,4 +564,53 @@ make lint        # Run static analysis
 make quality     # Run all quality checks
 ```
 
+### Unicode Support
+
+Computo provides comprehensive Unicode support for all string operations through the [uni-algo library](https://github.com/uni-algo/uni-algo). String operations correctly handle:
+
+- **UTF-8 character splitting**: `["split", "café", ""]` properly splits into Unicode characters `["c", "a", "f", "é"]`
+- **Unicode case conversion**: `["upper", "straße"]` converts to `"STRASSE"` (ß → SS), `["lower", "CAFÉ"]` converts to `"café"`
+- **Unicode whitespace trimming**: `["trim", "   café   "]` handles Unicode whitespace characters beyond ASCII
+- **International text**: Full support for CJK characters, emoji, accented text, and mixed scripts
+- **Proper encoding**: All operations preserve UTF-8 encoding integrity
+
+### Dependency Installation
+
+The project uses [uni-algo](https://github.com/uni-algo/uni-algo) for Unicode support. You can install it using different methods:
+
+#### Option 1: Conan (Recommended)
+```bash
+# Install dependencies with Conan
+conan install . --output-folder=build --build=missing
+
+# Build with Conan toolchain
+cmake --preset conan-release
+cmake --build build
+```
+
+#### Option 2: Manual Installation
+```bash
+# Download and build uni-algo from source
+git clone https://github.com/uni-algo/uni-algo.git
+cd uni-algo
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+sudo cmake --install build
+
+# Then build Computo normally
+cmake -B build
+cmake --build build
+```
+
+#### Option 3: System Package Manager
+```bash
+# Some distributions may have uni-algo available
+# Check your package manager (results may vary):
+sudo apt search uni-algo        # Ubuntu/Debian
+sudo pacman -Ss uni-algo       # Arch Linux
+brew search uni-algo           # macOS Homebrew
+```
+
+**Note:** Conan is the recommended method as it ensures consistent dependency versions across platforms and is actively maintained for uni-algo.
+
 **Note:** The build system is optimized for fast development. Code formatting and linting are separate targets to avoid slow compilation times. See `BUILD_OPTIMIZATION.md` for details.

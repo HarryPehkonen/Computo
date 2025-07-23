@@ -94,7 +94,7 @@ auto suggest_similar_names(const std::string& target,
  * @return The processor's populated result
  */
 auto process_array_with_lambda(const nlohmann::json& args, ExecutionContext& ctx, const std::string& op_name,
-                               std::function<bool(const nlohmann::json& item, const nlohmann::json& lambda_result, nlohmann::json& final_result)> processor) -> nlohmann::json;
+                               const std::function<bool(const nlohmann::json& item, const nlohmann::json& lambda_result, nlohmann::json& final_result)>& processor) -> nlohmann::json;
 
 /**
  * Evaluate a JSON Pointer path against a JSON object

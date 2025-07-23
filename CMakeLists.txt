@@ -63,6 +63,7 @@ endif()
 
 # --- Dependencies ---
 find_package(nlohmann_json REQUIRED)
+find_package(uni-algo REQUIRED)
 find_package(GTest REQUIRED)
 find_library(READLINE_LIB readline)
 if(READLINE_LIB)
@@ -96,7 +97,7 @@ set(COMPUTO_HEADERS
 # Core Library (libcomputo) - compiled once for all targets
 add_library(computo STATIC ${COMPUTO_LIB_SOURCES} ${COMPUTO_HEADERS})
 target_include_directories(computo PUBLIC include PRIVATE src)
-target_link_libraries(computo PUBLIC nlohmann_json::nlohmann_json)
+target_link_libraries(computo PUBLIC nlohmann_json::nlohmann_json uni-algo::uni-algo)
 set_target_properties(computo PROPERTIES OUTPUT_NAME "computo")
 
 # Apply memory debugging flags if enabled
@@ -126,7 +127,7 @@ endif()
 enable_testing()
 
 # Core Library Tests (test_computo)
-add_executable(test_computo tests/test_arithmetic.cpp tests/test_comparison.cpp tests/test_data_access.cpp tests/test_shared.cpp tests/test_tco.cpp tests/test_control_flow.cpp tests/test_logical.cpp tests/test_object_ops.cpp tests/test_array_ops.cpp tests/test_functional_ops.cpp tests/test_string_utility_ops.cpp tests/test_cli_integration.cpp tests/test_debug_integration.cpp tests/test_memory_safety.cpp tests/test_rule3_arrays.cpp)
+add_executable(test_computo tests/test_arithmetic.cpp tests/test_comparison.cpp tests/test_data_access.cpp tests/test_shared.cpp tests/test_tco.cpp tests/test_control_flow.cpp tests/test_logical.cpp tests/test_object_ops.cpp tests/test_array_ops.cpp tests/test_functional_ops.cpp tests/test_string_utility_ops.cpp tests/test_unicode_string_ops.cpp tests/test_cli_integration.cpp tests/test_debug_integration.cpp tests/test_memory_safety.cpp tests/test_rule3_arrays.cpp)
 target_link_libraries(test_computo PRIVATE computo GTest::gtest_main)
 target_include_directories(test_computo PRIVATE include tests src)
 target_compile_definitions(test_computo PRIVATE COMPUTO_BINARY_PATH="$<TARGET_FILE:computo_unified>")
