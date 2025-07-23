@@ -776,9 +776,9 @@ TEST_F(PerformanceBenchmarkTest, RealWorldScenariosBenchmark) {
         "RealWorld_Transform", "json_reshape",
         [this, sales_data]() {
             execute_script(R"([
-            "obj_from_pairs",
+            "objFromPairs",
             ["map", ["$input"], [["item"], 
-                [["$", "/item/id"], ["$", "/item/amount"]]
+                [["strConcat", "id_", ["$", "/item/id"]], ["$", "/item/amount"]]
             ]]
         ])",
                            sales_data);
