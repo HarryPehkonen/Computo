@@ -1,97 +1,104 @@
-#include "declarations.hpp"
-#include "shared.hpp"
+#include "operators/shared.hpp"
 
 namespace computo::operators {
-using computo::evaluate;
 
-static void ensure_numeric(const nlohmann::json& v, const std::string& name) {
-    if (!v.is_number()) {
-        throw InvalidArgumentException(name + " requires numeric arguments");
-}
-}
-
-auto greater_than(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+auto greater_than(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() < 2) {
-        throw InvalidArgumentException("> requires at least 2 arguments");
-}
-    for (size_t i = 0; i + 1 < args.size(); ++i) {
-        auto a = evaluate(args[i], ctx);
-        auto b = evaluate(args[i + 1], ctx);
-        ensure_numeric(a, ">");
-        ensure_numeric(b, ">");
-        if (!(a.get<double>() > b.get<double>())) {
-            return false;
-}
+        throw InvalidArgumentException("'>' requires at least 2 arguments", ctx.get_path_string());
     }
-    return true;
-}
 
-auto less_than(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
-    if (args.size() < 2) {
-        throw InvalidArgumentException("< requires at least 2 arguments");
-}
-    for (size_t i = 0; i + 1 < args.size(); ++i) {
-        auto a = evaluate(args[i], ctx);
-        auto b = evaluate(args[i + 1], ctx);
-        ensure_numeric(a, "<");
-        ensure_numeric(b, "<");
-        if (!(a.get<double>() < b.get<double>())) {
-            return false;
-}
+    for (size_t i = 0; i < args.size() - 1; ++i) {
+        auto lhs = evaluate(args[i], ctx.with_path("arg" + std::to_string(i)));
+        auto rhs = evaluate(args[i + 1], ctx.with_path("arg" + std::to_string(i + 1)));
+        if (!lhs.is_number() || !rhs.is_number()) {
+            throw InvalidArgumentException("'>' requires numeric arguments", ctx.get_path_string());
+        }
+        if (!(lhs.get<double>() > rhs.get<double>())) {
+            return EvaluationResult(false);
+        }
     }
-    return true;
+    return EvaluationResult(true);
 }
 
-auto greater_equal(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+auto less_than(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() < 2) {
-        throw InvalidArgumentException(">= requires at least 2 arguments");
-}
-    for (size_t i = 0; i + 1 < args.size(); ++i) {
-        auto a = evaluate(args[i], ctx);
-        auto b = evaluate(args[i + 1], ctx);
-        ensure_numeric(a, ">=");
-        ensure_numeric(b, ">=");
-        if (!(a.get<double>() >= b.get<double>())) {
-            return false;
-}
+        throw InvalidArgumentException("'<' requires at least 2 arguments", ctx.get_path_string());
     }
-    return true;
-}
 
-auto less_equal(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
-    if (args.size() < 2) {
-        throw InvalidArgumentException("<= requires at least 2 arguments");
-}
-    for (size_t i = 0; i + 1 < args.size(); ++i) {
-        auto a = evaluate(args[i], ctx);
-        auto b = evaluate(args[i + 1], ctx);
-        ensure_numeric(a, "<=");
-        ensure_numeric(b, "<=");
-        if (!(a.get<double>() <= b.get<double>())) {
-            return false;
-}
+    for (size_t i = 0; i < args.size() - 1; ++i) {
+        auto lhs = evaluate(args[i], ctx.with_path("arg" + std::to_string(i)));
+        auto rhs = evaluate(args[i + 1], ctx.with_path("arg" + std::to_string(i + 1)));
+        if (!lhs.is_number() || !rhs.is_number()) {
+            throw InvalidArgumentException("'<' requires numeric arguments", ctx.get_path_string());
+        }
+        if (!(lhs.get<double>() < rhs.get<double>())) {
+            return EvaluationResult(false);
+        }
     }
-    return true;
+    return EvaluationResult(true);
 }
 
-auto equal(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+auto greater_equal(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() < 2) {
-        throw InvalidArgumentException("== requires at least 2 arguments");
+        throw InvalidArgumentException("'>=' requires at least 2 arguments", ctx.get_path_string());
+    }
+
+    for (size_t i = 0; i < args.size() - 1; ++i) {
+        auto lhs = evaluate(args[i], ctx.with_path("arg" + std::to_string(i)));
+        auto rhs = evaluate(args[i + 1], ctx.with_path("arg" + std::to_string(i + 1)));
+        if (!lhs.is_number() || !rhs.is_number()) {
+            throw InvalidArgumentException("'>=' requires numeric arguments",
+                                           ctx.get_path_string());
+        }
+        if (!(lhs.get<double>() >= rhs.get<double>())) {
+            return EvaluationResult(false);
+        }
+    }
+    return EvaluationResult(true);
 }
-    auto first = evaluate(args[0], ctx);
+
+auto less_equal(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+    if (args.size() < 2) {
+        throw InvalidArgumentException("'<=' requires at least 2 arguments", ctx.get_path_string());
+    }
+
+    for (size_t i = 0; i < args.size() - 1; ++i) {
+        auto lhs = evaluate(args[i], ctx.with_path("arg" + std::to_string(i)));
+        auto rhs = evaluate(args[i + 1], ctx.with_path("arg" + std::to_string(i + 1)));
+        if (!lhs.is_number() || !rhs.is_number()) {
+            throw InvalidArgumentException("'<=' requires numeric arguments",
+                                           ctx.get_path_string());
+        }
+        if (!(lhs.get<double>() <= rhs.get<double>())) {
+            return EvaluationResult(false);
+        }
+    }
+    return EvaluationResult(true);
+}
+
+auto equal(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+    if (args.size() < 2) {
+        throw InvalidArgumentException("'==' requires at least 2 arguments", ctx.get_path_string());
+    }
+
+    auto first = evaluate(args[0], ctx.with_path("arg0"));
     for (size_t i = 1; i < args.size(); ++i) {
-        if (first != evaluate(args[i], ctx)) {
-            return false;
-}
+        auto current = evaluate(args[i], ctx.with_path("arg" + std::to_string(i)));
+        if (first != current) {
+            return EvaluationResult(false);
+        }
     }
-    return true;
+    return EvaluationResult(true);
 }
 
-auto not_equal(const nlohmann::json& args, ExecutionContext& ctx) -> nlohmann::json {
+auto not_equal(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() != 2) {
-        throw InvalidArgumentException("!= requires exactly 2 arguments");
-}
-    return evaluate(args[0], ctx) != evaluate(args[1], ctx);
+        throw InvalidArgumentException("'!=' requires exactly 2 arguments", ctx.get_path_string());
+    }
+
+    auto lhs = evaluate(args[0], ctx.with_path("arg0"));
+    auto rhs = evaluate(args[1], ctx.with_path("arg1"));
+    return EvaluationResult(lhs != rhs);
 }
 
-}
+} // namespace computo::operators

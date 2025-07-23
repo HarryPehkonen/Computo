@@ -1,27 +1,141 @@
-#include <computo.hpp>
+#include "computo.hpp"
 #include <gtest/gtest.h>
+
 using json = nlohmann::json;
 
-class ComparisonTest : public ::testing::Test {
-protected:
-    static auto exec(const json& s) { return computo::execute(s, json(nullptr)); }
-};
-
-TEST_F(ComparisonTest, GreaterThan) {
-    EXPECT_EQ(exec(json::array({ ">", 5, 3, 1 })), true);
-    EXPECT_EQ(exec(json::array({ ">", 5, 5 })), false);
+TEST(ComparisonOperators, GreaterThanBasic) {
+    EXPECT_EQ(computo::execute(json::parse(R"([">", 5, 3])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"([">", 3, 5])"), {json(nullptr)}), false);
+    EXPECT_EQ(computo::execute(json::parse(R"([">", 5, 5])"), {json(nullptr)}), false);
+    EXPECT_EQ(computo::execute(json::parse(R"([">", 5.5, 3.3])"), {json(nullptr)}), true);
 }
 
-TEST_F(ComparisonTest, LessEqual) {
-    EXPECT_EQ(exec(json::array({ "<=", 1, 2, 2 })), true);
+TEST(ComparisonOperators, GreaterThanChaining) {
+    EXPECT_EQ(computo::execute(json::parse(R"([">", 10, 5, 3])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"([">", 10, 3, 5])"), {json(nullptr)}), false);
+    EXPECT_EQ(computo::execute(json::parse(R"([">", 10, 5, 5])"), {json(nullptr)}), false);
+    EXPECT_EQ(computo::execute(json::parse(R"([">", 10, 8, 6, 4])"), {json(nullptr)}), true);
 }
 
-TEST_F(ComparisonTest, Equal) {
-    EXPECT_EQ(exec(json::array({ "==", 3, 3, 3 })), true);
-    EXPECT_EQ(exec(json::array({ "==", 3, 4 })), false);
+TEST(ComparisonOperators, GreaterThanErrors) {
+    EXPECT_THROW(computo::execute(json::parse(R"([">"])"), {json(nullptr)}),
+                 computo::InvalidArgumentException);
+    EXPECT_THROW(computo::execute(json::parse(R"([">", 5])"), {json(nullptr)}),
+                 computo::InvalidArgumentException);
+    EXPECT_THROW(computo::execute(json::parse(R"([">", "not_a_number", 5])"), {json(nullptr)}),
+                 computo::InvalidArgumentException);
 }
 
-TEST_F(ComparisonTest, NotEqual) {
-    EXPECT_EQ(exec(json::array({ "!=", 1, 2 })), true);
-    EXPECT_EQ(exec(json::array({ "!=", 2, 2 })), false);
+TEST(ComparisonOperators, LessThanBasic) {
+    EXPECT_EQ(computo::execute(json::parse(R"(["<", 3, 5])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"(["<", 5, 3])"), {json(nullptr)}), false);
+    EXPECT_EQ(computo::execute(json::parse(R"(["<", 5, 5])"), {json(nullptr)}), false);
+    EXPECT_EQ(computo::execute(json::parse(R"(["<", 3.3, 5.5])"), {json(nullptr)}), true);
+}
+
+TEST(ComparisonOperators, LessThanChaining) {
+    EXPECT_EQ(computo::execute(json::parse(R"(["<", 3, 5, 10])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"(["<", 5, 3, 10])"), {json(nullptr)}), false);
+    EXPECT_EQ(computo::execute(json::parse(R"(["<", 3, 5, 5])"), {json(nullptr)}), false);
+    EXPECT_EQ(computo::execute(json::parse(R"(["<", 1, 3, 5, 7])"), {json(nullptr)}), true);
+}
+
+TEST(ComparisonOperators, LessThanErrors) {
+    EXPECT_THROW(computo::execute(json::parse(R"(["<"])"), {json(nullptr)}),
+                 computo::InvalidArgumentException);
+    EXPECT_THROW(computo::execute(json::parse(R"(["<", 5])"), {json(nullptr)}),
+                 computo::InvalidArgumentException);
+    EXPECT_THROW(computo::execute(json::parse(R"(["<", "not_a_number", 5])"), {json(nullptr)}),
+                 computo::InvalidArgumentException);
+}
+
+TEST(ComparisonOperators, GreaterEqualBasic) {
+    EXPECT_EQ(computo::execute(json::parse(R"([">=", 5, 3])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"([">=", 5, 5])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"([">=", 3, 5])"), {json(nullptr)}), false);
+    EXPECT_EQ(computo::execute(json::parse(R"([">=", 5.5, 3.3])"), {json(nullptr)}), true);
+}
+
+TEST(ComparisonOperators, GreaterEqualChaining) {
+    EXPECT_EQ(computo::execute(json::parse(R"([">=", 10, 5, 3])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"([">=", 10, 10, 5])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"([">=", 10, 5, 8])"), {json(nullptr)}), false);
+    EXPECT_EQ(computo::execute(json::parse(R"([">=", 10, 8, 6, 4])"), {json(nullptr)}), true);
+}
+
+TEST(ComparisonOperators, GreaterEqualErrors) {
+    EXPECT_THROW(computo::execute(json::parse(R"([">="])"), {json(nullptr)}),
+                 computo::InvalidArgumentException);
+    EXPECT_THROW(computo::execute(json::parse(R"([">=", 5])"), {json(nullptr)}),
+                 computo::InvalidArgumentException);
+    EXPECT_THROW(computo::execute(json::parse(R"([">=", "not_a_number", 5])"), {json(nullptr)}),
+                 computo::InvalidArgumentException);
+}
+
+TEST(ComparisonOperators, LessEqualBasic) {
+    EXPECT_EQ(computo::execute(json::parse(R"(["<=", 3, 5])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"(["<=", 5, 5])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"(["<=", 5, 3])"), {json(nullptr)}), false);
+    EXPECT_EQ(computo::execute(json::parse(R"(["<=", 3.3, 5.5])"), {json(nullptr)}), true);
+}
+
+TEST(ComparisonOperators, LessEqualChaining) {
+    EXPECT_EQ(computo::execute(json::parse(R"(["<=", 3, 5, 10])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"(["<=", 3, 3, 10])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"(["<=", 3, 5, 4])"), {json(nullptr)}), false);
+    EXPECT_EQ(computo::execute(json::parse(R"(["<=", 1, 3, 5, 7])"), {json(nullptr)}), true);
+}
+
+TEST(ComparisonOperators, LessEqualErrors) {
+    EXPECT_THROW(computo::execute(json::parse(R"(["<="])"), {json(nullptr)}),
+                 computo::InvalidArgumentException);
+    EXPECT_THROW(computo::execute(json::parse(R"(["<=", 5])"), {json(nullptr)}),
+                 computo::InvalidArgumentException);
+    EXPECT_THROW(computo::execute(json::parse(R"(["<=", "not_a_number", 5])"), {json(nullptr)}),
+                 computo::InvalidArgumentException);
+}
+
+TEST(ComparisonOperators, EqualBasic) {
+    EXPECT_EQ(computo::execute(json::parse(R"(["==", 5, 5])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"(["==", 5, 3])"), {json(nullptr)}), false);
+    EXPECT_EQ(computo::execute(json::parse(R"(["==", "hello", "hello"])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"(["==", "hello", "world"])"), {json(nullptr)}), false);
+    EXPECT_EQ(computo::execute(json::parse(R"(["==", true, true])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"(["==", true, false])"), {json(nullptr)}), false);
+}
+
+TEST(ComparisonOperators, EqualNary) {
+    EXPECT_EQ(computo::execute(json::parse(R"(["==", 5, 5, 5])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"(["==", 5, 5, 3])"), {json(nullptr)}), false);
+    EXPECT_EQ(
+        computo::execute(json::parse(R"(["==", "hello", "hello", "hello"])"), {json(nullptr)}),
+        true);
+    EXPECT_EQ(
+        computo::execute(json::parse(R"(["==", "hello", "hello", "world"])"), {json(nullptr)}),
+        false);
+}
+
+TEST(ComparisonOperators, EqualErrors) {
+    EXPECT_THROW(computo::execute(json::parse(R"(["=="])"), {json(nullptr)}),
+                 computo::InvalidArgumentException);
+    EXPECT_THROW(computo::execute(json::parse(R"(["==", 5])"), {json(nullptr)}),
+                 computo::InvalidArgumentException);
+}
+
+TEST(ComparisonOperators, NotEqualBasic) {
+    EXPECT_EQ(computo::execute(json::parse(R"(["!=", 5, 3])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"(["!=", 5, 5])"), {json(nullptr)}), false);
+    EXPECT_EQ(computo::execute(json::parse(R"(["!=", "hello", "world"])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"(["!=", "hello", "hello"])"), {json(nullptr)}), false);
+    EXPECT_EQ(computo::execute(json::parse(R"(["!=", true, false])"), {json(nullptr)}), true);
+    EXPECT_EQ(computo::execute(json::parse(R"(["!=", true, true])"), {json(nullptr)}), false);
+}
+
+TEST(ComparisonOperators, NotEqualErrors) {
+    EXPECT_THROW(computo::execute(json::parse(R"(["!="])"), {json(nullptr)}),
+                 computo::InvalidArgumentException);
+    EXPECT_THROW(computo::execute(json::parse(R"(["!=", 5])"), {json(nullptr)}),
+                 computo::InvalidArgumentException);
+    EXPECT_THROW(computo::execute(json::parse(R"(["!=", 5, 3, 7])"), {json(nullptr)}),
+                 computo::InvalidArgumentException);
 }

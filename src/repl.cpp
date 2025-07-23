@@ -1,699 +1,351 @@
-#include "read_json.hpp"
-#include <chrono>
-#include <climits>
+#include "repl.hpp"
 #include <computo.hpp>
-#include <computo_version.hpp>
-#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <sstream>
+#include <string>
+#include <vector>
 #include <map>
-#include <memory>
-#include <nlohmann/json.hpp>
+#include <unordered_map>
+
+#ifdef COMPUTO_USE_READLINE
 #include <readline/history.h>
 #include <readline/readline.h>
-#include <set>
-#include <string>
-#include <utility>
-#include <vector>
-
-// Forward declaration for benchmark function
-void run_performance_benchmarks();
-
-// Forward declaration for computo::evaluate (needed by DebugExecutionWrapper)
-
-#ifdef REPL
-// Forward declaration
-class DebugExecutionWrapper;
-
-thread_local computo::EvaluationContext* g_current_debug_context = nullptr;
-thread_local DebugExecutionWrapper* g_current_debug_wrapper = nullptr;
-auto debug_pre_evaluation_hook(const computo::EvaluationContext& eval_ctx) -> computo::EvaluationAction;
 #endif
 
-// Levenshtein distance algorithm for operator suggestions
-auto levenshtein_distance(const std::string& s1, const std::string& s2) -> int {
-    const size_t len1 = s1.size();
-    const size_t len2 = s2.size();
-    std::vector<std::vector<int>> dp(len1 + 1, std::vector<int>(len2 + 1));
+namespace computo {
 
-    for (size_t i = 0; i <= len1; ++i) {
-        dp[i][0] = i;
-    }
-    for (size_t j = 0; j <= len2; ++j) {
-        dp[0][j] = j;
+// --- File Utilities (used by REPL) ---
+
+auto load_json_file(const std::string& filename, bool enable_comments) -> nlohmann::json {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        throw std::runtime_error("Could not open file: " + filename);
     }
 
-    for (size_t i = 1; i <= len1; ++i) {
-        for (size_t j = 1; j <= len2; ++j) {
-            if (s1[i - 1] == s2[j - 1]) {
-                dp[i][j] = dp[i - 1][j - 1];
-            } else {
-                dp[i][j] = 1 + std::min({ dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1] });
-            }
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+    try {
+        if (enable_comments) {
+            bool allow_exceptions = true;
+            bool ignore_comments = true;
+            return nlohmann::json::parse(content, nullptr, allow_exceptions, ignore_comments);
+        } else {
+            return nlohmann::json::parse(content);
         }
+    } catch (const nlohmann::json::parse_error& e) {
+        throw std::runtime_error("JSON parse error in " + filename + ": " + e.what());
     }
-    return dp[len1][len2];
 }
 
-// Suggest closest operator name
-auto suggest_operator(const std::string& misspelled) -> std::string {
-    static auto operators = computo::get_available_operators();
-    int min_distance = INT_MAX;
-    std::string best_match;
+auto load_input_files(const std::vector<std::string>& filenames, bool enable_comments)
+    -> std::vector<nlohmann::json> {
+    std::vector<nlohmann::json> inputs;
+    inputs.reserve(filenames.size());
 
-    for (const auto& op : operators) {
-        int distance = levenshtein_distance(misspelled, op);
-        if (distance < min_distance && distance <= 2) { // Max 2 edits
-            min_distance = distance;
-            best_match = op;
-        }
+    for (const auto& filename : filenames) {
+        inputs.push_back(load_json_file(filename, enable_comments));
     }
-    return best_match;
+
+    return inputs;
 }
 
-// namespace for readline functions
-namespace ReadLine {
-inline void add_history(const char* str) { ::add_history(str); }
-inline auto readline(const char* prompt) -> char* { return ::readline(prompt); }
-inline void using_history() { ::using_history(); }
-inline void clear_history() { ::clear_history(); }
-}
+// --- REPL Command Structure ---
 
-// Debug session states
-enum class DebugState {
-    RUNNING, // Normal execution
-    PAUSED, // Hit breakpoint, awaiting user command
-    STEPPING, // Single-step mode
-    FINISHED // Script completed
+enum class ReplCommandType {
+    UNKNOWN,
+    HELP,
+    VARS,
+    DEBUG_TOGGLE,
+    TRACE_TOGGLE,
+    HISTORY,
+    CLEAR,
+    QUIT,
+    BREAK,
+    NOBREAK,
+    BREAKS,
+    RUN,
+    SET,
+    // Debug mode commands
+    STEP,
+    CONTINUE,
+    FINISH,
+    WHERE,
+    JSON_SCRIPT
 };
 
-// Execution context for debugging
-struct DebugContext {
-    std::vector<std::string> execution_path;
-    std::string current_operator;
-    nlohmann::json current_expression;
-    std::map<std::string, nlohmann::json> current_variables;
-    int depth = 0;
+struct ReplCommand {
+    ReplCommandType type;
+    std::vector<std::string> args;
+    std::string raw_input;
 };
 
-class DebugExecutionWrapper {
+class ReplCommandParser {
 private:
-    bool trace_enabled_ = false;
-    bool step_mode_ = false;
-    bool profiling_enabled_ = false;
-    DebugState debug_state_ = DebugState::RUNNING;
-
-    // Breakpoint management
-    std::set<std::string> operator_breakpoints_;
-    std::set<std::string> variable_breakpoints_;
-
-    // Captured state
-    std::map<std::string, nlohmann::json> last_variables_;
-    std::vector<std::string> execution_trace_;
-    std::map<std::string, std::chrono::nanoseconds> operator_timings_;
-    std::string current_script_filename_;
-
-    // Interactive debugging state
-    DebugContext current_debug_context_;
-    nlohmann::json current_script_;
-    std::vector<nlohmann::json> current_inputs_;
-    bool debug_session_active_ = false;
-
-    // User interaction callback (set by REPL)
-    std::function<std::string()> user_input_callback_;
-
-    static void print_debug_location() {
-        if (g_current_debug_context == nullptr) {
-            std::cout << "No active debug session\n";
-            return;
-        }
-
-        std::cout << "Location: ";
-        if (g_current_debug_context->execution_path.empty()) {
-            std::cout << "/";
-        } else {
-            for (const auto& segment : g_current_debug_context->execution_path) {
-                std::cout << "/" << segment;
-            }
-        }
-        std::cout << "\n";
-
-        std::cout << "Operator: " << g_current_debug_context->operator_name << "\n";
-        std::cout << "Expression: " << g_current_debug_context->expression.dump() << "\n";
-        std::cout << "Depth: " << g_current_debug_context->depth << "\n";
-    }
-
-    static void print_debug_variables() {
-        if (g_current_debug_context == nullptr) {
-            std::cout << "No active debug session\n";
-            return;
-        }
-
-        if (g_current_debug_context->variables.empty()) {
-            std::cout << "No variables in scope\n";
-        } else {
-            std::cout << "Variables in scope:\n";
-            for (const auto& [name, value] : g_current_debug_context->variables) {
-                std::cout << "  " << name << " = " << value.dump() << "\n";
-            }
-        }
-    }
+    static const std::unordered_map<std::string, ReplCommandType> command_map;
 
 public:
-    // Configuration methods
-    void enable_trace(bool enabled) { trace_enabled_ = enabled; }
-    void enable_step_mode(bool enabled) { step_mode_ = enabled; }
-    void enable_profiling(bool enabled) { profiling_enabled_ = enabled; }
+    static auto parse(const std::string& input) -> ReplCommand {
+        ReplCommand cmd;
+        cmd.raw_input = input;
 
-    // Breakpoint management
-    void add_operator_breakpoint(const std::string& op) {
-        operator_breakpoints_.insert(op);
-    }
-    void add_variable_breakpoint(const std::string& var) {
-        variable_breakpoints_.insert(var);
-    }
-    void remove_operator_breakpoint(const std::string& op) {
-        operator_breakpoints_.erase(op);
-    }
-    void remove_variable_breakpoint(const std::string& var) {
-        variable_breakpoints_.erase(var);
-    }
-    void clear_all_breakpoints() {
-        operator_breakpoints_.clear();
-        variable_breakpoints_.clear();
-    }
-
-    // State access
-    [[nodiscard]] auto get_debug_state() const -> DebugState { return debug_state_; }
-    void set_debug_state(DebugState state) { debug_state_ = state; }
-    [[nodiscard]] auto get_operator_breakpoints() const -> const std::set<std::string>& { return operator_breakpoints_; }
-    [[nodiscard]] auto get_variable_breakpoints() const -> const std::set<std::string>& { return variable_breakpoints_; }
-
-    // Interactive debugging
-    void set_user_input_callback(std::function<std::string()> callback) {
-        user_input_callback_ = std::move(callback);
-    }
-    [[nodiscard]] auto is_debug_session_active() const -> bool { return debug_session_active_; }
-    [[nodiscard]] auto get_debug_context() const -> const DebugContext& { return current_debug_context_; }
-
-    // Debug session control
-    void debug_step() { debug_state_ = DebugState::STEPPING; }
-    void debug_continue() { debug_state_ = DebugState::RUNNING; }
-    void debug_finish() {
-        debug_state_ = DebugState::RUNNING;
-        operator_breakpoints_.clear();
-        variable_breakpoints_.clear();
-    }
-
-    // Interactive debug method that is called by the standalone hook
-    void handle_interactive_debugging() {
-        debug_state_ = DebugState::PAUSED;
-        debug_session_active_ = true;
-
-        // Enter debug mode
-        while (debug_state_ == DebugState::PAUSED) {
-            std::cout << "(debug) ";
-            std::string user_command = user_input_callback_();
-
-            if (user_command == "step") {
-                debug_state_ = DebugState::STEPPING;
-            } else if (user_command == "continue") {
-                debug_state_ = DebugState::RUNNING;
-            } else if (user_command == "finish") {
-                debug_finish();
-            } else if (user_command == "where") {
-                print_debug_location();
-            } else if (user_command == "vars") {
-                print_debug_variables();
-            } else {
-                std::cout << "Debug commands: step, continue, finish, where, vars\n";
-            }
+        if (input.empty()) {
+            cmd.type = ReplCommandType::UNKNOWN;
+            return cmd;
         }
 
-        debug_session_active_ = false;
-    }
-
-    // Execution with debugging
-    auto execute_with_debug(const nlohmann::json& script,
-        const std::vector<nlohmann::json>& inputs) -> nlohmann::json {
-        auto start_time = std::chrono::high_resolution_clock::now();
-
-        // Store current script and inputs for debugging
-        current_script_ = script;
-        current_inputs_ = inputs;
-        debug_session_active_ = false;
-
-        // Create execution context with pre-evaluation hook
-        computo::ExecutionContext ctx(inputs);
-
-        ctx.set_pre_evaluation_hook(debug_pre_evaluation_hook);
-        g_current_debug_wrapper = this;
-
-        // Execute with debugging
-        nlohmann::json result;
-        try {
-            result = computo::evaluate(script, ctx);
-            debug_state_ = DebugState::FINISHED;
-        } catch (const std::exception& e) {
-            debug_state_ = DebugState::FINISHED;
-            throw;
+        // Check if it's a JSON script (starts with '[', '{', '"', digit, or boolean keywords)
+        char first_char = input[0];
+        if (first_char == '[' || first_char == '{' || first_char == '"' || std::isdigit(first_char)
+            || input.find("true") == 0 || input.find("false") == 0 || input.find("null") == 0) {
+            cmd.type = ReplCommandType::JSON_SCRIPT;
+            return cmd;
         }
 
-        g_current_debug_wrapper = nullptr;
-        g_current_debug_context = nullptr;
+        // Parse command and arguments
+        std::istringstream iss(input);
+        std::string command;
+        iss >> command;
 
-        auto end_time = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time);
-
-        if (profiling_enabled_) {
-            operator_timings_["total_execution"] = duration;
+        std::string arg;
+        while (iss >> arg) {
+            cmd.args.push_back(arg);
         }
 
-        debug_session_active_ = false;
-        return result;
-    }
+        // Look up command type from static map
+        auto it = command_map.find(command);
+        cmd.type = (it != command_map.end()) ? it->second : ReplCommandType::UNKNOWN;
 
-    // State access for commands
-    [[nodiscard]] auto get_last_variables() const -> const std::map<std::string, nlohmann::json>& {
-        return last_variables_;
-    }
-    [[nodiscard]] auto get_execution_trace() const -> const std::vector<std::string>& {
-        return execution_trace_;
-    }
-    [[nodiscard]] auto get_timings() const -> const std::map<std::string, std::chrono::nanoseconds>& {
-        return operator_timings_;
-    }
-
-    // Run script from file
-    auto run_script_file(const std::string& filename, const std::vector<nlohmann::json>& inputs, bool allow_comments = false) -> nlohmann::json {
-        current_script_filename_ = filename;
-        debug_state_ = DebugState::RUNNING;
-
-        nlohmann::json script;
-        try {
-            script = read_json(filename, allow_comments);
-        } catch (const std::exception& e) {
-            debug_state_ = DebugState::FINISHED;
-            throw std::runtime_error("Failed to load script: " + std::string(e.what()));
-        }
-
-        // Extract variables for debugging
-        extract_variables_from_let(script, inputs);
-
-        // Execute the script
-        return execute_with_debug(script, inputs);
-    }
-
-    // Extract and evaluate variables from let expressions
-    void extract_variables_from_let(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs) {
-        last_variables_.clear();
-        if (script.is_array() && !script.empty() && script[0].is_string()) {
-            std::string op = script[0].get<std::string>();
-            if (op == "let" && script.size() == 3 && script[1].is_array()) {
-                // Create execution context for evaluating bindings
-                computo::ExecutionContext ctx(inputs);
-
-                // Extract and evaluate variable bindings from let expression
-                for (const auto& binding : script[1]) {
-                    if (binding.is_array() && binding.size() == 2 && binding[0].is_string()) {
-                        std::string var_name = binding[0].get<std::string>();
-                        try {
-                            // Evaluate the binding value in the current context
-                            nlohmann::json evaluated_value = computo::evaluate(binding[1], ctx);
-                            last_variables_[var_name] = evaluated_value;
-                            // Add to context for subsequent bindings
-                            ctx.variables[var_name] = evaluated_value;
-                        } catch (const std::exception& e) {
-                            // If evaluation fails, store the expression
-                            last_variables_[var_name] = binding[1];
-                        }
-                    }
-                }
-            }
-        }
+        return cmd;
     }
 };
 
-#ifdef REPL
-auto debug_pre_evaluation_hook(const computo::EvaluationContext& eval_ctx) -> computo::EvaluationAction {
-    g_current_debug_context = const_cast<computo::EvaluationContext*>(&eval_ctx);
+// Static command mapping table
+const std::unordered_map<std::string, ReplCommandType> ReplCommandParser::command_map = {
+    {"help", ReplCommandType::HELP},
+    {"vars", ReplCommandType::VARS},
+    {"debug", ReplCommandType::DEBUG_TOGGLE},
+    {"trace", ReplCommandType::TRACE_TOGGLE},
+    {"history", ReplCommandType::HISTORY},
+    {"clear", ReplCommandType::CLEAR},
+    {"quit", ReplCommandType::QUIT},
+    {"exit", ReplCommandType::QUIT},
+    {"break", ReplCommandType::BREAK},
+    {"nobreak", ReplCommandType::NOBREAK},
+    {"breaks", ReplCommandType::BREAKS},
+    {"run", ReplCommandType::RUN},
+    {"set", ReplCommandType::SET},
+    {"step", ReplCommandType::STEP},
+    {"s", ReplCommandType::STEP},
+    {"continue", ReplCommandType::CONTINUE},
+    {"c", ReplCommandType::CONTINUE},
+    {"finish", ReplCommandType::FINISH},
+    {"f", ReplCommandType::FINISH},
+    {"where", ReplCommandType::WHERE},
+    {"w", ReplCommandType::WHERE}
+};
 
-    bool should_break = false;
-    if (g_current_debug_wrapper != nullptr) {
-        const auto& op_breakpoints = g_current_debug_wrapper->get_operator_breakpoints();
-        if (op_breakpoints.count(eval_ctx.operator_name) != 0U) {
-            should_break = true;
-        }
+// --- REPL Implementation ---
 
-        if (g_current_debug_wrapper->get_debug_state() == DebugState::STEPPING) {
-            should_break = true;
-        }
+// Create a struct to hold REPL state
+struct ReplState {
+    std::vector<nlohmann::json> inputs;
+    computo::DebugContext debug_context;
+    std::vector<std::string> command_history;
+    bool in_debug_mode = false;
+    std::map<std::string, nlohmann::json> repl_variables;
+    const ComputoArgs* args;
+};
 
-        if (should_break) {
-            std::cout << "\n*** Breakpoint hit ***\n";
-            std::cout << "Location: ";
-            if (eval_ctx.execution_path.empty()) {
-                std::cout << "/";
-            } else {
-                for (const auto& segment : eval_ctx.execution_path) {
-                    std::cout << "/" << segment;
-                }
-            }
-            std::cout << "\n";
-            std::cout << "Operator: " << eval_ctx.operator_name << "\n";
-            std::cout << "Expression: " << eval_ctx.expression.dump() << "\n";
-            std::cout << "Depth: " << eval_ctx.depth << "\n";
+// Helper function to get input line
+auto get_input_line(bool in_debug_mode, std::vector<std::string>& command_history) -> std::string {
+    // Choose prompt based on debug mode
+    const char* prompt = in_debug_mode ? "(debug) " : "computo> ";
+    std::string line_str;
 
-            g_current_debug_wrapper->handle_interactive_debugging();
-        }
+#ifdef COMPUTO_USE_READLINE
+    char* line_c_str = readline(prompt);
+    if (line_c_str == nullptr) { // EOF or Ctrl-D
+        return ""; // Signal EOF
     }
-
-    return computo::EvaluationAction::CONTINUE;
-}
-
+    line_str = line_c_str;
+    if (!line_str.empty()) {
+        add_history(line_c_str);
+        command_history.push_back(line_str);
+    }
+    free(line_c_str);
+#else
+    std::cout << prompt;
+    if (!std::getline(std::cin, line_str)) {
+        return ""; // Signal EOF
+    }
+    if (!line_str.empty()) {
+        command_history.push_back(line_str);
+    }
 #endif
+    return line_str;
+}
 
-class ComputoREPL {
-private:
-    bool debug_mode_ = false;
-    bool trace_mode_ = false;
-    bool comments_enabled_ = false;
-    std::string array_key_ = "array";
-    std::vector<std::string> command_history_;
-    std::vector<nlohmann::json> input_data_;
-    DebugExecutionWrapper debug_wrapper_;
+// Create handler functions for each command
+void handle_help_command(const ReplCommand& /*cmd*/, ReplState& /*state*/) {
+    std::cout << R"(REPL Commands:
+  help                     Show this help message
+  vars                     Show variables in current scope
+  debug                    Toggle debug mode
+  trace                    Toggle trace mode
+  history                  Show command history
+  clear                    Clear command history
+  quit, exit               Exit the REPL
 
-public:
-    ComputoREPL(std::string array_key = "array")
-        : array_key_(std::move(array_key)) {
-        // Enable history expansion
-        rl_bind_key('\t', rl_complete);
-        ReadLine::using_history();
+Script Execution:
+  run <file>               Execute JSON script file
+  ["+", 1, 2]              Execute JSON expression directly
 
-        // Set up debug callback for user input
-        debug_wrapper_.set_user_input_callback([]() -> std::string {
-            char* line = ReadLine::readline("");
-            if (!line) {
-                return "continue"; // EOF defaults to continue
-            }
-            std::string input(line);
-            free(line);
-            return input;
-        });
+Variables:
+  set <name> <value>       Set a REPL variable (e.g., set x 10)
+
+Breakpoints:
+  break <operator>         Break on operator (e.g., "break +")
+  break <variable>         Break on variable access (e.g., "break /users")
+  nobreak <target>         Remove specific breakpoint
+  nobreak                  Remove all breakpoints
+  breaks                   List all active breakpoints
+
+Debug Mode (when at breakpoint):
+  step, s                  Execute next operation
+  continue, c              Continue until next breakpoint
+  finish, f                Complete execution, ignore breakpoints
+  where, w                 Show current execution location
+  vars                     Show variables in current scope
+)";
+}
+
+void handle_vars_command(const ReplCommand& /*cmd*/, ReplState& state) {
+    std::cout << "Variables in current scope:\n";
+    
+    // Show REPL persistent variables
+    if (!state.repl_variables.empty()) {
+        std::cout << "  REPL variables:\n";
+        for (const auto& [name, value] : state.repl_variables) {
+            std::cout << "    " << name << ": " << value.dump() << "\n";
+        }
     }
-
-    static void print_version() {
-        std::cout << "Computo REPL v" << COMPUTO_VERSION << "\n"
-                  << "JSON-native data transformation engine" << '\n';
-    }
-
-    void run(const std::vector<std::string>& input_filenames, bool comments_enabled = false) {
-        // REPL command constants
-        const std::string RUN_CMD = "run ";
-        const std::string BREAK_CMD = "break ";
-        const std::string NOBREAK_CMD = "nobreak ";
-
-        comments_enabled_ = comments_enabled;
-        print_version();
-        std::cout << "Type 'help' for commands, 'quit' to exit\n";
-        std::cout << "Use _1, _2, etc. to reference previous commands\n\n";
-
-        // Load input files and store for execution context
-        std::vector<nlohmann::json> loaded_inputs;
-        if (!input_filenames.empty()) {
-            for (const auto& input_filename : input_filenames) {
-                loaded_inputs.push_back(read_json(input_filename, false)); // Input files never allow comments
+    
+    // Always show input variables
+    std::cout << "  Input variables:\n";
+    if (!state.inputs.empty()) {
+        std::cout << "    $input: " << state.inputs[0].dump() << "\n";
+        if (state.inputs.size() > 1) {
+            std::cout << "    $inputs: array of " << state.inputs.size() << " elements\n";
+            for (size_t i = 0; i < state.inputs.size(); ++i) {
+                std::cout << "      $inputs[" << i << "]: " << state.inputs[i].dump() << "\n";
             }
         }
-
-        // Store the loaded inputs for use in execute_expression
-        input_data_ = std::move(loaded_inputs);
-
-        while (true) {
-
-            char* line = ReadLine::readline("computo> ");
-            if (line == nullptr) {
-                break; // EOF (Ctrl+D)
-            }
-            std::string input(line);
-            free(line);
-
-            if (input.empty()) {
-                continue;
-            }
-
-            // Process history expansion (_1, _2, etc.)
-            std::string processed_input = process_history_expansion(input);
-
-            ReadLine::add_history(processed_input.c_str());
-            command_history_.push_back(processed_input);
-
-            try {
-                if (processed_input == "quit" || processed_input == "exit") {
+    } else {
+        std::cout << "    $input: null (no input files loaded)\n";
+        std::cout << "    $inputs: [] (empty array)\n";
+    }
+    
+    // Show debug trace variables if available
+    if (state.debug_context.is_debug_enabled() && state.debug_context.is_trace_enabled()) {
+        auto trace = state.debug_context.get_execution_trace();
+        if (!trace.empty()) {
+            // Find the most recent step with variables
+            const DebugStep* step_with_vars = nullptr;
+            for (auto it = trace.rbegin(); it != trace.rend(); ++it) {
+                if (!it->variables.empty()) {
+                    step_with_vars = &(*it);
                     break;
                 }
-                if (processed_input == "help") {
-                    print_help();
-                } else if (processed_input == "version") {
-                    print_version();
-                } else if (processed_input == "debug") {
-                    debug_mode_ = !debug_mode_;
-                    std::cout << "Debug mode: " << (debug_mode_ ? "ON" : "OFF") << "\n";
-                } else if (processed_input == "trace") {
-                    trace_mode_ = !trace_mode_;
-                    std::cout << "Trace mode: " << (trace_mode_ ? "ON" : "OFF") << "\n";
-                } else if (processed_input == "clear") {
-                    ReadLine::clear_history();
-                    command_history_.clear();
-                    std::cout << "History cleared\n";
-                } else if (processed_input == "history") {
-                    print_history();
-                } else if (processed_input == "vars") {
-                    print_variables();
-                } else if (processed_input.size() > RUN_CMD.length() && processed_input.substr(0, RUN_CMD.length()) == RUN_CMD) {
-                    std::string filename = processed_input.substr(RUN_CMD.length());
-
-                    // remove surrounding whitespace
-                    filename = trim_whitespace(filename);
-
-                    // remove quotes if present
-                    if (filename.size() > 1 && filename[0] == '"' && filename[filename.size() - 1] == '"') {
-                        filename = filename.substr(1, filename.size() - 2);
-                    }
-
-                    run_script_file(filename);
-                } else if (processed_input.size() > BREAK_CMD.length() && processed_input.substr(0, BREAK_CMD.length()) == BREAK_CMD) {
-                    std::string target = processed_input.substr(BREAK_CMD.length());
-                    add_breakpoint(target);
-                } else if (processed_input.size() > NOBREAK_CMD.length() && processed_input.substr(0, NOBREAK_CMD.length()) == NOBREAK_CMD) {
-                    std::string target = processed_input.substr(NOBREAK_CMD.length());
-                    remove_breakpoint(target);
-                } else if (processed_input == "nobreak") {
-                    remove_all_breakpoints();
-                } else if (processed_input == "breaks") {
-                    list_breakpoints();
-                } else if (processed_input == "continue") {
-                    continue_execution();
-                } else if (processed_input == "step") {
-                    step_execution();
-                } else if (processed_input == "finish") {
-                    finish_execution();
-                } else if (processed_input == "where") {
-                    show_execution_location();
-                } else {
-                    execute_expression(processed_input);
+            }
+            
+            if (step_with_vars) {
+                std::cout << "  Local variables from recent execution:\n";
+                for (const auto& [name, value] : step_with_vars->variables) {
+                    std::cout << "    " << name << ": " << value.dump() << "\n";
                 }
-            } catch (const std::exception& e) {
-                std::cerr << "Error: " << e.what() << "\n";
-            }
-        }
-
-        std::cout << "Goodbye!\n";
-    }
-
-private:
-    static auto trim_whitespace(const std::string& str) -> std::string {
-
-        // spaces, tabs, newlines, etc.
-        std::string whitespace = " \t\n\r\f\v";
-        size_t first = str.find_first_not_of(whitespace);
-        size_t last = str.find_last_not_of(whitespace);
-        return first == std::string::npos ? "" : str.substr(first, last - first + 1);
-    }
-
-    auto process_history_expansion(const std::string& input) -> std::string {
-        std::string result = input;
-
-        // Simple history expansion: _N where N is a number
-        size_t pos = 0;
-        while ((pos = result.find('_', pos)) != std::string::npos) {
-            if (pos > 0 && ((std::isalnum(result[pos - 1]) != 0) || result[pos - 1] == '_')) {
-                pos++;
-                continue; // Not a history reference
-            }
-
-            size_t start = pos;
-            pos++; // Skip the underscore
-
-            // Find the number
-            size_t num_start = pos;
-            while (pos < result.size() && (std::isdigit(result[pos]) != 0)) {
-                pos++;
-            }
-
-            if (pos == num_start) {
-                continue; // No number after underscore
-            }
-
-            std::string num_str = result.substr(num_start, pos - num_start);
-            int history_index = std::stoi(num_str) - 1;
-
-            if (history_index >= 0 && history_index < static_cast<int>(command_history_.size())) {
-                std::string replacement = command_history_[history_index];
-                result.replace(start, pos - start, replacement);
-                pos = start + replacement.size();
+                std::cout << "    (from step: " << step_with_vars->operation 
+                         << " at " << step_with_vars->location << ")\n";
             } else {
-                std::cerr << "Warning: History reference _" << history_index << " not found\n";
-                pos = start + 1;
+                std::cout << "  Local variables: (none in recent execution)\n";
             }
         }
-
-        return result;
     }
-
-    void print_history() {
-        if (command_history_.empty()) {
-            std::cout << "No command history\n";
-            return;
-        }
-
-        std::cout << "Command history:\n";
-        for (size_t i = 0; i < command_history_.size(); ++i) {
-            std::cout << "  " << (i + 1) << ": " << command_history_[i] << "\n";
-        }
+    
+    // Show status message if debug/trace not enabled
+    if (!state.debug_context.is_debug_enabled()) {
+        std::cout << "  Note: Enable debug mode ('debug on') and trace mode ('trace on') to see execution variables\n";
+    } else if (!state.debug_context.is_trace_enabled()) {
+        std::cout << "  Note: Enable trace mode ('trace on') to see execution variables\n";
     }
+}
 
-    static void print_help() {
-        std::cout << "Commands:\n";
-        std::cout << "  help         Show this help\n";
-        std::cout << "  debug        Toggle debug mode\n";
-        std::cout << "  trace        Toggle trace mode\n";
-        std::cout << "  clear        Clear history\n";
-        std::cout << "  history      Show command history\n";
-        std::cout << "  vars         Show variables in scope\n";
-        std::cout << "  quit         Exit REPL\n";
-        std::cout << "\n";
-        std::cout << "Script execution:\n";
-        std::cout << "  run FILE     Load and execute script file\n";
-        std::cout << "\n";
-        std::cout << "Breakpoint management:\n";
-        std::cout << "  break OP     Set breakpoint on operator (e.g., 'break map')\n";
-        std::cout << "  break /VAR   Set breakpoint on variable (e.g., 'break /users')\n";
-        std::cout << "  nobreak OP   Remove operator breakpoint\n";
-        std::cout << "  nobreak /VAR Remove variable breakpoint\n";
-        std::cout << "  nobreak      Remove all breakpoints\n";
-        std::cout << "  breaks       List active breakpoints\n";
-        std::cout << "\n";
-        std::cout << "Debug session (when paused):\n";
-        std::cout << "  step         Execute next operation\n";
-        std::cout << "  continue     Continue until next breakpoint\n";
-        std::cout << "  finish       Run to completion, ignoring breakpoints\n";
-        std::cout << "  where        Show current execution location\n";
-        std::cout << "\n";
-        std::cout << "History expansion:\n";
-        std::cout << "  _1           Reference the last command\n";
-        std::cout << "  _2           Reference the second-to-last command\n";
-        std::cout << "  etc.         Use _N to reference command N from the end\n";
-        std::cout << "\n";
-        std::cout << "Enter JSON expressions to evaluate.\n";
-        std::cout << "Examples:\n";
-        std::cout << "  [\"+\", 1, 2]\n";
-        std::cout << "  [\"map\", {\"array\": [1, 2, 3]}, [\"lambda\", [\"x\"], [\"*\", [\"$\", \"/x\"], 2]]]\n";
-        std::cout << "  run script.json\n";
-        std::cout << "  break map\n";
+void handle_debug_toggle_command(const ReplCommand& /*cmd*/, ReplState& state) {
+    state.debug_context.set_debug_enabled(!state.debug_context.is_debug_enabled());
+    std::cout << "Debug mode "
+              << (state.debug_context.is_debug_enabled() ? "enabled" : "disabled") << "\n";
+}
+
+void handle_trace_toggle_command(const ReplCommand& /*cmd*/, ReplState& state) {
+    state.debug_context.set_trace_enabled(!state.debug_context.is_trace_enabled());
+    std::cout << "Trace mode "
+              << (state.debug_context.is_trace_enabled() ? "enabled" : "disabled") << "\n";
+}
+
+void handle_history_command(const ReplCommand& /*cmd*/, ReplState& state) {
+    std::cout << "Command history:\n";
+    for (size_t i = 0; i < state.command_history.size(); ++i) {
+        std::cout << "  " << (i + 1) << ": " << state.command_history[i] << "\n";
     }
+}
 
-    void print_variables() {
-        const auto& variables = debug_wrapper_.get_last_variables();
-        if (variables.empty()) {
-            std::cout << "No variables in scope\n";
-            std::cout << "(Execute a 'let' expression to create variables)\n";
-            return;
-        }
+void handle_clear_command(const ReplCommand& /*cmd*/, ReplState& state) {
+    state.command_history.clear();
+#ifdef COMPUTO_USE_READLINE
+    clear_history();
+#endif
+    std::cout << "Command history cleared\n";
+}
 
-        std::cout << "Variables in scope:\n";
-        for (const auto& [name, value] : variables) {
-            std::cout << "  " << name << " = " << value.dump() << "\n";
-        }
-    }
-
-    void run_script_file(const std::string& filename) {
-        try {
-            // Check if file exists
-            if (!std::filesystem::exists(filename)) {
-                std::cerr << "Error: File not found: " << filename << "\n";
-                return;
-            }
-
-            // Configure debug wrapper
-            debug_wrapper_.enable_trace(trace_mode_);
-            debug_wrapper_.enable_profiling(debug_mode_);
-
-            // Run the script
-            auto result = debug_wrapper_.run_script_file(filename, input_data_, comments_enabled_);
-
-            // Output result
-            std::cout << result.dump(2) << "\n";
-
-        } catch (const computo::InvalidOperatorException& e) {
-            std::cerr << "Error: " << e.what();
-
-            // Try to suggest a similar operator
-            std::string op_name = std::string(e.what()).substr(18); // Remove "Invalid operator: "
-            std::string suggestion = suggest_operator(op_name);
-            if (!suggestion.empty()) {
-                std::cerr << ". Did you mean '" << suggestion << "'?";
-            }
-            std::cerr << "\n";
-
-        } catch (const std::exception& e) {
-            std::cerr << "Error: " << e.what() << "\n";
-        }
-    }
-
-    void add_breakpoint(const std::string& target) {
-        if (!target.empty() && target[0] == '/') {
-            debug_wrapper_.add_variable_breakpoint(target);
-            std::cout << "Added variable breakpoint: " << target << "\n";
+void handle_break_command(const ReplCommand& cmd, ReplState& state) {
+    if (cmd.args.empty()) {
+        std::cout << "Usage: break <operator|variable>\n";
+        std::cout << "Examples: break +, break map, break /users\n";
+    } else {
+        const auto& target = cmd.args[0];
+        if (target.find("/") == 0) {
+            state.debug_context.set_variable_breakpoint(target);
+            std::cout << "Set variable breakpoint: " << target << "\n";
         } else {
-            debug_wrapper_.add_operator_breakpoint(target);
-            std::cout << "Added operator breakpoint: " << target << "\n";
+            state.debug_context.set_operator_breakpoint(target);
+            std::cout << "Set operator breakpoint: " << target << "\n";
         }
     }
+}
 
-    void remove_breakpoint(const std::string& target) {
-        if (!target.empty() && target[0] == '/') {
-            debug_wrapper_.remove_variable_breakpoint(target);
+void handle_nobreak_command(const ReplCommand& cmd, ReplState& state) {
+    if (cmd.args.empty()) {
+        state.debug_context.clear_all_breakpoints();
+        std::cout << "All breakpoints removed\n";
+    } else {
+        const auto& target = cmd.args[0];
+        if (target.find("/") == 0) {
+            state.debug_context.remove_variable_breakpoint(target);
             std::cout << "Removed variable breakpoint: " << target << "\n";
         } else {
-            debug_wrapper_.remove_operator_breakpoint(target);
+            state.debug_context.remove_operator_breakpoint(target);
             std::cout << "Removed operator breakpoint: " << target << "\n";
         }
     }
+}
 
-    void remove_all_breakpoints() {
-        debug_wrapper_.clear_all_breakpoints();
-        std::cout << "All breakpoints cleared\n";
-    }
+void handle_breaks_command(const ReplCommand& /*cmd*/, ReplState& state) {
+    auto op_breaks = state.debug_context.get_operator_breakpoints();
+    auto var_breaks = state.debug_context.get_variable_breakpoints();
 
-    void list_breakpoints() {
-        const auto& op_breaks = debug_wrapper_.get_operator_breakpoints();
-        const auto& var_breaks = debug_wrapper_.get_variable_breakpoints();
-
-        if (op_breaks.empty() && var_breaks.empty()) {
-            std::cout << "No breakpoints set\n";
-            return;
-        }
-
+    if (op_breaks.empty() && var_breaks.empty()) {
+        std::cout << "No active breakpoints\n";
+    } else {
         std::cout << "Active breakpoints:\n";
         for (const auto& op : op_breaks) {
             std::cout << "  Operator: " << op << "\n";
@@ -702,197 +354,193 @@ private:
             std::cout << "  Variable: " << var << "\n";
         }
     }
+}
 
-    void continue_execution() {
-        if (debug_wrapper_.is_debug_session_active()) {
-            debug_wrapper_.debug_continue();
-            std::cout << "Continuing execution...\n";
-        } else {
-            std::cout << "No active debug session\n";
-        }
-    }
-
-    void step_execution() {
-        if (debug_wrapper_.is_debug_session_active()) {
-            debug_wrapper_.debug_step();
-            std::cout << "Stepping to next operation...\n";
-        } else {
-            // Enable stepping for next execution
-            debug_wrapper_.debug_step();
-            std::cout << "Step mode enabled. Next script execution will step through.\n";
-        }
-    }
-
-    void finish_execution() {
-        if (debug_wrapper_.is_debug_session_active()) {
-            debug_wrapper_.debug_finish();
-            std::cout << "Finishing execution (clearing all breakpoints)...\n";
-        } else {
-            debug_wrapper_.debug_finish();
-            std::cout << "All breakpoints cleared\n";
-        }
-    }
-
-    void show_execution_location() {
-        if (debug_wrapper_.is_debug_session_active()) {
-            const auto& ctx = debug_wrapper_.get_debug_context();
-            std::cout << "Current execution location:\n";
-            std::cout << "  Operator: " << ctx.current_operator << "\n";
-            std::cout << "  Expression: " << ctx.current_expression.dump() << "\n";
-            std::cout << "  Depth: " << ctx.depth << "\n";
-            std::cout << "  Path: ";
-            if (ctx.execution_path.empty()) {
-                std::cout << "/";
-            } else {
-                for (const auto& segment : ctx.execution_path) {
-                    std::cout << "/" << segment;
-                }
-            }
-            std::cout << "\n";
-        } else {
-            std::cout << "No active debug session\n";
-        }
-    }
-
-    void execute_expression(const std::string& input) {
-        // Parse JSON input
-        nlohmann::json script;
+void handle_run_command(const ReplCommand& cmd, ReplState& state) {
+    if (cmd.args.empty()) {
+        std::cout << "Usage: run <script_file>\n";
+    } else {
         try {
-            if (comments_enabled_) {
-                script = nlohmann::json::parse(input, nullptr, true, true); // allow exceptions, allow comments
-            } else {
-                script = nlohmann::json::parse(input);
-            }
-        } catch (const std::exception& e) {
-            std::cerr << "Invalid JSON: " << e.what() << "\n";
-            return;
-        }
-
-        // Configure debug wrapper based on current modes
-        debug_wrapper_.enable_trace(trace_mode_);
-        debug_wrapper_.enable_profiling(debug_mode_);
-
-        // Extract variables from let expressions for debugging
-        debug_wrapper_.extract_variables_from_let(script, input_data_);
-
-        // Execute with debug wrapper
-        try {
-            nlohmann::json result;
-            if (array_key_ != "array") {
-                // Transform custom array syntax to standard "array" syntax, then execute
-                result = computo::execute(script, input_data_, array_key_);
-            } else {
-                // Use debug wrapper for default array key
-                result = debug_wrapper_.execute_with_debug(script, input_data_);
-            }
-
-            // Output result
+            auto script = load_json_file(cmd.args[0], state.args->enable_comments);
+            
+            // Create execution context with REPL variables
+            computo::ExecutionContext ctx(state.inputs);
+            auto ctx_with_vars = ctx.with_variables(state.repl_variables);
+            auto result = computo::evaluate(script, ctx_with_vars, &state.debug_context);
+            
             std::cout << result.dump(2) << "\n";
-
-        } catch (const computo::InvalidOperatorException& e) {
-            std::cerr << "Error: " << e.what();
-
-            // Try to suggest a similar operator
-            std::string op_name = std::string(e.what()).substr(18); // Remove "Invalid operator: "
-            std::string suggestion = suggest_operator(op_name);
-            if (!suggestion.empty()) {
-                std::cerr << ". Did you mean '" << suggestion << "'?";
-            }
-            std::cerr << "\n";
-
+        } catch (const computo::DebugBreakException& e) {
+            std::cout << "\nBreakpoint hit: " << e.get_reason() << "\n";
+            std::cout << "Location: " << e.get_location() << "\n";
+            std::cout << "Use 'step', 'continue', or 'finish' to proceed\n";
+            state.in_debug_mode = true;
         } catch (const std::exception& e) {
             std::cerr << "Error: " << e.what() << "\n";
+            if (state.debug_context.is_debug_enabled()) {
+                std::cout << "Entering debug mode due to error\n";
+                state.in_debug_mode = true;
+            }
         }
     }
-};
-
-struct REPLOptions {
-    bool help = false;
-    bool version = false;
-    bool perf = false;
-    bool comments = false;
-    std::string array_key = "array"; // Default array key
-    std::string bad_option;
-    std::vector<std::string> input_filenames;
-};
-
-void print_cmdline_help(const char* program_name) {
-    std::cout << "Usage: " << program_name << " [OPTIONS] [INPUT_FILENAME [INPUT_FILENAME]...]\n"
-              << "Options:\n"
-              << "  -h, --help     Show this help message\n"
-              << "  -v, --version  Show version information\n"
-              << "  --comments     Allow comments in script files and direct input\n"
-              << "  --array KEY    Use custom array key syntax in scripts (default: 'array')\n"
-              << '\n';
 }
 
-auto main(int argc, char* argv[]) -> int {
-    REPLOptions options;
-
-    // CLI option constants
-    const std::string ARRAY_OPT = "--array";
-    const std::string ARRAY_OPT_WITH_EQUALS = "--array=";
-
-    // parse command line options
-    for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
-        if (arg == "-h" || arg == "--help") {
-            options.help = true;
-        } else if (arg == "-v" || arg == "--version") {
-            options.version = true;
-        } else if (arg == "-p" || arg == "--perf") {
-            options.perf = true;
-        } else if (arg == "--comments") {
-            options.comments = true;
-        } else if (arg.substr(0, ARRAY_OPT.length()) == ARRAY_OPT) {
-            if (arg == ARRAY_OPT && i + 1 < argc) {
-                // --array custom_key
-                options.array_key = argv[++i];
-            } else if (arg.substr(0, ARRAY_OPT_WITH_EQUALS.length()) == ARRAY_OPT_WITH_EQUALS) {
-                // --array=custom_key
-                options.array_key = arg.substr(ARRAY_OPT_WITH_EQUALS.length());
-            } else {
-                options.bad_option = arg;
-                break;
-            }
-        } else if (arg[0] == '-') {
-            options.bad_option = arg;
-            break;
-        } else {
-            options.input_filenames.push_back(arg);
+void handle_json_script(const ReplCommand& cmd, ReplState& state) {
+    try {
+        auto script = nlohmann::json::parse(cmd.raw_input);
+        
+        // Create execution context with REPL variables
+        computo::ExecutionContext ctx(state.inputs);
+        auto ctx_with_vars = ctx.with_variables(state.repl_variables);
+        auto result = computo::evaluate(script, ctx_with_vars, &state.debug_context);
+        
+        std::cout << result.dump(2) << "\n";
+    } catch (const computo::DebugBreakException& e) {
+        std::cout << "\nBreakpoint hit: " << e.get_reason() << "\n";
+        std::cout << "Location: " << e.get_location() << "\n";
+        std::cout << "Use 'step', 'continue', or 'finish' to proceed\n";
+        state.in_debug_mode = true;
+    } catch (const nlohmann::json::parse_error& e) {
+        std::cerr << "JSON parse error: " << e.what() << "\n";
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << "\n";
+        if (state.debug_context.is_debug_enabled()) {
+            std::cout << "Entering debug mode due to error\n";
+            state.in_debug_mode = true;
         }
     }
+}
 
-    if (!options.bad_option.empty()) {
-        std::cerr << "Error: Invalid option: " << options.bad_option << '\n';
-        print_cmdline_help(argv[0]);
+void handle_set_command(const ReplCommand& cmd, ReplState& state) {
+    if (cmd.args.size() < 2) {
+        std::cout << "Usage: set <variable_name> <json_value>\n";
+        std::cout << "Examples: set x 10, set name \"Alice\", set data {\"key\": \"value\"}\n";
+    } else {
+        const auto& var_name = cmd.args[0];
+        
+        // Join remaining args as JSON value
+        std::string json_str;
+        for (size_t i = 1; i < cmd.args.size(); ++i) {
+            if (i > 1) json_str += " ";
+            json_str += cmd.args[i];
+        }
+        
+        try {
+            auto value = nlohmann::json::parse(json_str);
+            state.repl_variables[var_name] = value;
+            std::cout << "Set " << var_name << " = " << value.dump() << "\n";
+        } catch (const nlohmann::json::parse_error& e) {
+            std::cerr << "JSON parse error: " << e.what() << "\n";
+            std::cout << "Try: set " << var_name << " \"" << json_str << "\" (for strings)\n";
+        }
+    }
+}
+
+void handle_step_command(const ReplCommand& /*cmd*/, ReplState& state) {
+    if (state.in_debug_mode) {
+        state.debug_context.set_step_mode(true);
+        std::cout << "Stepping to next operation...\n";
+        state.in_debug_mode = false; // Exit debug mode temporarily
+    } else {
+        std::cout << "Not in debug mode. Use 'debug' to enable debugging.\n";
+    }
+}
+
+void handle_continue_command(const ReplCommand& /*cmd*/, ReplState& state) {
+    if (state.in_debug_mode) {
+        state.debug_context.set_step_mode(false);
+        std::cout << "Continuing execution...\n";
+        state.in_debug_mode = false; // Exit debug mode temporarily
+    } else {
+        std::cout << "Not in debug mode.\n";
+    }
+}
+
+void handle_finish_command(const ReplCommand& /*cmd*/, ReplState& state) {
+    if (state.in_debug_mode) {
+        state.debug_context.set_finish_mode(true);
+        std::cout << "Finishing execution, ignoring breakpoints...\n";
+        state.in_debug_mode = false; // Exit debug mode
+    } else {
+        std::cout << "Not in debug mode.\n";
+    }
+}
+
+void handle_where_command(const ReplCommand& /*cmd*/, ReplState& state) {
+    if (state.in_debug_mode) {
+        std::cout << "Current location: " << state.debug_context.get_current_location()
+                  << "\n";
+    } else {
+        std::cout << "Not in debug mode.\n";
+    }
+}
+
+void handle_unknown_command(const ReplCommand& cmd, ReplState& /*state*/) {
+    std::cout << "Unknown command: " << cmd.raw_input << "\n";
+    std::cout << "Type 'help' for available commands\n";
+}
+
+// The new, clean main loop
+auto run_repl_mode(const ComputoArgs& args) -> int {
+    try {
+        // Initialize state
+        ReplState state;
+        state.args = &args;
+        
+        // Load input files if provided
+        state.inputs = load_input_files(args.input_files, args.enable_comments);
+        if (!args.input_files.empty()) {
+            std::cout << "Loaded " << state.inputs.size() << " input file(s)\n";
+        }
+
+        std::cout << "Computo REPL v1.0.0\n";
+        std::cout << "Type 'help' for commands, 'quit' to exit\n";
+        if (args.debug_mode) {
+            std::cout << "Debug mode enabled\n";
+            state.debug_context.set_debug_enabled(true);
+        }
+        std::cout << "\n";
+
+        while (true) {
+            auto line_str = get_input_line(state.in_debug_mode, state.command_history);
+            if (line_str.empty()) {
+                break; // EOF
+            }
+
+            // Parse command
+            auto cmd = ReplCommandParser::parse(line_str);
+
+            // Dispatch to handlers
+            switch (cmd.type) {
+            case ReplCommandType::QUIT:
+                std::cout << "\nGoodbye!\n";
+                return 0;
+            case ReplCommandType::HELP:         handle_help_command(cmd, state); break;
+            case ReplCommandType::VARS:         handle_vars_command(cmd, state); break;
+            case ReplCommandType::DEBUG_TOGGLE: handle_debug_toggle_command(cmd, state); break;
+            case ReplCommandType::TRACE_TOGGLE: handle_trace_toggle_command(cmd, state); break;
+            case ReplCommandType::HISTORY:      handle_history_command(cmd, state); break;
+            case ReplCommandType::CLEAR:        handle_clear_command(cmd, state); break;
+            case ReplCommandType::BREAK:        handle_break_command(cmd, state); break;
+            case ReplCommandType::NOBREAK:      handle_nobreak_command(cmd, state); break;
+            case ReplCommandType::BREAKS:       handle_breaks_command(cmd, state); break;
+            case ReplCommandType::RUN:          handle_run_command(cmd, state); break;
+            case ReplCommandType::JSON_SCRIPT:  handle_json_script(cmd, state); break;
+            case ReplCommandType::SET:          handle_set_command(cmd, state); break;
+            case ReplCommandType::STEP:         handle_step_command(cmd, state); break;
+            case ReplCommandType::CONTINUE:     handle_continue_command(cmd, state); break;
+            case ReplCommandType::FINISH:       handle_finish_command(cmd, state); break;
+            case ReplCommandType::WHERE:        handle_where_command(cmd, state); break;
+            case ReplCommandType::UNKNOWN:
+            default:                            handle_unknown_command(cmd, state); break;
+            }
+        }
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << "\n";
         return 1;
     }
-
-    if (options.perf) {
-        run_performance_benchmarks();
-        return 0;
-    }
-
-    if (options.help) {
-        print_cmdline_help(argv[0]);
-        return 0;
-    }
-
-    if (options.version) {
-        ComputoREPL::print_version();
-        return 0;
-    }
-
-    // make sure filenames exist before running
-    for (const auto& filename : options.input_filenames) {
-        if (!std::filesystem::exists(filename)) {
-            std::cerr << "Error: File not found: " << filename << '\n';
-            return 1;
-        }
-    }
-
-    ComputoREPL repl(options.array_key);
-    repl.run(options.input_filenames, options.comments);
-    return 0;
+    
+    return 0; // Should not reach here, but prevents compiler warning
 }
+
+} // namespace computo
