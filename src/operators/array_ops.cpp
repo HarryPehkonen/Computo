@@ -5,14 +5,15 @@ namespace computo::operators {
 auto map_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
 
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-    auto processor = [](const nlohmann::json& item, const nlohmann::json& lambda_result, nlohmann::json& final_result) -> bool {
+    auto processor = [](const nlohmann::json& item, const nlohmann::json& lambda_result,
+                        nlohmann::json& final_result) -> bool {
         if (!final_result.is_array()) {
             final_result = nlohmann::json::array();
         }
         final_result.push_back(lambda_result);
         return true; // Continue processing all items
     };
-    
+
     auto result = process_array_with_lambda(args, ctx, "map", processor);
     // Handle empty arrays
     if (result.is_null()) {
@@ -23,7 +24,8 @@ auto map_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluati
 
 auto filter_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-    auto processor = [](const nlohmann::json& item, const nlohmann::json& lambda_result, nlohmann::json& final_result) -> bool {
+    auto processor = [](const nlohmann::json& item, const nlohmann::json& lambda_result,
+                        nlohmann::json& final_result) -> bool {
         if (!final_result.is_array()) {
             final_result = nlohmann::json::array();
         }
@@ -32,7 +34,7 @@ auto filter_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
         }
         return true; // Continue processing all items
     };
-    
+
     auto result = process_array_with_lambda(args, ctx, "filter", processor);
     // Handle empty arrays
     if (result.is_null()) {
@@ -84,14 +86,15 @@ auto count_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalua
 
 auto find_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-    auto processor = [](const nlohmann::json& item, const nlohmann::json& lambda_result, nlohmann::json& final_result) -> bool {
+    auto processor = [](const nlohmann::json& item, const nlohmann::json& lambda_result,
+                        nlohmann::json& final_result) -> bool {
         if (is_truthy(lambda_result)) {
             final_result = item;
             return false; // Found item, stop processing
         }
         return true; // Continue searching
     };
-    
+
     auto result = process_array_with_lambda(args, ctx, "find", processor);
     // If result is still null (not set by processor), no item was found
     if (result.is_null()) {
@@ -102,14 +105,15 @@ auto find_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
 
 auto some_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-    auto processor = [](const nlohmann::json& item, const nlohmann::json& lambda_result, nlohmann::json& final_result) -> bool {
+    auto processor = [](const nlohmann::json& item, const nlohmann::json& lambda_result,
+                        nlohmann::json& final_result) -> bool {
         if (is_truthy(lambda_result)) {
             final_result = true;
             return false; // Found truthy result, stop processing
         }
         return true; // Continue searching
     };
-    
+
     auto result = process_array_with_lambda(args, ctx, "some", processor);
     // If result is still null (not set by processor), no truthy item was found
     if (result.is_null()) {
@@ -120,14 +124,15 @@ auto some_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
 
 auto every_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-    auto processor = [](const nlohmann::json& item, const nlohmann::json& lambda_result, nlohmann::json& final_result) -> bool {
+    auto processor = [](const nlohmann::json& item, const nlohmann::json& lambda_result,
+                        nlohmann::json& final_result) -> bool {
         if (!is_truthy(lambda_result)) {
             final_result = false;
             return false; // Found falsy result, stop processing
         }
         return true; // Continue checking
     };
-    
+
     auto result = process_array_with_lambda(args, ctx, "every", processor);
     // If result is still null (not set by processor), all items were truthy
     if (result.is_null()) {

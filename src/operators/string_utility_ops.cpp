@@ -16,7 +16,6 @@ namespace computo::operators {
 // opaque byte strings, which works well for joining, concatenation, and
 // lexicographic sorting.
 
-
 // NOLINTBEGIN(readability-function-size)
 auto join_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() != 2) {
@@ -60,9 +59,6 @@ auto join_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
 }
 // NOLINTEND(readability-function-size)
 
-
-
-
 auto strConcat_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.empty()) {
         throw InvalidArgumentException("'strConcat' requires at least 1 argument",
@@ -82,7 +78,7 @@ auto strConcat_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Ev
             result += "null";
         } else {
 
-	    // numbers and unknown types
+            // numbers and unknown types
             result += arg.dump();
         }
     }

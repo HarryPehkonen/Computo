@@ -365,7 +365,8 @@ TEST_F(PerformanceBenchmarkTest, ArrayOperationsBenchmark) {
 TEST_F(PerformanceBenchmarkTest, StringOperationsBenchmark) {
     // Single string operations
     suite_->run_benchmark("String_Single", "join", [this]() {
-        execute_script(R"(["join", {"array": ["hello", "world", "this", "is", "a", "test"]}, " "])");
+        execute_script(
+            R"(["join", {"array": ["hello", "world", "this", "is", "a", "test"]}, " "])");
     });
 
     suite_->run_benchmark("String_Single", "strConcat", [this]() {
@@ -391,8 +392,9 @@ TEST_F(PerformanceBenchmarkTest, StringOperationsBenchmark) {
         suite_->run_benchmark(
             "String_Array", "map_strConcat",
             [this, string_array]() {
-                execute_script(R"(["map", ["$input"], [["s"], ["strConcat", "prefix_", ["$", "/s"]]]])",
-                               string_array);
+                execute_script(
+                    R"(["map", ["$input"], [["s"], ["strConcat", "prefix_", ["$", "/s"]]]])",
+                    string_array);
             },
             size);
     }

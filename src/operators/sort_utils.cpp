@@ -247,7 +247,8 @@ auto sort_simple_array(nlohmann::json& array_data, const SortConfig& config) -> 
               });
 }
 
-auto sort_object_array_single_field(nlohmann::json& array_data, const FieldDescriptor& field) -> void {
+auto sort_object_array_single_field(nlohmann::json& array_data, const FieldDescriptor& field)
+    -> void {
     std::vector<SingleFieldSortItem> decorated_items;
     decorated_items.reserve(array_data.size());
 
@@ -268,7 +269,8 @@ auto sort_object_array_single_field(nlohmann::json& array_data, const FieldDescr
     }
 }
 
-auto sort_object_array_multi_field(nlohmann::json& array_data, const std::vector<FieldDescriptor>& fields) -> void {
+auto sort_object_array_multi_field(nlohmann::json& array_data,
+                                   const std::vector<FieldDescriptor>& fields) -> void {
     std::vector<SortItem> decorated_items;
     decorated_items.reserve(array_data.size());
 

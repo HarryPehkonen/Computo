@@ -54,8 +54,10 @@ TEST_F(StringUtilityOpsTest, JoinOperatorMixedTypes) {
 
 TEST_F(StringUtilityOpsTest, JoinOperatorErrors) {
     EXPECT_THROW(execute_script(R"(["join"])"), computo::InvalidArgumentException);
-    EXPECT_THROW(execute_script(R"(["join", {"array": ["a", "b"]}])"), computo::InvalidArgumentException);
-    EXPECT_THROW(execute_script(R"(["join", {"array": ["a", "b"]}, 123])"), computo::InvalidArgumentException);
+    EXPECT_THROW(execute_script(R"(["join", {"array": ["a", "b"]}])"),
+                 computo::InvalidArgumentException);
+    EXPECT_THROW(execute_script(R"(["join", {"array": ["a", "b"]}, 123])"),
+                 computo::InvalidArgumentException);
 }
 
 // --- strConcat operator tests ---
@@ -263,7 +265,8 @@ TEST_F(StringUtilityOpsTest, ReverseOperatorEmpty) {
 
 TEST_F(StringUtilityOpsTest, ReverseOperatorErrors) {
     EXPECT_THROW(execute_script(R"(["reverse"])"), computo::InvalidArgumentException);
-    EXPECT_THROW(execute_script(R"(["reverse", "not an array"])"), computo::InvalidArgumentException);
+    EXPECT_THROW(execute_script(R"(["reverse", "not an array"])"),
+                 computo::InvalidArgumentException);
 }
 
 // --- unique operator tests ---
@@ -300,9 +303,9 @@ TEST_F(StringUtilityOpsTest, UniqueOperatorAllSame) {
 
 TEST_F(StringUtilityOpsTest, UniqueOperatorErrors) {
     EXPECT_THROW(execute_script(R"(["unique"])"), computo::InvalidArgumentException);
-    EXPECT_THROW(execute_script(R"(["unique", "not an array"])"), computo::InvalidArgumentException);
+    EXPECT_THROW(execute_script(R"(["unique", "not an array"])"),
+                 computo::InvalidArgumentException);
 }
-
 
 // --- zip operator tests ---
 
@@ -319,7 +322,8 @@ TEST_F(StringUtilityOpsTest, ZipOperatorUnequalLengths) {
 }
 
 TEST_F(StringUtilityOpsTest, ZipOperatorComplexElements) {
-    auto result = execute_script(R"(["zip", {"array": [{"name": "alice"}, {"name": "bob"}]}, {"array": [25, 30]}])");
+    auto result = execute_script(
+        R"(["zip", {"array": [{"name": "alice"}, {"name": "bob"}]}, {"array": [25, 30]}])");
     auto expected = json::parse(R"({"array": [[{"name": "alice"}, 25], [{"name": "bob"}, 30]]})");
     EXPECT_EQ(result, expected);
 }
@@ -338,8 +342,10 @@ TEST_F(StringUtilityOpsTest, ZipOperatorOneEmpty) {
 
 TEST_F(StringUtilityOpsTest, ZipOperatorErrors) {
     EXPECT_THROW(execute_script(R"(["zip"])"), computo::InvalidArgumentException);
-    EXPECT_THROW(execute_script(R"(["zip", {"array": [1, 2]}])"), computo::InvalidArgumentException);
-    EXPECT_THROW(execute_script(R"(["zip", "not an array", {"array": [1, 2]}])"), computo::InvalidArgumentException);
+    EXPECT_THROW(execute_script(R"(["zip", {"array": [1, 2]}])"),
+                 computo::InvalidArgumentException);
+    EXPECT_THROW(execute_script(R"(["zip", "not an array", {"array": [1, 2]}])"),
+                 computo::InvalidArgumentException);
 }
 
 // --- approx operator tests ---
@@ -388,5 +394,6 @@ TEST_F(StringUtilityOpsTest, ApproxOperatorErrors) {
     EXPECT_THROW(execute_script(R"(["approx"])"), computo::InvalidArgumentException);
     EXPECT_THROW(execute_script(R"(["approx", 1.0])"), computo::InvalidArgumentException);
     EXPECT_THROW(execute_script(R"(["approx", 1.0, 2.0])"), computo::InvalidArgumentException);
-    EXPECT_THROW(execute_script(R"(["approx", "not a number", 1.0, 0.1])"), computo::InvalidArgumentException);
+    EXPECT_THROW(execute_script(R"(["approx", "not a number", 1.0, 0.1])"),
+                 computo::InvalidArgumentException);
 }

@@ -5,7 +5,7 @@
 using json = nlohmann::json;
 
 // Unicode Compatibility Tests
-// 
+//
 // These tests verify that remaining string operators handle Unicode data correctly
 // as UTF-8 byte sequences. While there's no Unicode-aware processing (no case
 // conversion, normalization, or character boundary detection), the operators
@@ -13,9 +13,7 @@ using json = nlohmann::json;
 
 class UnicodeCompatibilityTest : public ::testing::Test {
 protected:
-    void SetUp() override { 
-        input_data = json{{"test", "value"}}; 
-    }
+    void SetUp() override { input_data = json{{"test", "value"}}; }
 
     auto execute_script(const std::string& script_json) -> json {
         auto script = json::parse(script_json);
@@ -50,28 +48,28 @@ protected:
 TEST_F(UnicodeCompatibilityTest, JoinUnicodeStrings) {
     auto result = execute_script(R"(["join", {"array": ["café", "naïve", "résumé"]}, " • "])");
     debug_result("JoinUnicodeStrings", result);
-    
+
     EXPECT_EQ(result, json("café • naïve • résumé"));
 }
 
 TEST_F(UnicodeCompatibilityTest, JoinWithUnicodeDelimiter) {
     auto result = execute_script(R"(["join", {"array": ["hello", "world"]}, " → "])");
     debug_result("JoinWithUnicodeDelimiter", result);
-    
+
     EXPECT_EQ(result, json("hello → world"));
 }
 
 TEST_F(UnicodeCompatibilityTest, JoinEmoji) {
     auto result = execute_script(R"(["join", {"array": ["🚀", "🌟", "⭐"]}, ""])");
     debug_result("JoinEmoji", result);
-    
+
     EXPECT_EQ(result, json("🚀🌟⭐"));
 }
 
 TEST_F(UnicodeCompatibilityTest, JoinMixedScripts) {
     auto result = execute_script(R"(["join", {"array": ["Hello", "世界", "🌍", "Мир"]}, " | "])");
     debug_result("JoinMixedScripts", result);
-    
+
     EXPECT_EQ(result, json("Hello | 世界 | 🌍 | Мир"));
 }
 
@@ -81,28 +79,28 @@ TEST_F(UnicodeCompatibilityTest, JoinMixedScripts) {
 TEST_F(UnicodeCompatibilityTest, StrConcatUnicode) {
     auto result = execute_script(R"(["strConcat", "Hello ", "世界", " 🌍"])");
     debug_result("StrConcatUnicode", result);
-    
+
     EXPECT_EQ(result, json("Hello 世界 🌍"));
 }
 
 TEST_F(UnicodeCompatibilityTest, StrConcatMixedTypes) {
     auto result = execute_script(R"(["strConcat", "Score: ", 42, " 🏆"])");
     debug_result("StrConcatMixedTypes", result);
-    
+
     EXPECT_EQ(result, json("Score: 42 🏆"));
 }
 
 TEST_F(UnicodeCompatibilityTest, StrConcatEmoji) {
     auto result = execute_script(R"(["strConcat", "🚀", "🌟", "⭐", " = success!"])");
     debug_result("StrConcatEmoji", result);
-    
+
     EXPECT_EQ(result, json("🚀🌟⭐ = success!"));
 }
 
 TEST_F(UnicodeCompatibilityTest, StrConcatCJK) {
     auto result = execute_script(R"(["strConcat", "你好", "世界", "!"])");
     debug_result("StrConcatCJK", result);
-    
+
     EXPECT_EQ(result, json("你好世界!"));
 }
 
@@ -113,19 +111,20 @@ TEST_F(UnicodeCompatibilityTest, SortUnicodeStrings) {
     json unicode_array = {{"array", {"café", "naïve", "résumé", "apple", "zebra"}}};
     auto result = execute_script(R"(["sort", ["$input"]])", unicode_array);
     debug_result("SortUnicodeStrings", result);
-    
+
     // Sort treats Unicode as bytes, so lexicographic ordering by UTF-8 bytes
     // This may not match linguistic sorting but is predictable
     EXPECT_TRUE(result.is_object() && result.contains("array"));
     EXPECT_EQ(result["array"].size(), 5);
-    std::cout << "Note: Sort uses lexicographic byte ordering, not linguistic ordering" << std::endl;
+    std::cout << "Note: Sort uses lexicographic byte ordering, not linguistic ordering"
+              << std::endl;
 }
 
 TEST_F(UnicodeCompatibilityTest, SortEmoji) {
     json emoji_array = {{"array", {"🌟", "🚀", "⭐", "🏆"}}};
     auto result = execute_script(R"(["sort", ["$input"]])", emoji_array);
     debug_result("SortEmoji", result);
-    
+
     EXPECT_TRUE(result.is_object() && result.contains("array"));
     EXPECT_EQ(result["array"].size(), 4);
     std::cout << "Note: Emoji sorting by UTF-8 byte values" << std::endl;
@@ -135,7 +134,7 @@ TEST_F(UnicodeCompatibilityTest, SortMixedScripts) {
     json mixed_array = {{"array", {"Hello", "世界", "café", "Мир", "🌍"}}};
     auto result = execute_script(R"(["sort", ["$input"]])", mixed_array);
     debug_result("SortMixedScripts", result);
-    
+
     EXPECT_TRUE(result.is_object() && result.contains("array"));
     EXPECT_EQ(result["array"].size(), 5);
     std::cout << "Note: Mixed scripts sorted by UTF-8 byte values" << std::endl;
@@ -146,14 +145,14 @@ TEST_F(UnicodeCompatibilityTest, SortMixedScripts) {
 TEST_F(UnicodeCompatibilityTest, EmptyUnicodeStrings) {
     auto result = execute_script(R"(["join", {"array": ["", "café", ""]}, "|"])");
     debug_result("EmptyUnicodeStrings", result);
-    
+
     EXPECT_EQ(result, json("|café|"));
 }
 
 TEST_F(UnicodeCompatibilityTest, StrConcatEmpty) {
     auto result = execute_script(R"(["strConcat", "", "世界", ""])");
     debug_result("StrConcatEmpty", result);
-    
+
     EXPECT_EQ(result, json("世界"));
 }
 
@@ -163,7 +162,8 @@ TEST_F(UnicodeCompatibilityTest, DocumentCurrentBehavior) {
     std::cout << "=== Unicode Compatibility Summary ===" << std::endl;
     std::cout << "✓ join: Handles Unicode strings correctly as byte sequences" << std::endl;
     std::cout << "✓ strConcat: Concatenates Unicode strings correctly" << std::endl;
-    std::cout << "✓ sort: Lexicographic ordering by UTF-8 byte values (not linguistic)" << std::endl;
+    std::cout << "✓ sort: Lexicographic ordering by UTF-8 byte values (not linguistic)"
+              << std::endl;
     std::cout << "✗ split: Operator removed (no character boundary detection)" << std::endl;
     std::cout << "✗ trim: Operator removed (no Unicode whitespace detection)" << std::endl;
     std::cout << "✗ upper/lower: Operators removed (no Unicode case conversion)" << std::endl;

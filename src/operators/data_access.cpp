@@ -6,13 +6,13 @@ auto input_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalua
     if (args.empty()) {
         return EvaluationResult(ctx.input());
     }
-    
+
     if (args.size() != 1 || !args[0].is_string()) {
-        throw InvalidArgumentException("'$input' requires 0 or 1 string argument (JSON Pointer)", 
+        throw InvalidArgumentException("'$input' requires 0 or 1 string argument (JSON Pointer)",
                                        ctx.get_path_string());
     }
-    
-    auto result = evaluate_json_pointer(ctx.input(), args[0].get<std::string>(), 
+
+    auto result = evaluate_json_pointer(ctx.input(), args[0].get<std::string>(),
                                         ctx.get_path_string() + " (in $input)");
     return EvaluationResult(result);
 }
@@ -26,19 +26,19 @@ auto inputs_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
         }
         return EvaluationResult(result);
     }
-    
+
     if (args.size() != 1 || !args[0].is_string()) {
-        throw InvalidArgumentException("'$inputs' requires 0 or 1 string argument (JSON Pointer)", 
+        throw InvalidArgumentException("'$inputs' requires 0 or 1 string argument (JSON Pointer)",
                                        ctx.get_path_string());
     }
-    
+
     // Create inputs array for JSON Pointer navigation
     nlohmann::json inputs_array = nlohmann::json::array();
     for (const auto& input : ctx.inputs()) {
         inputs_array.push_back(input);
     }
-    
-    auto result = evaluate_json_pointer(inputs_array, args[0].get<std::string>(), 
+
+    auto result = evaluate_json_pointer(inputs_array, args[0].get<std::string>(),
                                         ctx.get_path_string() + " (in $inputs)");
     return EvaluationResult(result);
 }
@@ -49,18 +49,19 @@ auto variable_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Eva
         throw InvalidArgumentException("'$' requires exactly 1 string argument (JSON Pointer)",
                                        ctx.get_path_string());
     }
-    
+
     std::string json_pointer = args[0].get<std::string>();
-    
+
     // Require JSON Pointer format starting with "/"
     if (json_pointer.empty() || json_pointer[0] != '/') {
-        throw InvalidArgumentException("'$' requires JSON Pointer format starting with '/' (e.g., '/variable_name')",
-                                       ctx.get_path_string());
+        throw InvalidArgumentException(
+            "'$' requires JSON Pointer format starting with '/' (e.g., '/variable_name')",
+            ctx.get_path_string());
     }
-    
+
     // Parse variable name and sub-path
     auto parts = parse_variable_path(json_pointer);
-    
+
     // Look up the variable
     auto iter = ctx.variables.find(parts.variable_name);
     if (iter == ctx.variables.end()) {
@@ -70,25 +71,26 @@ auto variable_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Eva
         for (const auto& [name, _] : ctx.variables) {
             available_vars.push_back(name);
         }
-        
+
         auto suggestions = suggest_similar_names(parts.variable_name, available_vars, 2);
-        
+
         std::string message = "Variable not found: '" + parts.variable_name + "'";
         if (!suggestions.empty()) {
             message += ". Did you mean '" + suggestions[0] + "'?";
         }
-        
+
         throw InvalidArgumentException(message, ctx.get_path_string());
     }
-    
+
     // If no sub-path, return the variable directly
     if (parts.sub_path.empty()) {
         return EvaluationResult(iter->second);
     }
-    
+
     // Use shared JSON Pointer evaluation for sub-path
-    auto result = evaluate_json_pointer(iter->second, parts.sub_path, 
-                                        ctx.get_path_string() + " (in variable '" + parts.variable_name + "')");
+    auto result = evaluate_json_pointer(iter->second, parts.sub_path,
+                                        ctx.get_path_string() + " (in variable '"
+                                            + parts.variable_name + "')");
     return EvaluationResult(result);
 }
 // NOLINTEND(readability-function-size)

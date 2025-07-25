@@ -223,8 +223,7 @@ void OperatorRegistry::initialize_operators() {
 auto evaluate_array_object(const nlohmann::json& expr, const ExecutionContext& ctx,
                            DebugContext* debug_ctx) -> EvaluationResult {
     if (!expr["array"].is_array()) {
-        throw InvalidArgumentException("Array object must contain an array",
-                                       ctx.get_path_string());
+        throw InvalidArgumentException("Array object must contain an array", ctx.get_path_string());
     }
     // Array objects are unwrapped and returned as-is (no evaluation of elements)
     return EvaluationResult(expr["array"]);
@@ -314,7 +313,7 @@ auto evaluate_internal(const nlohmann::json& expr, const ExecutionContext& ctx,
     if (expr.empty() || !expr[0].is_string()) {
         return evaluate_literal_array(expr, ctx, debug_ctx); // Rule 3
     }
-    
+
     return evaluate_operator_call(expr, ctx, debug_ctx); // Rule 1 & 2
 }
 

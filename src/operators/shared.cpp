@@ -201,15 +201,20 @@ auto suggest_similar_names(const std::string& target, const std::vector<std::str
 }
 // NOLINTEND(readability-function-size)
 
-auto process_array_with_lambda(const nlohmann::json& args, ExecutionContext& ctx, const std::string& op_name,
-                               const std::function<bool(const nlohmann::json& item, const nlohmann::json& lambda_result, nlohmann::json& final_result)>& processor) -> nlohmann::json {
+// NOLINTBEGIN(readability-function-size)
+auto process_array_with_lambda(
+    const nlohmann::json& args, ExecutionContext& ctx, const std::string& op_name,
+    const std::function<bool(const nlohmann::json& item, const nlohmann::json& lambda_result,
+                             nlohmann::json& final_result)>& processor) -> nlohmann::json {
     if (args.size() != 2) {
-        throw InvalidArgumentException("'" + op_name + "' requires exactly 2 arguments (array, lambda)", ctx.get_path_string());
+        throw InvalidArgumentException("'" + op_name
+                                           + "' requires exactly 2 arguments (array, lambda)",
+                                       ctx.get_path_string());
     }
 
     auto array_input = evaluate(args[0], ctx);
     auto array_data = extract_array_data(array_input, op_name, ctx.get_path_string());
-    
+
     nlohmann::json final_result; // The processor will populate this
 
     for (const auto& item : array_data) {
@@ -218,9 +223,10 @@ auto process_array_with_lambda(const nlohmann::json& args, ExecutionContext& ctx
 
         // Resolve any tail calls from lambda evaluation
         while (lambda_result.is_tail_call) {
-            lambda_result = evaluate_internal(lambda_result.tail_call->expression, lambda_result.tail_call->context);
+            lambda_result = evaluate_internal(lambda_result.tail_call->expression,
+                                              lambda_result.tail_call->context);
         }
-        
+
         // Let the processor handle the item and lambda result
         // The processor returns true to continue, false to break early (for find, some, every)
         bool should_continue = processor(item, lambda_result.value, final_result);
@@ -228,28 +234,32 @@ auto process_array_with_lambda(const nlohmann::json& args, ExecutionContext& ctx
             break;
         }
     }
-    
+
     return final_result;
 }
+// NOLINTEND(readability-function-size)
 
-auto evaluate_json_pointer(const nlohmann::json& root, const std::string& pointer_str, const std::string& path_context) -> nlohmann::json {
+auto evaluate_json_pointer(const nlohmann::json& root, const std::string& pointer_str,
+                           const std::string& path_context) -> nlohmann::json {
     if (pointer_str.empty() || pointer_str[0] != '/') {
-        throw InvalidArgumentException("Requires JSON Pointer format starting with '/'", path_context);
+        throw InvalidArgumentException("Requires JSON Pointer format starting with '/'",
+                                       path_context);
     }
-    
+
     try {
         return root.at(nlohmann::json::json_pointer(pointer_str));
     } catch (const nlohmann::json::exception& e) {
-        throw InvalidArgumentException("Invalid JSON Pointer path '" + pointer_str + "': " + e.what(), path_context);
+        throw InvalidArgumentException(
+            "Invalid JSON Pointer path '" + pointer_str + "': " + e.what(), path_context);
     }
 }
 
 auto parse_variable_path(const std::string& full_path) -> VariablePathParts {
     VariablePathParts parts;
-    
+
     // Find the second slash to split variable name from sub-path
     auto second_slash = full_path.find('/', 1);
-    
+
     if (second_slash == std::string::npos) {
         // Simple variable: "/variable_name"
         parts.variable_name = full_path.substr(1);
@@ -259,7 +269,7 @@ auto parse_variable_path(const std::string& full_path) -> VariablePathParts {
         parts.variable_name = full_path.substr(1, second_slash - 1);
         parts.sub_path = full_path.substr(second_slash);
     }
-    
+
     return parts;
 }
 
