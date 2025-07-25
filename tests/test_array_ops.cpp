@@ -44,8 +44,8 @@ TEST_F(ArrayOpsTest, MapOperatorEmpty) {
 
 TEST_F(ArrayOpsTest, MapOperatorStringTransform) {
     auto result = execute_script(
-        R"(["map", {"array": ["hello", "world"]}, [["s"], ["upper", ["$", "/s"]]]])");
-    auto expected = json::parse(R"({"array": ["HELLO", "WORLD"]})");
+        R"(["map", {"array": ["hello", "world"]}, [["s"], ["strConcat", "prefix_", ["$", "/s"]]]])");
+    auto expected = json::parse(R"({"array": ["prefix_hello", "prefix_world"]})");
     EXPECT_EQ(result, expected);
 }
 

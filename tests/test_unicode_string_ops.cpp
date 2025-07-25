@@ -4,7 +4,14 @@
 
 using json = nlohmann::json;
 
-class UnicodeStringOpsTest : public ::testing::Test {
+// Unicode Compatibility Tests
+// 
+// These tests verify that remaining string operators handle Unicode data correctly
+// as UTF-8 byte sequences. While there's no Unicode-aware processing (no case
+// conversion, normalization, or character boundary detection), the operators
+// treat Unicode text as opaque byte strings, which often works correctly.
+
+class UnicodeCompatibilityTest : public ::testing::Test {
 protected:
     void SetUp() override { 
         input_data = json{{"test", "value"}}; 
@@ -37,241 +44,129 @@ protected:
     json input_data;
 };
 
-// === Unicode Split Tests ===
-
-TEST_F(UnicodeStringOpsTest, SplitUnicodeBasicDelimiter) {
-    // Test splitting Unicode string with ASCII delimiter
-    auto result = execute_script(R"(["split", "café,naïve,résumé", ","])");
-    debug_result("SplitUnicodeBasicDelimiter", result);
-    
-    auto expected = json::parse(R"({"array": ["café", "naïve", "résumé"]})");
-    EXPECT_EQ(result, expected);
-}
-
-TEST_F(UnicodeStringOpsTest, SplitUnicodeDelimiter) {
-    // Test splitting with Unicode delimiter
-    auto result = execute_script(R"(["split", "hello→world→test", "→"])");
-    debug_result("SplitUnicodeDelimiter", result);
-    
-    auto expected = json::parse(R"({"array": ["hello", "world", "test"]})");
-    EXPECT_EQ(result, expected);
-}
-
-TEST_F(UnicodeStringOpsTest, SplitEmptyDelimiterMultiByte) {
-    // FIXED: Now correctly splits Unicode characters, not bytes
-    auto result = execute_script(R"(["split", "café", ""])");
-    debug_result("SplitEmptyDelimiterMultiByte", result);
-    
-    // Should now correctly produce: ["c", "a", "f", "é"]
-    auto expected = json::parse(R"({"array": ["c", "a", "f", "é"]})");
-    EXPECT_EQ(result, expected);
-}
-
-TEST_F(UnicodeStringOpsTest, SplitEmptyDelimiterEmoji) {
-    // FIXED: Now correctly handles emoji (4-byte UTF-8 sequences)
-    auto result = execute_script(R"(["split", "🚀🌟", ""])");
-    debug_result("SplitEmptyDelimiterEmoji", result);
-    
-    // Should now correctly produce: ["🚀", "🌟"]
-    auto expected = json::parse(R"({"array": ["🚀", "🌟"]})");
-    EXPECT_EQ(result, expected);
-}
-
-TEST_F(UnicodeStringOpsTest, SplitCJKCharacters) {
-    // Test with Chinese/Japanese characters
-    auto result = execute_script(R"(["split", "你好,世界", ","])");
-    debug_result("SplitCJKCharacters", result);
-    
-    auto expected = json::parse(R"({"array": ["你好", "世界"]})");
-    EXPECT_EQ(result, expected);
-}
-
-TEST_F(UnicodeStringOpsTest, SplitMixedScript) {
-    // Mixed scripts and emoji
-    auto result = execute_script(R"(["split", "Hello世界🌍Мир", "世"])");
-    debug_result("SplitMixedScript", result);
-    
-    auto expected = json::parse(R"({"array": ["Hello", "界🌍Мир"]})");
-    EXPECT_EQ(result, expected);
-}
-
 // === Unicode Join Tests ===
+// Tests that 'join' operator handles Unicode strings correctly
 
-TEST_F(UnicodeStringOpsTest, JoinUnicodeStrings) {
+TEST_F(UnicodeCompatibilityTest, JoinUnicodeStrings) {
     auto result = execute_script(R"(["join", {"array": ["café", "naïve", "résumé"]}, " • "])");
     debug_result("JoinUnicodeStrings", result);
     
     EXPECT_EQ(result, json("café • naïve • résumé"));
 }
 
-TEST_F(UnicodeStringOpsTest, JoinWithUnicodeDelimiter) {
+TEST_F(UnicodeCompatibilityTest, JoinWithUnicodeDelimiter) {
     auto result = execute_script(R"(["join", {"array": ["hello", "world"]}, " → "])");
     debug_result("JoinWithUnicodeDelimiter", result);
     
     EXPECT_EQ(result, json("hello → world"));
 }
 
-TEST_F(UnicodeStringOpsTest, JoinEmoji) {
+TEST_F(UnicodeCompatibilityTest, JoinEmoji) {
     auto result = execute_script(R"(["join", {"array": ["🚀", "🌟", "⭐"]}, ""])");
     debug_result("JoinEmoji", result);
     
     EXPECT_EQ(result, json("🚀🌟⭐"));
 }
 
-// === Unicode Trim Tests ===
-
-TEST_F(UnicodeStringOpsTest, TrimASCIIWhitespace) {
-    // This should work fine
-    auto result = execute_script(R"(["trim", "   café   "])");
-    debug_result("TrimASCIIWhitespace", result);
+TEST_F(UnicodeCompatibilityTest, JoinMixedScripts) {
+    auto result = execute_script(R"(["join", {"array": ["Hello", "世界", "🌍", "Мир"]}, " | "])");
+    debug_result("JoinMixedScripts", result);
     
-    EXPECT_EQ(result, json("café"));
-}
-
-TEST_F(UnicodeStringOpsTest, TrimUnicodeWhitespace) {
-    // Test with Unicode whitespace characters
-    // U+00A0 (Non-breaking space), U+2003 (Em space), U+2009 (Thin space)
-    auto result = execute_script(R"(["trim", " café "])");
-    debug_result("TrimUnicodeWhitespace", result);
-    
-    // Current implementation likely won't trim Unicode whitespace
-    std::cout << "WARNING: Unicode whitespace may not be trimmed!" << std::endl;
-}
-
-TEST_F(UnicodeStringOpsTest, TrimZeroWidthSpaces) {
-    // U+200B (Zero width space), U+FEFF (Byte order mark/zero width no-break space)
-    std::string input_with_zwsp = "\u200B\uFEFFcafé\u200B\uFEFF";
-    auto script = R"(["trim", ")" + input_with_zwsp + R"("])";
-    
-    try {
-        auto result = execute_script(script);
-        debug_result("TrimZeroWidthSpaces", result);
-        std::cout << "Zero-width spaces likely not trimmed by current implementation" << std::endl;
-    } catch (const std::exception& e) {
-        std::cout << "Error with zero-width space test: " << e.what() << std::endl;
-    }
-}
-
-// === Unicode Case Conversion Tests ===
-
-TEST_F(UnicodeStringOpsTest, UpperASCII) {
-    auto result = execute_script(R"(["upper", "hello"])");
-    debug_result("UpperASCII", result);
-    
-    EXPECT_EQ(result, json("HELLO"));
-}
-
-TEST_F(UnicodeStringOpsTest, UpperAccentedCharacters) {
-    auto result = execute_script(R"(["upper", "café"])");
-    debug_result("UpperAccentedCharacters", result);
-    
-    // FIXED: Now correctly converts é to É
-    EXPECT_EQ(result, json("CAFÉ"));
-}
-
-TEST_F(UnicodeStringOpsTest, LowerAccentedCharacters) {
-    auto result = execute_script(R"(["lower", "CAFÉ"])");
-    debug_result("LowerAccentedCharacters", result);
-    
-    // Current implementation will likely NOT convert É to é
-    std::cout << "Expected: café, but É likely won't convert to é" << std::endl;
-}
-
-TEST_F(UnicodeStringOpsTest, UpperCyrillic) {
-    auto result = execute_script(R"(["upper", "привет"])");
-    debug_result("UpperCyrillic", result);
-    
-    std::cout << "Expected: ПРИВЕТ, but Cyrillic case conversion likely won't work" << std::endl;
-}
-
-TEST_F(UnicodeStringOpsTest, UpperGreek) {
-    auto result = execute_script(R"(["upper", "αβγ"])");
-    debug_result("UpperGreek", result);
-    
-    std::cout << "Expected: ΑΒΓ, but Greek case conversion likely won't work" << std::endl;
-}
-
-TEST_F(UnicodeStringOpsTest, UpperGerman) {
-    auto result = execute_script(R"(["upper", "straße"])");
-    debug_result("UpperGerman", result);
-    
-    std::cout << "Expected: STRASSE (ß → SS), but this won't work with ASCII-only conversion" << std::endl;
+    EXPECT_EQ(result, json("Hello | 世界 | 🌍 | Мир"));
 }
 
 // === Unicode String Concatenation Tests ===
+// Tests that 'strConcat' operator handles Unicode strings correctly
 
-TEST_F(UnicodeStringOpsTest, StrConcatUnicode) {
+TEST_F(UnicodeCompatibilityTest, StrConcatUnicode) {
     auto result = execute_script(R"(["strConcat", "Hello ", "世界", " 🌍"])");
     debug_result("StrConcatUnicode", result);
     
     EXPECT_EQ(result, json("Hello 世界 🌍"));
 }
 
-TEST_F(UnicodeStringOpsTest, StrConcatMixedTypes) {
+TEST_F(UnicodeCompatibilityTest, StrConcatMixedTypes) {
     auto result = execute_script(R"(["strConcat", "Score: ", 42, " 🏆"])");
     debug_result("StrConcatMixedTypes", result);
     
     EXPECT_EQ(result, json("Score: 42 🏆"));
 }
 
-// === Roundtrip Tests ===
-
-TEST_F(UnicodeStringOpsTest, SplitJoinRoundtripUnicode) {
-    auto result = execute_script(R"(["join", ["split", "café→naïve→résumé", "→"], "→"])");
-    debug_result("SplitJoinRoundtripUnicode", result);
+TEST_F(UnicodeCompatibilityTest, StrConcatEmoji) {
+    auto result = execute_script(R"(["strConcat", "🚀", "🌟", "⭐", " = success!"])");
+    debug_result("StrConcatEmoji", result);
     
-    EXPECT_EQ(result, json("café→naïve→résumé"));
+    EXPECT_EQ(result, json("🚀🌟⭐ = success!"));
 }
 
-TEST_F(UnicodeStringOpsTest, SplitJoinRoundtripEmoji) {
-    auto result = execute_script(R"(["join", ["split", "🚀,🌟,⭐", ","], ","])");
-    debug_result("SplitJoinRoundtripEmoji", result);
+TEST_F(UnicodeCompatibilityTest, StrConcatCJK) {
+    auto result = execute_script(R"(["strConcat", "你好", "世界", "!"])");
+    debug_result("StrConcatCJK", result);
     
-    EXPECT_EQ(result, json("🚀,🌟,⭐"));
+    EXPECT_EQ(result, json("你好世界!"));
 }
 
-// === Edge Cases and Error Conditions ===
+// === Unicode Sort Tests ===
+// Tests that 'sort' operator handles Unicode strings (lexicographic byte ordering)
 
-TEST_F(UnicodeStringOpsTest, InvalidUTF8Handling) {
-    // Test how the system handles invalid UTF-8 sequences
-    // This is tricky to test directly, so we'll just ensure no crashes
-    std::cout << "Testing invalid UTF-8 handling..." << std::endl;
+TEST_F(UnicodeCompatibilityTest, SortUnicodeStrings) {
+    json unicode_array = {{"array", {"café", "naïve", "résumé", "apple", "zebra"}}};
+    auto result = execute_script(R"(["sort", ["$input"]])", unicode_array);
+    debug_result("SortUnicodeStrings", result);
     
-    // Most invalid UTF-8 will be caught by JSON parsing, so this is limited
-    SUCCEED(); // Just ensure we can run this test without crashing
+    // Sort treats Unicode as bytes, so lexicographic ordering by UTF-8 bytes
+    // This may not match linguistic sorting but is predictable
+    EXPECT_TRUE(result.is_object() && result.contains("array"));
+    EXPECT_EQ(result["array"].size(), 5);
+    std::cout << "Note: Sort uses lexicographic byte ordering, not linguistic ordering" << std::endl;
 }
 
-TEST_F(UnicodeStringOpsTest, EmptyUnicodeStrings) {
-    auto result = execute_script(R"(["strConcat", "", "café", ""])");
+TEST_F(UnicodeCompatibilityTest, SortEmoji) {
+    json emoji_array = {{"array", {"🌟", "🚀", "⭐", "🏆"}}};
+    auto result = execute_script(R"(["sort", ["$input"]])", emoji_array);
+    debug_result("SortEmoji", result);
+    
+    EXPECT_TRUE(result.is_object() && result.contains("array"));
+    EXPECT_EQ(result["array"].size(), 4);
+    std::cout << "Note: Emoji sorting by UTF-8 byte values" << std::endl;
+}
+
+TEST_F(UnicodeCompatibilityTest, SortMixedScripts) {
+    json mixed_array = {{"array", {"Hello", "世界", "café", "Мир", "🌍"}}};
+    auto result = execute_script(R"(["sort", ["$input"]])", mixed_array);
+    debug_result("SortMixedScripts", result);
+    
+    EXPECT_TRUE(result.is_object() && result.contains("array"));
+    EXPECT_EQ(result["array"].size(), 5);
+    std::cout << "Note: Mixed scripts sorted by UTF-8 byte values" << std::endl;
+}
+
+// === Empty and Edge Cases ===
+
+TEST_F(UnicodeCompatibilityTest, EmptyUnicodeStrings) {
+    auto result = execute_script(R"(["join", {"array": ["", "café", ""]}, "|"])");
     debug_result("EmptyUnicodeStrings", result);
     
-    EXPECT_EQ(result, json("café"));
+    EXPECT_EQ(result, json("|café|"));
 }
 
-TEST_F(UnicodeStringOpsTest, UnicodeNormalization) {
-    // Test with composed vs decomposed characters
-    // "é" can be U+00E9 (composed) or U+0065 U+0301 (e + combining acute)
-    std::cout << "Note: Unicode normalization not tested - would require composed/decomposed character pairs" << std::endl;
-    SUCCEED();
-}
-
-// === Performance and Length Tests ===
-
-TEST_F(UnicodeStringOpsTest, UnicodeLengthAwareness) {
-    // While we can't test string length directly, we can observe split behavior
-    auto result = execute_script(R"(["split", "🚀", ""])");
-    debug_result("UnicodeLengthAwareness", result);
+TEST_F(UnicodeCompatibilityTest, StrConcatEmpty) {
+    auto result = execute_script(R"(["strConcat", "", "世界", ""])");
+    debug_result("StrConcatEmpty", result);
     
-    std::cout << "Single emoji character split result - should be 1 element, but likely more due to byte-level splitting" << std::endl;
+    EXPECT_EQ(result, json("世界"));
 }
 
-// === Documentation Helper Tests ===
+// === Documentation Test ===
 
-TEST_F(UnicodeStringOpsTest, DocumentCurrentBehavior) {
-    std::cout << "\n=== UNICODE SUPPORT ANALYSIS ===" << std::endl;
-    std::cout << "Running comprehensive tests to document current Unicode behavior..." << std::endl;
-    std::cout << "Each test will show expected vs actual behavior." << std::endl;
-    std::cout << "Check the debug output above for detailed analysis." << std::endl;
-    
-    SUCCEED(); // This test always passes, it's just for documentation
+TEST_F(UnicodeCompatibilityTest, DocumentCurrentBehavior) {
+    std::cout << "=== Unicode Compatibility Summary ===" << std::endl;
+    std::cout << "✓ join: Handles Unicode strings correctly as byte sequences" << std::endl;
+    std::cout << "✓ strConcat: Concatenates Unicode strings correctly" << std::endl;
+    std::cout << "✓ sort: Lexicographic ordering by UTF-8 byte values (not linguistic)" << std::endl;
+    std::cout << "✗ split: Operator removed (no character boundary detection)" << std::endl;
+    std::cout << "✗ trim: Operator removed (no Unicode whitespace detection)" << std::endl;
+    std::cout << "✗ upper/lower: Operators removed (no Unicode case conversion)" << std::endl;
+    std::cout << "Note: Unicode data flows through system correctly as UTF-8" << std::endl;
+    std::cout << "=======================================" << std::endl;
 }

@@ -140,11 +140,7 @@ auto cons_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
 auto append_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
 
 // String and Utility Operators
-auto split_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
 auto join_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto trim_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto upper_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto lower_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
 auto strConcat_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
 auto sort_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
 auto reverse_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
@@ -210,11 +206,7 @@ void OperatorRegistry::initialize_operators() {
     operators_["append"] = operators::append_operator;
 
     // String and Utility Operators
-    operators_["split"] = operators::split_operator;
     operators_["join"] = operators::join_operator;
-    operators_["trim"] = operators::trim_operator;
-    operators_["upper"] = operators::upper_operator;
-    operators_["lower"] = operators::lower_operator;
     operators_["strConcat"] = operators::strConcat_operator;
     operators_["sort"] = operators::sort_operator;
     operators_["reverse"] = operators::reverse_operator;

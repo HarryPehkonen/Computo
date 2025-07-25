@@ -5,58 +5,17 @@
 #include <cmath>
 #include <set>
 #include <sstream>
-#include <uni_algo/case.h>
-#include <uni_algo/conv.h>
-#include <uni_algo/ranges.h>
-#include <uni_algo/ranges_conv.h>
-#include <uni_algo/prop.h>
 
 namespace computo::operators {
 
-// NOLINTBEGIN(readability-function-size)
-auto split_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
-    if (args.size() != 2) {
-        throw InvalidArgumentException("'split' requires exactly 2 arguments (string, delimiter)",
-                                       ctx.get_path_string());
-    }
+// String Utility Operators
+//
+// Unicode Handling: These operators treat Unicode text as UTF-8 byte sequences.
+// They perform no Unicode-aware processing (no case conversion, normalization,
+// or character boundary detection). Unicode data flows through correctly as
+// opaque byte strings, which works well for joining, concatenation, and
+// lexicographic sorting.
 
-    auto str_val = evaluate(args[0], ctx);
-    auto delim_val = evaluate(args[1], ctx);
-
-    if (!str_val.is_string()) {
-        throw InvalidArgumentException("'split' requires a string as first argument",
-                                       ctx.get_path_string());
-    }
-    if (!delim_val.is_string()) {
-        throw InvalidArgumentException("'split' requires a string delimiter as second argument",
-                                       ctx.get_path_string());
-    }
-
-    std::string str = str_val.get<std::string>();
-    std::string delimiter = delim_val.get<std::string>();
-
-    nlohmann::json result = nlohmann::json::array();
-
-    if (delimiter.empty()) {
-        // Split into individual Unicode characters
-        for (char32_t codepoint : str | una::ranges::views::utf8) {
-            result.push_back(una::utf32to8(std::u32string(1, codepoint)));
-        }
-    } else {
-        size_t start = 0;
-        size_t end = str.find(delimiter);
-
-        while (end != std::string::npos) {
-            result.push_back(str.substr(start, end - start));
-            start = end + delimiter.length();
-            end = str.find(delimiter, start);
-        }
-        result.push_back(str.substr(start));
-    }
-
-    return EvaluationResult(nlohmann::json{{"array", result}});
-}
-// NOLINTEND(readability-function-size)
 
 // NOLINTBEGIN(readability-function-size)
 auto join_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
@@ -101,87 +60,8 @@ auto join_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
 }
 // NOLINTEND(readability-function-size)
 
-auto trim_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
-    if (args.size() != 1) {
-        throw InvalidArgumentException("'trim' requires exactly 1 argument", ctx.get_path_string());
-    }
 
-    auto str_val = evaluate(args[0], ctx);
-    if (!str_val.is_string()) {
-        throw InvalidArgumentException("'trim' requires a string argument", ctx.get_path_string());
-    }
 
-    std::string str = str_val.get<std::string>();
-
-    // Collect all Unicode characters with their whitespace status
-    std::vector<char32_t> codepoints;
-    for (char32_t codepoint : str | una::ranges::views::utf8) {
-        codepoints.push_back(codepoint);
-    }
-    
-    if (codepoints.empty()) {
-        return EvaluationResult(std::string{});
-    }
-    
-    // Find first non-whitespace character
-    size_t start = 0;
-    while (start < codepoints.size() && una::codepoint::is_whitespace(codepoints[start])) {
-        ++start;
-    }
-    
-    // Find last non-whitespace character
-    size_t end = codepoints.size();
-    while (end > start && una::codepoint::is_whitespace(codepoints[end - 1])) {
-        --end;
-    }
-    
-    // Reconstruct string from non-whitespace portion
-    if (start >= end) {
-        // All whitespace
-        return EvaluationResult(std::string{});
-    }
-    
-    std::string result;
-    for (size_t i = start; i < end; ++i) {
-        result += una::utf32to8(std::u32string(1, codepoints[i]));
-    }
-
-    return EvaluationResult(result);
-}
-
-auto upper_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
-    if (args.size() != 1) {
-        throw InvalidArgumentException("'upper' requires exactly 1 argument",
-                                       ctx.get_path_string());
-    }
-
-    auto str_val = evaluate(args[0], ctx);
-    if (!str_val.is_string()) {
-        throw InvalidArgumentException("'upper' requires a string argument", ctx.get_path_string());
-    }
-
-    std::string str = str_val.get<std::string>();
-    str = una::cases::to_uppercase_utf8(str);
-
-    return EvaluationResult(str);
-}
-
-auto lower_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
-    if (args.size() != 1) {
-        throw InvalidArgumentException("'lower' requires exactly 1 argument",
-                                       ctx.get_path_string());
-    }
-
-    auto str_val = evaluate(args[0], ctx);
-    if (!str_val.is_string()) {
-        throw InvalidArgumentException("'lower' requires a string argument", ctx.get_path_string());
-    }
-
-    std::string str = str_val.get<std::string>();
-    str = una::cases::to_lowercase_utf8(str);
-
-    return EvaluationResult(str);
-}
 
 auto strConcat_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.empty()) {

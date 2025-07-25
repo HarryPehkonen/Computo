@@ -63,7 +63,6 @@ endif()
 
 # --- Dependencies ---
 find_package(nlohmann_json REQUIRED)
-find_package(uni-algo REQUIRED)
 find_package(GTest REQUIRED)
 find_library(READLINE_LIB readline)
 if(READLINE_LIB)
@@ -97,7 +96,7 @@ set(COMPUTO_HEADERS
 # Core Library (libcomputo) - compiled once for all targets
 add_library(computo STATIC ${COMPUTO_LIB_SOURCES} ${COMPUTO_HEADERS})
 target_include_directories(computo PUBLIC include PRIVATE src)
-target_link_libraries(computo PUBLIC nlohmann_json::nlohmann_json uni-algo::uni-algo)
+target_link_libraries(computo PUBLIC nlohmann_json::nlohmann_json)
 set_target_properties(computo PROPERTIES OUTPUT_NAME "computo")
 
 # Apply memory debugging flags if enabled
@@ -193,11 +192,12 @@ if(MEMORY_DEBUG_FLAGS)
     target_link_libraries(test_performance PRIVATE ${MEMORY_DEBUG_LIBS})
 endif()
 
-# Add performance benchmarks to CTest (but not run by default)
+# Add performance benchmarks to CTest (disabled by default)
 add_test(NAME performance_benchmarks COMMAND test_performance)
 set_tests_properties(performance_benchmarks PROPERTIES 
     LABELS "performance"
     TIMEOUT 300
+    DISABLED TRUE
 )
 
 # Custom target for running performance benchmarks

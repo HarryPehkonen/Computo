@@ -364,12 +364,12 @@ TEST_F(PerformanceBenchmarkTest, ArrayOperationsBenchmark) {
 
 TEST_F(PerformanceBenchmarkTest, StringOperationsBenchmark) {
     // Single string operations
-    suite_->run_benchmark("String_Single", "upper", [this]() {
-        execute_script(R"(["upper", "hello world this is a test string"])");
+    suite_->run_benchmark("String_Single", "join", [this]() {
+        execute_script(R"(["join", {"array": ["hello", "world", "this", "is", "a", "test"]}, " "])");
     });
 
-    suite_->run_benchmark("String_Single", "lower", [this]() {
-        execute_script(R"(["lower", "HELLO WORLD THIS IS A TEST STRING"])");
+    suite_->run_benchmark("String_Single", "strConcat", [this]() {
+        execute_script(R"(["strConcat", "hello", " ", "world", " ", "test", " ", "string"])");
     });
 
     // Array of strings
@@ -382,17 +382,16 @@ TEST_F(PerformanceBenchmarkTest, StringOperationsBenchmark) {
         }
 
         suite_->run_benchmark(
-            "String_Array", "map_upper",
+            "String_Array", "join_large",
             [this, string_array]() {
-                execute_script(R"(["map", ["$input"], [["s"], ["upper", ["$", "/s"]]]])",
-                               string_array);
+                execute_script(R"(["join", ["$input"], "||"])", string_array);
             },
             size);
 
         suite_->run_benchmark(
-            "String_Array", "map_lower",
+            "String_Array", "map_strConcat",
             [this, string_array]() {
-                execute_script(R"(["map", ["$input"], [["s"], ["lower", ["$", "/s"]]]])",
+                execute_script(R"(["map", ["$input"], [["s"], ["strConcat", "prefix_", ["$", "/s"]]]])",
                                string_array);
             },
             size);
