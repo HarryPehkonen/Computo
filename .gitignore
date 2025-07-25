@@ -9,6 +9,7 @@ CMakeCache.txt
 cmake_install.cmake
 Makefile
 compile_commands.json
+CMakeUserPresets.json
 
 # Object files and libraries
 *.o
