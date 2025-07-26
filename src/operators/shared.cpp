@@ -217,9 +217,12 @@ auto process_array_with_lambda(
 
     nlohmann::json final_result; // The processor will populate this
 
+    // Evaluate the lambda expression first (handles ["lambda", ...] syntax)
+    auto lambda_expr = evaluate(args[1], ctx.with_path("lambda"));
+
     for (const auto& item : array_data) {
         std::vector<nlohmann::json> lambda_args = {item};
-        auto lambda_result = evaluate_lambda(args[1], lambda_args, ctx);
+        auto lambda_result = evaluate_lambda(lambda_expr, lambda_args, ctx);
 
         // Resolve any tail calls from lambda evaluation
         while (lambda_result.is_tail_call) {

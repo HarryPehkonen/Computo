@@ -173,7 +173,7 @@ TEST_F(FunctionalOpsTest, CarCdrChaining) {
 TEST_F(FunctionalOpsTest, ConsWithExpressions) {
     // cons with computed values
     auto result = execute_script(
-        R"(["cons", ["+", 1, 2], ["map", {"array": [1, 2]}, [["x"], ["*", ["$", "/x"], 2]]]])");
+        R"(["cons", ["+", 1, 2], ["map", {"array": [1, 2]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]]])");
     auto expected = json::parse(R"({"array": [3, 2, 4]})");
     EXPECT_EQ(result, expected);
 }
@@ -181,7 +181,7 @@ TEST_F(FunctionalOpsTest, ConsWithExpressions) {
 TEST_F(FunctionalOpsTest, AppendWithTransformations) {
     // append transformed arrays
     auto result = execute_script(
-        R"(["append", ["map", {"array": [1, 2]}, [["x"], ["*", ["$", "/x"], 2]]], ["map", {"array": [3, 4]}, [["x"], ["+", ["$", "/x"], 10]]]])");
+        R"(["append", ["map", {"array": [1, 2]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]], ["map", {"array": [3, 4]}, ["lambda", ["x"], ["+", ["$", "/x"], 10]]]])");
     auto expected = json::parse(R"({"array": [2, 4, 13, 14]})");
     EXPECT_EQ(result, expected);
 }

@@ -115,6 +115,9 @@ auto logical_not(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluatio
 // Control Flow Operators
 auto if_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
 
+// Lambda Operator
+auto lambda_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+
 // Object Operators
 auto obj_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
 auto keys_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
@@ -180,6 +183,9 @@ void OperatorRegistry::initialize_operators() {
 
     // Control Flow Operators
     operators_["if"] = operators::if_operator;
+
+    // Lambda Operator
+    operators_["lambda"] = operators::lambda_operator;
 
     // Object Operators
     operators_["obj"] = operators::obj_operator;

@@ -20,4 +20,31 @@ auto if_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluatio
     return {args[2], ctx.with_path("else")};
 }
 
+auto lambda_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+    if (args.size() != 2) {
+        throw InvalidArgumentException("'lambda' requires exactly 2 arguments: [params, body]",
+                                       ctx.get_path_string());
+    }
+
+    // First argument must be an array of parameter names
+    if (!args[0].is_array()) {
+        throw InvalidArgumentException("Lambda parameters must be an array", ctx.get_path_string());
+    }
+
+    // Validate parameter names are strings
+    for (const auto& param : args[0]) {
+        if (!param.is_string()) {
+            throw InvalidArgumentException("Lambda parameter names must be strings",
+                                           ctx.get_path_string());
+        }
+    }
+
+    // Return the lambda as [params, body] for evaluate_lambda to process
+    nlohmann::json lambda_expr = nlohmann::json::array();
+    lambda_expr.push_back(args[0]); // params
+    lambda_expr.push_back(args[1]); // body (not evaluated here)
+
+    return EvaluationResult(lambda_expr);
+}
+
 } // namespace computo::operators

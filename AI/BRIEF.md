@@ -238,21 +238,18 @@ All Computo scripts are valid JSON. The basic syntax is:
 ["lambda", ["x"], ["*", ["$", "/x"], 2]]
 ```
 
-Lambda expressions are used with array operations and can be called directly:
+Lambda expressions are used with array operations:
 
 ```json
-["call", ["lambda", ["x"], ["*", ["$", "/x"], 2]], 5]  // 10
+["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]]  // [2, 4, 6]
 ```
 
 ### String Operations
 
 ```json
 // String manipulation
-["split", "hello world", " "]         // {"array": ["hello", "world"]}
 ["join", {"array": ["hello", "world"]}, " "]  // "hello world"
-["trim", "  hello  "]                 // "hello"
-["upper", "hello"]                    // "HELLO"
-["lower", "HELLO"]                    // "hello"
+["strConcat", "Hello", " ", "World"]  // "Hello World"
 ```
 
 ### Utilities
@@ -301,7 +298,7 @@ Result: `{"a": 1, "b": 2, "c": 3}`
   ["raw_data", ["$input", "/users", {"array": []}]],
   ["clean_names", ["map", ["$", "/raw_data"],
     ["lambda", ["user"], 
-      ["trim", ["lower", ["$", "/user/name", "unknown"]]]
+      ["$", "/user/name"]
     ]
   ]]
 ], [

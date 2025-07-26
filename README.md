@@ -108,10 +108,13 @@ All Computo scripts are valid JSON. The basic syntax for an operation is a JSON 
 - `["$inputs", "/0/users/0/name"]`: Navigate deep into the first input (inputs[0].users[0].name).
 - `["$", "/varname"]`: Access a variable defined with `let`.
 - `["$", "/config/database/connections/primary/host"]`: Navigate deep within variable data.
-- `["let", [["x", 10]], ["+", ["$", "/x"], 5]]`: Bind variables for use in an expression. Result: `15`.
+- `["let", [["x", 10]], ["+", ["$", "/x"], 5]]`: Bind variables using array syntax. Result: `15`.
+- `["let", {"x": 10, "y": 20}, ["+", ["$", "/x"], ["$", "/y"]]]`: Bind variables using object syntax. Result: `30`.
 
 ### Object Operations
-- `["obj", "name", "Alice", "age", 30]`: Create an object. Result: `{"name": "Alice", "age": 30}`.
+- `["obj", "name", "Alice", "age", 30]`: Create an object with static keys. Result: `{"name": "Alice", "age": 30}`.
+- `["obj", ["strConcat", "user_", ["$", "/id"]], "Alice"]`: Create object with dynamic key evaluation. 
+- `["obj", ["$", "/key_name"], ["$", "/value"]]`: Both keys and values are evaluated expressions.
 - `["keys", {"a": 1, "b": 2}]`: Get object keys. Result: `{"array": ["a", "b"]}`.
 - `["values", {"a": 1, "b": 2}]`: Get object values. Result: `{"array": [1, 2]}`.
 - `["objFromPairs", {"array": [["a", 1], ["b", 2]]}]`: Create object from key-value pairs. Result: `{"a": 1, "b": 2}`.
@@ -121,6 +124,11 @@ All Computo scripts are valid JSON. The basic syntax for an operation is a JSON 
 
 ### Control Flow
 - `["if", [">", 5, 3], "yes", "no"]` → `"yes"`
+
+### Lambda Functions
+- `["lambda", ["x"], ["+", ["$", "/x"], 1]]`: Create a lambda function with one parameter
+- `["lambda", ["a", "b"], ["*", ["$", "/a"], ["$", "/b"]]]`: Create a lambda with multiple parameters
+- `["lambda", [], 42]`: Create a lambda with no parameters (returns constant value)
 
 ### Array Operations
 - `["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]]`
@@ -142,11 +150,7 @@ All Computo scripts are valid JSON. The basic syntax for an operation is a JSON 
 
 ### String Operations
 - `["strConcat", "Hello", " ", "World"]` → `"Hello World"`
-- `["split", "hello world", " "]` → `{"array": ["hello", "world"]}`
 - `["join", {"array": ["hello", "world"]}, " "]` → `"hello world"`
-- `["trim", "  hello  "]` → `"hello"`
-- `["upper", "hello"]` → `"HELLO"`
-- `["lower", "HELLO"]` → `"hello"`
 
 ### Array Manipulation
 - `["sort", {"array": [3, 1, 4, 1, 5]}]` → `{"array": [1, 1, 3, 4, 5]}`
@@ -314,6 +318,449 @@ This pipeline:
 ```
 
 This flattens employee arrays from multiple departments, sorts them, then deduplicates by employee ID.
+
+## First-Class Lambda Functions
+
+Computo supports first-class lambda functions that can be stored in variables, passed as arguments, and used throughout your programs. This enables powerful functional programming patterns.
+
+### Basic Lambda Storage and Usage
+
+**Store a lambda in a variable:**
+```json
+["let", [["doubler", ["lambda", ["x"], ["*", ["$", "/x"], 2]]]], 
+ ["map", {"array": [1, 2, 3]}, ["$", "/doubler"]]]
+```
+Result: `{"array": [2, 4, 6]}`
+
+**Multiple lambda functions:**
+```json
+["let", [
+  ["add1", ["lambda", ["x"], ["+", ["$", "/x"], 1]]],
+  ["mul2", ["lambda", ["x"], ["*", ["$", "/x"], 2]]]
+],
+["map", 
+  ["map", {"array": [1, 2, 3]}, ["$", "/add1"]], 
+  ["$", "/mul2"]
+]]
+```
+Result: `{"array": [4, 6, 8]}` (first add 1, then multiply by 2)
+
+### Lambda Functions with Reduce
+
+**Store and reuse accumulator functions:**
+```json
+["let", [["summer", ["lambda", ["acc", "item"], ["+", ["$", "/acc"], ["$", "/item"]]]]],
+ ["reduce", {"array": [1, 2, 3, 4]}, ["$", "/summer"], 0]]
+```
+Result: `10`
+
+### Complex Lambda Pipelines
+
+**Filter and transform using stored lambdas:**
+```json
+["let", [
+  ["isEven", ["lambda", ["x"], ["==", ["%", ["$", "/x"], 2], 0]]],
+  ["square", ["lambda", ["x"], ["*", ["$", "/x"], ["$", "/x"]]]],
+  ["data", {"array": [1, 2, 3, 4, 5, 6]}]
+],
+["map", 
+  ["filter", ["$", "/data"], ["$", "/isEven"]], 
+  ["$", "/square"]
+]]
+```
+Result: `{"array": [4, 16, 36]}` (filter evens: [2,4,6], then square them)
+
+### Nested Lambda Scope
+
+**Lambdas can access variables from their enclosing scope:**
+```json
+["let", [["multiplier", 10]],
+ ["map", {"array": [1, 2, 3]}, 
+  ["lambda", ["x"], ["*", ["$", "/x"], ["$", "/multiplier"]]]
+ ]]
+```
+Result: `{"array": [10, 20, 30]}`
+
+### Lambda Function Benefits
+
+1. **Reusability**: Define once, use multiple times
+2. **Modularity**: Break complex logic into small, testable functions  
+3. **Composition**: Combine simple functions to build complex transformations
+4. **Readability**: Named functions make code self-documenting
+5. **Functional Programming**: Support for higher-order functions and function composition
+
+# Language Reference
+
+This section provides complete specifications for all Computo operators. Each operator specification includes syntax, parameter requirements, return types, and error conditions.
+
+## Syntax Conventions
+
+- `<expr>`: Any evaluable expression
+- `<number>`: Numeric literal or expression evaluating to number
+- `<string>`: String literal or expression evaluating to string  
+- `<boolean>`: Boolean literal or expression evaluating to boolean
+- `<array>`: Array literal `{"array": [...]}` or expression evaluating to array
+- `<object>`: Object literal `{...}` or expression evaluating to object
+- `<json_pointer>`: String literal containing JSON Pointer path (e.g., "/path/to/data")
+- `[...]`: Required parameter
+- `[..., ...]`: Multiple required parameters
+- `[..., ...]?`: Optional parameter(s)
+
+## Arithmetic Operators
+
+### `+` - Addition
+**Syntax**: `["+", <number>, <number>, ...]`  
+**Parameters**: 1 or more numbers  
+**Returns**: Number (sum of all arguments)  
+**Special Cases**: 
+- Single argument: Returns the argument unchanged
+- Empty: Not allowed, throws InvalidArgumentException
+**Examples**: `["+", 1, 2, 3]` → `6`
+
+### `-` - Subtraction  
+**Syntax**: `["-", <number>, <number>, ...]`  
+**Parameters**: 1 or more numbers  
+**Returns**: Number  
+**Behavior**: 
+- Single argument: Unary negation
+- Multiple arguments: Left-associative subtraction (first - second - third - ...)
+**Examples**: `["-", 10, 3, 2]` → `5`, `["-", 5]` → `-5`
+
+### `*` - Multiplication
+**Syntax**: `["*", <number>, <number>, ...]`  
+**Parameters**: 1 or more numbers  
+**Returns**: Number (product of all arguments)  
+**Examples**: `["*", 2, 3, 4]` → `24`
+
+### `/` - Division
+**Syntax**: `["/", <number>, <number>, ...]`  
+**Parameters**: 1 or more numbers  
+**Returns**: Number  
+**Behavior**:
+- Single argument: Reciprocal (1/argument)  
+- Multiple arguments: Left-associative division
+**Error Conditions**: Division by zero throws InvalidArgumentException  
+**Examples**: `["/", 20, 2, 2]` → `5`, `["/", 4]` → `0.25`
+
+### `%` - Modulo
+**Syntax**: `["%", <number>, <number>]`  
+**Parameters**: Exactly 2 numbers  
+**Returns**: Number (remainder of first / second)  
+**Error Conditions**: Division by zero throws InvalidArgumentException  
+**Examples**: `["%", 20, 6]` → `2`
+
+## Comparison Operators
+
+All comparison operators support n-ary chaining (e.g., `a > b > c` means `a > b && b > c`).
+
+### `>` - Greater Than
+**Syntax**: `[">", <number>, <number>, ...]`  
+**Parameters**: 2 or more numbers  
+**Returns**: Boolean (true if chain comparison holds)  
+**Examples**: `[">", 5, 3, 1]` → `true`
+
+### `<` - Less Than  
+**Syntax**: `["<", <number>, <number>, ...]`  
+**Parameters**: 2 or more numbers  
+**Returns**: Boolean  
+**Examples**: `["<", 1, 3, 5]` → `true`
+
+### `>=` - Greater Than or Equal
+**Syntax**: `[">=", <number>, <number>, ...]`  
+**Parameters**: 2 or more numbers  
+**Returns**: Boolean  
+**Examples**: `[">=", 5, 5, 3]` → `true`
+
+### `<=` - Less Than or Equal
+**Syntax**: `["<=", <number>, <number>, ...]`  
+**Parameters**: 2 or more numbers  
+**Returns**: Boolean  
+**Examples**: `["<=", 1, 2, 2]` → `true`
+
+### `==` - Equal
+**Syntax**: `["==", <expr>, <expr>, ...]`  
+**Parameters**: 2 or more expressions of any type  
+**Returns**: Boolean (true if all arguments are equal)  
+**Examples**: `["==", 2, 2, 2]` → `true`
+
+### `!=` - Not Equal
+**Syntax**: `["!=", <expr>, <expr>]`  
+**Parameters**: Exactly 2 expressions of any type  
+**Returns**: Boolean (true if arguments are not equal)  
+**Examples**: `["!=", 1, 2]` → `true`
+
+## Logical Operators
+
+### `and` - Logical AND
+**Syntax**: `["and", <expr>, <expr>, ...]`  
+**Parameters**: 1 or more expressions  
+**Returns**: Boolean (true if all arguments are truthy)  
+**Truthiness Rules**: false, 0, "", null, empty arrays/objects are falsy; everything else is truthy  
+**Examples**: `["and", true, 1, "non-empty"]` → `true`
+
+### `or` - Logical OR  
+**Syntax**: `["or", <expr>, <expr>, ...]`  
+**Parameters**: 1 or more expressions  
+**Returns**: Boolean (true if any argument is truthy)  
+**Examples**: `["or", false, 0, 3]` → `true`
+
+### `not` - Logical NOT
+**Syntax**: `["not", <expr>]`  
+**Parameters**: Exactly 1 expression  
+**Returns**: Boolean (negation of argument's truthiness)  
+**Examples**: `["not", false]` → `true`
+
+## Data Access Operators
+
+### `$input` - Input Access
+**Syntax**: `["$input"]` or `["$input", <json_pointer>]`  
+**Parameters**: 0 or 1 JSON Pointer string  
+**Returns**: JSON value from input data  
+**Behavior**: 
+- No arguments: Returns entire input
+- With pointer: Returns data at specified path
+**Error Conditions**: Invalid JSON Pointer throws InvalidArgumentException  
+**Examples**: `["$input"]`, `["$input", "/users/0/name"]`
+
+### `$inputs` - Multiple Inputs Access
+**Syntax**: `["$inputs"]` or `["$inputs", <json_pointer>]`  
+**Parameters**: 0 or 1 JSON Pointer string  
+**Returns**: Array of all inputs or data from specific input index  
+**Examples**: `["$inputs"]`, `["$inputs", "/0"]`, `["$inputs", "/1/users"]`
+
+### `$` - Variable Access
+**Syntax**: `["$", <json_pointer>]`  
+**Parameters**: Exactly 1 JSON Pointer string  
+**Returns**: Value of variable at specified path  
+**Error Conditions**: Undefined variable throws InvalidArgumentException  
+**Examples**: `["$", "/varname"]`, `["$", "/config/host"]`
+
+### `let` - Variable Binding
+**Syntax**: `["let", <bindings>, <expr>]`  
+**Parameters**: Bindings (object or array), expression  
+**Bindings Format**:
+- Object: `{"var1": <expr>, "var2": <expr>}`  
+- Array: `[["var1", <expr>], ["var2", <expr>]]`
+**Returns**: Result of evaluating expression with bound variables  
+**Scope**: Variables are available in expression and nested scopes  
+**Examples**: 
+- `["let", {"x": 10}, ["+", ["$", "/x"], 5]]` → `15`
+- `["let", [["x", 10]], ["+", ["$", "/x"], 5]]` → `15`
+
+## Object Operators
+
+### `obj` - Object Construction
+**Syntax**: `["obj", <key_expr>, <value_expr>, ...]`  
+**Parameters**: Even number of expressions (key-value pairs)  
+**Returns**: Object with evaluated key-value pairs  
+**Key Requirements**: Keys must evaluate to strings  
+**Dynamic Keys**: Both keys and values are evaluated expressions  
+**Examples**: 
+- `["obj", "name", "Alice"]` → `{"name": "Alice"}`
+- `["obj", ["strConcat", "user_", ["$", "/id"]], "Alice"]` → Dynamic key
+
+### `keys` - Object Keys
+**Syntax**: `["keys", <object>]`  
+**Parameters**: Exactly 1 object  
+**Returns**: `{"array": [key1, key2, ...]}`  
+**Examples**: `["keys", {"a": 1, "b": 2}]` → `{"array": ["a", "b"]}`
+
+### `values` - Object Values
+**Syntax**: `["values", <object>]`  
+**Parameters**: Exactly 1 object  
+**Returns**: `{"array": [value1, value2, ...]}`  
+**Examples**: `["values", {"a": 1, "b": 2}]` → `{"array": [1, 2]}`
+
+### `objFromPairs` - Object from Key-Value Pairs
+**Syntax**: `["objFromPairs", <array>]`  
+**Parameters**: Array of [key, value] pairs  
+**Returns**: Object constructed from pairs  
+**Examples**: `["objFromPairs", {"array": [["a", 1], ["b", 2]]}]` → `{"a": 1, "b": 2}`
+
+### `pick` - Select Object Keys
+**Syntax**: `["pick", <object>, <array>]`  
+**Parameters**: Object, array of key names  
+**Returns**: New object with only specified keys  
+**Examples**: `["pick", {"a": 1, "b": 2, "c": 3}, {"array": ["a", "c"]}]` → `{"a": 1, "c": 3}`
+
+### `omit` - Remove Object Keys
+**Syntax**: `["omit", <object>, <array>]`  
+**Parameters**: Object, array of key names to remove  
+**Returns**: New object without specified keys  
+**Examples**: `["omit", {"a": 1, "b": 2, "c": 3}, {"array": ["b"]}]` → `{"a": 1, "c": 3}`
+
+### `merge` - Merge Objects
+**Syntax**: `["merge", <object>, <object>, ...]`  
+**Parameters**: 1 or more objects  
+**Returns**: Single object with all keys merged (later objects override earlier)  
+**Examples**: `["merge", {"a": 1}, {"b": 2}]` → `{"a": 1, "b": 2}`
+
+## Control Flow Operators
+
+### `if` - Conditional Expression
+**Syntax**: `["if", <condition>, <then_expr>, <else_expr>]`  
+**Parameters**: Condition, then expression, else expression  
+**Returns**: Result of then expression if condition is truthy, else expression otherwise  
+**Tail Call Optimization**: Supports TCO for recursive patterns  
+**Examples**: `["if", [">", 5, 3], "yes", "no"]` → `"yes"`
+
+### `lambda` - Lambda Function
+**Syntax**: `["lambda", [param1, param2, ...], <body>]`  
+**Parameters**: Array of parameter names (strings), body expression  
+**Parameter Count**: Supports 0, 1, or multiple parameters  
+**Returns**: Lambda function object  
+**Scope**: Captures lexical scope, parameters accessible via `["$", "/param_name"]`  
+**Examples**: 
+- `["lambda", [], 42]` - No parameters
+- `["lambda", ["x"], ["+", ["$", "/x"], 1]]` - One parameter  
+- `["lambda", ["acc", "item"], ["+", ["$", "/acc"], ["$", "/item"]]]` - Two parameters
+
+## Array Operators
+
+### `map` - Array Mapping
+**Syntax**: `["map", <array>, <lambda>]`  
+**Parameters**: Array, lambda function  
+**Returns**: New array with lambda applied to each element  
+**Examples**: `["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]]` → `{"array": [2, 4, 6]}`
+
+### `filter` - Array Filtering
+**Syntax**: `["filter", <array>, <lambda>]`  
+**Parameters**: Array, lambda function (must return boolean)  
+**Returns**: New array with elements where lambda returns truthy  
+**Examples**: `["filter", {"array": [1, 2, 3, 4]}, ["lambda", ["x"], [">", ["$", "/x"], 2]]]` → `{"array": [3, 4]}`
+
+### `reduce` - Array Reduction
+**Syntax**: `["reduce", <array>, <lambda>, <initial>]`  
+**Parameters**: Array, lambda function (2 parameters: accumulator, item), initial value  
+**Returns**: Single value from reducing array  
+**Examples**: `["reduce", {"array": [1, 2, 3]}, ["lambda", ["acc", "item"], ["+", ["$", "/acc"], ["$", "/item"]]], 0]` → `6`
+
+### `count` - Array Length
+**Syntax**: `["count", <array>]`  
+**Parameters**: Exactly 1 array  
+**Returns**: Number (length of array)  
+**Examples**: `["count", {"array": [1, 2, 3]}]` → `3`
+
+### `find` - Find Array Element
+**Syntax**: `["find", <array>, <lambda>]`  
+**Parameters**: Array, lambda function (predicate)  
+**Returns**: First element where lambda returns truthy, or null if not found  
+**Examples**: `["find", {"array": [1, 2, 3, 4]}, ["lambda", ["x"], [">", ["$", "/x"], 2]]]` → `3`
+
+### `some` - Array Some Test
+**Syntax**: `["some", <array>, <lambda>]`  
+**Parameters**: Array, lambda function (predicate)  
+**Returns**: Boolean (true if any element satisfies predicate)  
+**Examples**: `["some", {"array": [1, 2, 3]}, ["lambda", ["x"], [">", ["$", "/x"], 2]]]` → `true`
+
+### `every` - Array Every Test
+**Syntax**: `["every", <array>, <lambda>]`  
+**Parameters**: Array, lambda function (predicate)  
+**Returns**: Boolean (true if all elements satisfy predicate)  
+**Examples**: `["every", {"array": [1, 2, 3]}, ["lambda", ["x"], [">", ["$", "/x"], 0]]]` → `true`
+
+## Functional Programming Operators
+
+### `car` - First Element
+**Syntax**: `["car", <array>]`  
+**Parameters**: Exactly 1 non-empty array  
+**Returns**: First element of array  
+**Error Conditions**: Empty array throws InvalidArgumentException  
+**Examples**: `["car", {"array": [1, 2, 3]}]` → `1`
+
+### `cdr` - Rest Elements
+**Syntax**: `["cdr", <array>]`  
+**Parameters**: Exactly 1 array  
+**Returns**: Array containing all elements except the first  
+**Examples**: `["cdr", {"array": [1, 2, 3]}]` → `{"array": [2, 3]}`
+
+### `cons` - Prepend Element
+**Syntax**: `["cons", <element>, <array>]`  
+**Parameters**: Element to prepend, array  
+**Returns**: New array with element prepended  
+**Examples**: `["cons", 0, {"array": [1, 2]}]` → `{"array": [0, 1, 2]}`
+
+### `append` - Concatenate Arrays
+**Syntax**: `["append", <array>, <array>, ...]`  
+**Parameters**: 2 or more arrays  
+**Returns**: New array with all arrays concatenated  
+**Examples**: `["append", {"array": [1, 2]}, {"array": [3, 4]}]` → `{"array": [1, 2, 3, 4]}`
+
+## String Operators
+
+### `strConcat` - String Concatenation
+**Syntax**: `["strConcat", <string>, <string>, ...]`  
+**Parameters**: 1 or more strings  
+**Returns**: Single concatenated string  
+**Examples**: `["strConcat", "Hello", " ", "World"]` → `"Hello World"`
+
+### `join` - Array to String
+**Syntax**: `["join", <array>, <separator>]`  
+**Parameters**: Array of strings, separator string  
+**Returns**: Single string with array elements joined by separator  
+**Examples**: `["join", {"array": ["hello", "world"]}, " "]` → `"hello world"`
+
+## Array Manipulation Operators
+
+### `sort` - Array Sorting
+**Syntax**: 
+- `["sort", <array>]` - Natural ascending order
+- `["sort", <array>, "asc"|"desc"]` - With direction
+- `["sort", <array>, <json_pointer>]` - Sort objects by field
+- `["sort", <array>, <field1>, <field2>, ...]` - Multi-field sort
+**Parameters**: Array, optional sort criteria  
+**Returns**: New sorted array  
+**Performance**: Automatically uses DSU optimization for complex sorts  
+**Examples**: 
+- `["sort", {"array": [3, 1, 4]}]` → `{"array": [1, 3, 4]}`
+- `["sort", {"array": [...]}, "/name"]` - Sort objects by name field
+
+### `reverse` - Array Reversal
+**Syntax**: `["reverse", <array>]`  
+**Parameters**: Exactly 1 array  
+**Returns**: New array with elements in reverse order  
+**Examples**: `["reverse", {"array": [1, 2, 3]}]` → `{"array": [3, 2, 1]}`
+
+### `unique` - Remove Duplicates
+**Syntax**: `["unique", <array>]`  
+**Parameters**: Exactly 1 array  
+**Returns**: New array with duplicate elements removed (preserves first occurrence)  
+**Examples**: `["unique", {"array": [1, 2, 2, 3, 3, 3]}]` → `{"array": [1, 2, 3]}`
+
+### `uniqueSorted` - Remove Duplicates from Sorted Array
+**Syntax**: 
+- `["uniqueSorted", <array>]` - Basic deduplication
+- `["uniqueSorted", <array>, "firsts"|"lasts"|"singles"]` - Occurrence selection
+- `["uniqueSorted", <array>, <json_pointer>, <mode>]` - Field-based deduplication
+**Parameters**: Sorted array, optional mode and field  
+**Returns**: New array with duplicates removed  
+**Performance**: Optimized for pre-sorted input  
+**Examples**: `["uniqueSorted", {"array": [1, 1, 2, 2, 3]}]` → `{"array": [1, 2, 3]}`
+
+### `zip` - Array Pairing
+**Syntax**: `["zip", <array1>, <array2>, ...]`  
+**Parameters**: 2 or more arrays  
+**Returns**: Array of tuples pairing corresponding elements  
+**Length**: Result length equals shortest input array  
+**Examples**: `["zip", {"array": [1, 2]}, {"array": ["a", "b"]}]` → `{"array": [[1, "a"], [2, "b"]]}`
+
+## Utility Operators
+
+### `approx` - Approximate Equality
+**Syntax**: `["approx", <number1>, <number2>, <tolerance>]`  
+**Parameters**: Two numbers to compare, tolerance value  
+**Returns**: Boolean (true if numbers are within tolerance)  
+**Examples**: `["approx", 0.1, 0.10001, 0.001]` → `true`
+
+# Error Handling
+
+All operators throw structured exceptions:
+
+- **InvalidArgumentException**: Wrong argument types, counts, or values
+- **InvalidOperatorException**: Unknown operator names  
+- **ComputoException**: Base class for all Computo errors
+
+Each exception includes the evaluation path where the error occurred for precise debugging.
 
 ## C++ Library Usage
 
@@ -565,11 +1012,8 @@ make quality     # Run all quality checks
 
 ### Unicode Support
 
-Computo provides comprehensive Unicode support for all string operations through the [uni-algo library](https://github.com/uni-algo/uni-algo). String operations correctly handle:
+Computo provides comprehensive Unicode support for all string operations through the nlohmann/json library. String operations correctly handle:
 
-- **UTF-8 character splitting**: `["split", "café", ""]` properly splits into Unicode characters `["c", "a", "f", "é"]`
-- **Unicode case conversion**: `["upper", "straße"]` converts to `"STRASSE"` (ß → SS), `["lower", "CAFÉ"]` converts to `"café"`
-- **Unicode whitespace trimming**: `["trim", "   café   "]` handles Unicode whitespace characters beyond ASCII
 - **International text**: Full support for CJK characters, emoji, accented text, and mixed scripts
 - **Proper encoding**: All operations preserve UTF-8 encoding integrity
 

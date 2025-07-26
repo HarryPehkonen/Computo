@@ -99,8 +99,8 @@ Computo is a safe, sandboxed, thread-safe JSON-native data transformation engine
 - **No inputs**: `execute(script, json(nullptr))` → `$input` = null
 
 ### Lambda Expressions
-- Format: `["lambda", ["param"], body]`
-- Single parameter only
+- Format: `["lambda", [params...], body]`
+- Supports zero, one, or multiple parameters: `["lambda", [], body]`, `["lambda", ["x"], body]`, `["lambda", ["acc", "item"], body]`
 - Variable access: `["$", "/param"]`
 - Proper lexical scoping with TCO support
 

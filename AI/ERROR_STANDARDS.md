@@ -129,7 +129,7 @@ Error at /$input: Path "/user/age" not found. Did you mean "/users/0/age"?
 **Examples**:
 ```
 Error at /map/lambda: Lambda parameter "x" not found in scope. Available parameters: item, index.
-Error at /filter/lambda: Lambda must have exactly one parameter, got 3: ["x", "y", "z"].
+Error at /filter/lambda: Lambda expects 1 argument, got 3.
 Error at /reduce/lambda: Lambda body returned string "hello", expected boolean for filter condition.
 ```
 

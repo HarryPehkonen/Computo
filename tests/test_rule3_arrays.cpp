@@ -86,7 +86,8 @@ TEST_F(Rule3ArrayTest, Rule3ArraysInOperations) {
     // This should work: map over [1, 2, 3] directly
     EXPECT_NO_THROW({
         auto result = execute_script_with_input(
-            "[\"map\", [\"$input\"], [[\"x\"], [\"*\", [\"$\", \"/x\"], 2]]]", json({1, 2, 3}));
+            "[\"map\", [\"$input\"], [\"lambda\", [\"x\"], [\"*\", [\"$\", \"/x\"], 2]]]",
+            json({1, 2, 3}));
         // Result should be in array object format when processing arrays
         auto expected = json::parse(R"({"array":[2,4,6]})");
         EXPECT_EQ(result, expected);

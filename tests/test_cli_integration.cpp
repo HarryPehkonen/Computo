@@ -138,7 +138,7 @@ TEST_F(CLIIntegrationTest, ComplexTransformation) {
     create_test_file(script_file, R"([
         "map", 
         ["$input", "/users"], 
-        [["user"], ["$", "/user/name"]]
+        ["lambda", ["user"], ["$", "/user/name"]]
     ])");
 
     create_test_file(input_file, R"({

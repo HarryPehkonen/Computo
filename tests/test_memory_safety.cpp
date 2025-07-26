@@ -132,7 +132,7 @@ TEST_F(MemorySafetyTest, LargeArrayMapOperation) {
 
     // Test map operation on large array - add 1 to each element
     // Input array format: {"array": [0, 1, 2, ...]}
-    json script = json::parse(R"(["map", ["$input"], [["x"], ["+", ["$", "/x"], 1]]])");
+    json script = json::parse(R"(["map", ["$input"], ["lambda", ["x"], ["+", ["$", "/x"], 1]]])");
 
     memory_monitor_.update_peak_memory();
     json result = computo::execute(script, {large_array});
@@ -155,8 +155,8 @@ TEST_F(MemorySafetyTest, LargeArrayFilterOperation) {
 
     // Filter even numbers - use == for equality comparison and correct array syntax
     // Input array format: {"array": [0, 1, 2, ...]}
-    json script
-        = json::parse(R"(["filter", ["$input"], [["x"], ["==", ["%", ["$", "/x"], 2], 0]]])");
+    json script = json::parse(
+        R"(["filter", ["$input"], ["lambda", ["x"], ["==", ["%", ["$", "/x"], 2], 0]]])");
 
     memory_monitor_.update_peak_memory();
     json result = computo::execute(script, {large_array});

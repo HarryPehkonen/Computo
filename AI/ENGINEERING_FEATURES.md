@@ -273,15 +273,14 @@ This document catalogs all critical engineering features that must be preserved 
 - Integration with variable access system
 
 ### 26. Lambda System
-**Current Implementation**: First-class lambda expressions with proper scoping.
+**Current Implementation**: First-class lambda expressions with proper scoping and multi-parameter support.
 
 **Critical Aspects**:
-- Single-parameter lambda syntax: `["lambda", ["x"], body]`
+- Multi-parameter lambda syntax: `["lambda", [], body]`, `["lambda", ["x"], body]`, `["lambda", ["acc", "item"], body]`
 - Variable capture and lexical scoping
 - Lambda composition and currying
 - Higher-order function support
-
-**Desired Enhancement**: **Multi-parameter lambda support**: `["lambda", ["x", "y", "z"], body, dataSource]` with named variable access instead of awkward `/var/0`, `/var/1` syntax. Data source specification at the end for performance optimization.
+- Named variable access with `["$", "/param_name"]` syntax
 
 ### 27. Custom Truthiness Rules
 **Current Implementation**: Consistent truthiness evaluation across all conditional operators.

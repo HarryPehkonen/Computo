@@ -54,11 +54,14 @@ auto reduce_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
     auto initial_value = evaluate(args[2], ctx);
     auto array_data = extract_array_data(array_input, "reduce", ctx.get_path_string());
 
+    // Evaluate the lambda expression first (handles ["lambda", ...] syntax)
+    auto lambda_expr = evaluate(args[1], ctx.with_path("lambda"));
+
     nlohmann::json accumulator = initial_value;
 
     for (const auto& item : array_data) {
         std::vector<nlohmann::json> lambda_args = {accumulator, item};
-        auto lambda_result = evaluate_lambda(args[1], lambda_args, ctx);
+        auto lambda_result = evaluate_lambda(lambda_expr, lambda_args, ctx);
 
         // Resolve any tail calls from lambda evaluation
         while (lambda_result.is_tail_call) {
