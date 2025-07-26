@@ -1,6 +1,17 @@
 # Computo
 
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://HarryPehkonen.github.io/Computo)
+[![Documentation Status](https://github.com/HarryPehkonen/Computo/workflows/Documentation%20Validation%20and%20Deployment/badge.svg)](https://github.com/HarryPehkonen/Computo/actions/workflows/docs.yml)
+
 A safe, sandboxed, thread-safe JSON-native data transformation engine with a Lisp-like language syntax expressed in JSON.
+
+## Documentation
+
+- **[Complete Language Reference](https://HarryPehkonen.github.io/Computo)** - Interactive documentation with all 46 operators
+- **[Syntax Verification Process](docs/SYNTAX_VERIFICATION_PROCESS.md)** - How documentation stays accurate
+- **[Quick Start Guide](https://HarryPehkonen.github.io/Computo#quick-start)** - Get started immediately
+
+All documentation is automatically validated against the live Computo engine with 66+ tested examples.
 
 ## Overview
 
@@ -1008,6 +1019,21 @@ cd build
 make format      # Format all code
 make lint        # Run static analysis
 make quality     # Run all quality checks
+```
+
+### Documentation Development
+```bash
+# Validate all documentation
+cmake --build build --target docs
+
+# Test all examples against engine  
+cmake --build build --target docs-validate
+
+# Generate reference docs
+cmake --build build --target docs-generate
+
+# Check operator coverage
+cmake --build build --target docs-coverage
 ```
 
 ### Unicode Support
