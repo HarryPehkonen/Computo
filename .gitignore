@@ -60,3 +60,7 @@ conanfile.py
 .claude
 
 CLAUDE.md
+
+docs/LANGUAGE_REFERENCE.md
+docs/implemented-operators.json
+docs/documented-operators.json
