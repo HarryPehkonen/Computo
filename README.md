@@ -111,7 +111,7 @@ All Computo scripts are valid JSON. The basic syntax for an operation is a JSON 
 - `["let", [["x", 10]], ["+", ["$", "/x"], 5]]`: Bind variables for use in an expression. Result: `15`.
 
 ### Object Operations
-- `["obj", ["name", "Alice"], ["age", 30]]`: Create an object. Result: `{"name": "Alice", "age": 30}`.
+- `["obj", "name", "Alice", "age", 30]`: Create an object. Result: `{"name": "Alice", "age": 30}`.
 - `["keys", {"a": 1, "b": 2}]`: Get object keys. Result: `{"array": ["a", "b"]}`.
 - `["values", {"a": 1, "b": 2}]`: Get object values. Result: `{"array": [1, 2]}`.
 - `["objFromPairs", {"array": [["a", 1], ["b", 2]]}]`: Create object from key-value pairs. Result: `{"a": 1, "b": 2}`.
@@ -231,15 +231,14 @@ Result: `{"array": ["alice@example.com", "bob@example.com"]}`
 ["map", ["$input", "/users"],
   ["lambda", ["user"],
     ["obj",
-      ["name", ["$", "/user/profile/name"]],
-      ["total_orders", 
+      "name", ["$", "/user/profile/name"],
+      "total_orders", 
         ["reduce", ["$", "/user/orders"],
           ["lambda", ["acc", "order"], 
             ["+", ["$", "/acc"], ["$", "/order/total"]]
           ],
           0
         ]
-      ]
     ]
   ]
 ]
@@ -256,17 +255,17 @@ Result: `{"array": ["alice@example.com", "bob@example.com"]}`
   ["order_summary", ["map", ["$", "/active_users"],
     ["lambda", ["user"],
       ["obj",
-        ["user_id", ["$", "/user/id"]],
-        ["email", ["$", "/user/profile/contact/email"]],
-        ["pending_orders", ["count", 
+        "user_id", ["$", "/user/id"],
+        "email", ["$", "/user/profile/contact/email"],
+        "pending_orders", ["count", 
           ["filter", ["$", "/user/orders"],
             ["lambda", ["order"], ["==", ["$", "/order/status"], "pending"]]
           ]
-        ]],
-        ["total_spent", ["reduce", ["$", "/user/orders"],
+        ],
+        "total_spent", ["reduce", ["$", "/user/orders"],
           ["lambda", ["acc", "order"], ["+", ["$", "/acc"], ["$", "/order/total"]]],
           0
-        ]]
+        ]
       ]
     ]
   ]]
