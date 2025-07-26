@@ -14,10 +14,10 @@ Computo consists of:
 
 ```bash
 # Execute a script
-computo script.json
+computo --script script.json
 
 # Execute with input data
-computo script.json input.json
+computo --script script.json input.json
 
 # Interactive REPL with debugging
 computo --repl
@@ -51,7 +51,7 @@ computo --repl script.json
 
 **Command:**
 ```bash
-computo script.json input1.json input2.json
+computo --script script.json input1.json input2.json
 ```
 
 **Result:**
