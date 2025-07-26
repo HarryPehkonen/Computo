@@ -105,8 +105,8 @@ All Computo scripts are valid JSON. The basic syntax for an operation is a JSON 
 - `["!=", 1, 2]` (binary only) → `true`
 
 ### Logical
-- `["&&", true, 1, "non-empty"]` → `true` (all arguments are truthy)
-- `["||", false, 0, 3]` → `true` (at least one argument is truthy)
+- `["and", true, 1, "non-empty"]` → `true` (all arguments are truthy)
+- `["or", false, 0, 3]` → `true` (at least one argument is truthy)
 - `["not", false]` (unary only) → `true`
 
 ### Variables and Data Access
