@@ -16,6 +16,7 @@ struct ComputoArgs {
     bool debug_mode = false;
     bool show_help = false;
     bool show_version = false;
+    bool list_operators = false;
 };
 
 class ArgumentError : public std::runtime_error {

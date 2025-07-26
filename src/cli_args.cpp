@@ -41,6 +41,9 @@ auto ArgumentParser::parse(int argc, char* const argv[]) -> ComputoArgs {
         } else if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0) {
             args.show_version = true;
             return args;
+        } else if (strcmp(argv[i], "--list-operators") == 0) {
+            args.list_operators = true;
+            return args;
         } else if (argv[i][0] == '-') {
             throw ArgumentError("Unknown option: " + std::string(argv[i]));
         } else {
@@ -70,6 +73,7 @@ MODES:
 OPTIONS:
     --comments         Enable JSON comment parsing
     --debug            Enable debugging features (REPL only)
+    --list-operators   Output JSON array of all available operators
     --help, -h         Show this help message
     --version, -v      Show version information
 

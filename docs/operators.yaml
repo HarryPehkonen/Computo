@@ -1,0 +1,436 @@
+operators:
+  "+":
+    description: "Addition (n-ary)"
+    syntax: '["+", number, number, ...]'
+    examples:
+      - name: "Basic addition"
+        expression: '["+", 1, 2, 3]'
+        result: 6
+      - name: "Single argument (identity)"
+        expression: '["+", 5]'
+        result: 5
+      - name: "Multi-input addition"
+        expression: '["+", ["$inputs", "/0"], ["$inputs", "/1"]]'
+        inputs: [10, 20]
+        result: 30
+
+  "-":
+    description: "Subtraction (n-ary) or unary negation"
+    syntax: '["-", number, number, ...] or ["-", number]'
+    examples:
+      - name: "Basic subtraction"
+        expression: '["-", 10, 3, 2]'
+        result: 5
+      - name: "Unary negation"
+        expression: '["-", 5]'
+        result: -5
+
+  "*":
+    description: "Multiplication (n-ary)"
+    syntax: '["*", number, number, ...]'
+    examples:
+      - name: "Basic multiplication"
+        expression: '["*", 2, 3, 4]'
+        result: 24
+
+  "/":
+    description: "Division (n-ary) or reciprocal"
+    syntax: '["/", number, number, ...] or ["/", number]'
+    examples:
+      - name: "Basic division"
+        expression: '["/", 20, 2, 2]'
+        result: 5
+      - name: "Reciprocal"
+        expression: '["/", 4]'
+        result: 0.25
+
+  "%":
+    description: "Modulo operation"
+    syntax: '["%", number, number]'
+    examples:
+      - name: "Basic modulo"
+        expression: '["%", 20, 6]'
+        result: 2
+
+  ">":
+    description: "Greater than (supports chaining)"
+    syntax: '[">", number, number, ...]'
+    examples:
+      - name: "Chained comparison"
+        expression: '[">", 5, 3, 1]'
+        result: true
+
+  "<":
+    description: "Less than (supports chaining)"
+    syntax: '["<", number, number, ...]'
+    examples:
+      - name: "Chained comparison"
+        expression: '["<", 1, 3, 5]'
+        result: true
+
+  ">=":
+    description: "Greater than or equal (supports chaining)"
+    syntax: '[">=", number, number, ...]'
+    examples:
+      - name: "Chained comparison"
+        expression: '[">=", 5, 5, 3]'
+        result: true
+
+  "<=":
+    description: "Less than or equal (supports chaining)"
+    syntax: '["<=", number, number, ...]'
+    examples:
+      - name: "Chained comparison"
+        expression: '["<=", 1, 2, 2]'
+        result: true
+
+  "==":
+    description: "Equality (all arguments must be equal)"
+    syntax: '["==", value, value, ...]'
+    examples:
+      - name: "All equal"
+        expression: '["==", 2, 2, 2]'
+        result: true
+
+  "!=":
+    description: "Inequality (binary only)"
+    syntax: '["!=", value, value]'
+    examples:
+      - name: "Not equal"
+        expression: '["!=", 1, 2]'
+        result: true
+
+  "and":
+    description: "Logical AND (all must be truthy)"
+    syntax: '["and", expr, expr, ...]'
+    examples:
+      - name: "All truthy"
+        expression: '["and", true, 1, "non-empty"]'
+        result: true
+
+  "or":
+    description: "Logical OR (any must be truthy)"
+    syntax: '["or", expr, expr, ...]'
+    examples:
+      - name: "Any truthy"
+        expression: '["or", false, 0, 3]'
+        result: true
+
+  "not":
+    description: "Logical NOT (unary)"
+    syntax: '["not", expr]'
+    examples:
+      - name: "Negation"
+        expression: '["not", false]'
+        result: true
+
+  "$input":
+    description: "Access input data"
+    syntax: '["$input"] or ["$input", json_pointer]'
+    examples:
+      - name: "Full input"
+        expression: '["$input"]'
+        inputs: [{"name": "Alice", "age": 30}]
+        result: {"name": "Alice", "age": 30}
+      - name: "Specific field"
+        expression: '["$input", "/name"]'
+        inputs: [{"name": "Alice", "age": 30}]
+        result: "Alice"
+      - name: "Nested access"
+        expression: '["$input", "/users/0/name"]'
+        inputs: [{"users": [{"name": "Bob", "age": 25}]}]
+        result: "Bob"
+
+  "$inputs":
+    description: "Access multiple input files"
+    syntax: '["$inputs"] or ["$inputs", json_pointer]'
+    examples:
+      - name: "All inputs"
+        expression: '["$inputs"]'
+        inputs: [{"name": "Alice"}, {"name": "Bob"}]
+        result: [{"name": "Alice"}, {"name": "Bob"}]
+      - name: "Specific input"
+        expression: '["$inputs", "/1"]'
+        inputs: [{"name": "Alice"}, {"name": "Bob"}]
+        result: {"name": "Bob"}
+      - name: "Nested in specific input"
+        expression: '["$inputs", "/1/name"]'
+        inputs: [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]
+        result: "Bob"
+
+  "$":
+    description: "Variable access"
+    syntax: '["$", json_pointer]'
+    examples:
+      - name: "Variable access"
+        expression: '["let", {"x": 42}, ["$", "/x"]]'
+        result: 42
+
+  "let":
+    description: "Variable binding"
+    syntax: '["let", bindings, expression]'
+    examples:
+      - name: "Object syntax"
+        expression: '["let", {"x": 10, "y": 20}, ["+", ["$", "/x"], ["$", "/y"]]]'
+        result: 30
+      - name: "Array syntax"
+        expression: '["let", [["x", 10]], ["+", ["$", "/x"], 5]]'
+        result: 15
+      - name: "With input data"
+        expression: '["let", {"user": ["$input", "/users/0"]}, ["$", "/user/name"]]'
+        inputs: [{"users": [{"name": "Alice", "age": 30}]}]
+        result: "Alice"
+
+  "if":
+    description: "Conditional expression"
+    syntax: '["if", condition, then_expr, else_expr]'
+    examples:
+      - name: "True condition"
+        expression: '["if", [">", 5, 3], "yes", "no"]'
+        result: "yes"
+      - name: "False condition"
+        expression: '["if", ["<", 5, 3], "yes", "no"]'
+        result: "no"
+
+  "lambda":
+    description: "Lambda function"
+    syntax: '["lambda", [param1, param2, ...], body]'
+    examples:
+      - name: "No parameters"
+        expression: '["lambda", [], 42]'
+        result: [[], 42]
+      - name: "One parameter"
+        expression: '["lambda", ["x"], ["+", ["$", "/x"], 1]]'
+        result: [["x"], ["+", ["$", "/x"], 1]]
+      - name: "Multiple parameters"
+        expression: '["lambda", ["acc", "item"], ["+", ["$", "/acc"], ["$", "/item"]]]'
+        result: [["acc", "item"], ["+", ["$", "/acc"], ["$", "/item"]]]
+
+  "obj":
+    description: "Object construction (dynamic keys and values)"
+    syntax: '["obj", key_expr, value_expr, ...]'
+    examples:
+      - name: "Static keys"
+        expression: '["obj", "name", "Alice", "age", 30]'
+        result: {"name": "Alice", "age": 30}
+      - name: "Dynamic key"
+        expression: '["obj", ["strConcat", "user_", "123"], "Alice"]'
+        result: {"user_123": "Alice"}
+      - name: "Variable-based construction"
+        expression: '["let", {"key": "name", "value": "Bob"}, ["obj", ["$", "/key"], ["$", "/value"]]]'
+        result: {"name": "Bob"}
+
+  "keys":
+    description: "Get object keys"
+    syntax: '["keys", object]'
+    examples:
+      - name: "Object keys"
+        expression: '["keys", {"a": 1, "b": 2}]'
+        result: {"array": ["a", "b"]}
+
+  "values":
+    description: "Get object values"
+    syntax: '["values", object]'
+    examples:
+      - name: "Object values"
+        expression: '["values", {"a": 1, "b": 2}]'
+        result: {"array": [1, 2]}
+
+  "objFromPairs":
+    description: "Create object from key-value pairs"
+    syntax: '["objFromPairs", array_of_pairs]'
+    examples:
+      - name: "From pairs"
+        expression: '["objFromPairs", {"array": [["a", 1], ["b", 2]]}]'
+        result: {"a": 1, "b": 2}
+
+  "pick":
+    description: "Select specific object keys"
+    syntax: '["pick", object, array_of_keys]'
+    examples:
+      - name: "Pick keys"
+        expression: '["pick", {"a": 1, "b": 2, "c": 3}, {"array": ["a", "c"]}]'
+        result: {"a": 1, "c": 3}
+
+  "omit":
+    description: "Remove specific object keys"
+    syntax: '["omit", object, array_of_keys]'
+    examples:
+      - name: "Omit keys"
+        expression: '["omit", {"a": 1, "b": 2, "c": 3}, {"array": ["b"]}]'
+        result: {"a": 1, "c": 3}
+
+  "merge":
+    description: "Merge objects (later objects override earlier)"
+    syntax: '["merge", object, object, ...]'
+    examples:
+      - name: "Basic merge"
+        expression: '["merge", {"a": 1}, {"b": 2}]'
+        result: {"a": 1, "b": 2}
+      - name: "Override values"
+        expression: '["merge", {"a": 1, "b": 2}, {"b": 3, "c": 4}]'
+        result: {"a": 1, "b": 3, "c": 4}
+
+  "map":
+    description: "Array mapping with lambda"
+    syntax: '["map", array, lambda]'
+    examples:
+      - name: "Double values"
+        expression: '["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]]'
+        result: {"array": [2, 4, 6]}
+
+  "filter":
+    description: "Array filtering with lambda"
+    syntax: '["filter", array, lambda]'
+    examples:
+      - name: "Filter greater than 2"
+        expression: '["filter", {"array": [1, 2, 3, 4]}, ["lambda", ["x"], [">", ["$", "/x"], 2]]]'
+        result: {"array": [3, 4]}
+
+  "reduce":
+    description: "Array reduction with lambda"
+    syntax: '["reduce", array, lambda, initial]'
+    examples:
+      - name: "Sum array"
+        expression: '["reduce", {"array": [1, 2, 3]}, ["lambda", ["acc", "item"], ["+", ["$", "/acc"], ["$", "/item"]]], 0]'
+        result: 6
+
+  "count":
+    description: "Array length"
+    syntax: '["count", array]'
+    examples:
+      - name: "Array count"
+        expression: '["count", {"array": [1, 2, 3]}]'
+        result: 3
+
+  "find":
+    description: "Find first element matching predicate"
+    syntax: '["find", array, lambda]'
+    examples:
+      - name: "Find first > 2"
+        expression: '["find", {"array": [1, 2, 3, 4]}, ["lambda", ["x"], [">", ["$", "/x"], 2]]]'
+        result: 3
+
+  "some":
+    description: "Test if any element matches predicate"
+    syntax: '["some", array, lambda]'
+    examples:
+      - name: "Any > 2"
+        expression: '["some", {"array": [1, 2, 3]}, ["lambda", ["x"], [">", ["$", "/x"], 2]]]'
+        result: true
+
+  "every":
+    description: "Test if all elements match predicate"
+    syntax: '["every", array, lambda]'
+    examples:
+      - name: "All > 0"
+        expression: '["every", {"array": [1, 2, 3]}, ["lambda", ["x"], [">", ["$", "/x"], 0]]]'
+        result: true
+
+  "car":
+    description: "First element of array"
+    syntax: '["car", array]'
+    examples:
+      - name: "First element"
+        expression: '["car", {"array": [1, 2, 3]}]'
+        result: 1
+
+  "cdr":
+    description: "All elements except first"
+    syntax: '["cdr", array]'
+    examples:
+      - name: "Rest elements"
+        expression: '["cdr", {"array": [1, 2, 3]}]'
+        result: {"array": [2, 3]}
+
+  "cons":
+    description: "Prepend element to array"
+    syntax: '["cons", element, array]'
+    examples:
+      - name: "Prepend element"
+        expression: '["cons", 0, {"array": [1, 2]}]'
+        result: {"array": [0, 1, 2]}
+
+  "append":
+    description: "Concatenate arrays"
+    syntax: '["append", array, array, ...]'
+    examples:
+      - name: "Concatenate two arrays"
+        expression: '["append", {"array": [1, 2]}, {"array": [3, 4]}]'
+        result: {"array": [1, 2, 3, 4]}
+      - name: "Concatenate multiple arrays"
+        expression: '["append", {"array": [1]}, {"array": [2, 3]}, {"array": [4]}]'
+        result: {"array": [1, 2, 3, 4]}
+
+  "strConcat":
+    description: "String concatenation"
+    syntax: '["strConcat", string, string, ...]'
+    examples:
+      - name: "Basic concatenation"
+        expression: '["strConcat", "Hello", " ", "World"]'
+        result: "Hello World"
+
+  "join":
+    description: "Join array elements into string"
+    syntax: '["join", array, separator]'
+    examples:
+      - name: "Join with space"
+        expression: '["join", {"array": ["hello", "world"]}, " "]'
+        result: "hello world"
+      - name: "Join with comma"
+        expression: '["join", {"array": ["a", "b", "c"]}, ", "]'
+        result: "a, b, c"
+
+  "sort":
+    description: "Array sorting"
+    syntax: '["sort", array] or ["sort", array, direction] or ["sort", array, field, ...]'
+    examples:
+      - name: "Natural sort"
+        expression: '["sort", {"array": [3, 1, 4]}]'
+        result: {"array": [1, 3, 4]}
+      - name: "Descending sort"
+        expression: '["sort", {"array": [3, 1, 4]}, "desc"]'
+        result: {"array": [4, 3, 1]}
+
+  "reverse":
+    description: "Reverse array elements"
+    syntax: '["reverse", array]'
+    examples:
+      - name: "Reverse array"
+        expression: '["reverse", {"array": [1, 2, 3]}]'
+        result: {"array": [3, 2, 1]}
+
+  "unique":
+    description: "Remove duplicate elements"
+    syntax: '["unique", array]'
+    examples:
+      - name: "Remove duplicates"
+        expression: '["unique", {"array": [1, 2, 2, 3, 3, 3]}]'
+        result: {"array": [1, 2, 3]}
+
+  "uniqueSorted":
+    description: "Remove duplicates from sorted array (optimized)"
+    syntax: '["uniqueSorted", array] or ["uniqueSorted", array, mode]'
+    examples:
+      - name: "Basic deduplication"
+        expression: '["uniqueSorted", {"array": [1, 1, 2, 2, 3]}]'
+        result: {"array": [1, 2, 3]}
+
+  "zip":
+    description: "Pair corresponding elements from arrays"
+    syntax: '["zip", array1, array2, ...]'
+    examples:
+      - name: "Zip two arrays"
+        expression: '["zip", {"array": [1, 2]}, {"array": ["a", "b"]}]'
+        result: {"array": [[1, "a"], [2, "b"]]}
+
+  "approx":
+    description: "Approximate equality for numbers"
+    syntax: '["approx", number1, number2, tolerance]'
+    examples:
+      - name: "Within tolerance"
+        expression: '["approx", 0.1, 0.10001, 0.001]'
+        result: true
+      - name: "Outside tolerance"
+        expression: '["approx", 0.1, 0.11, 0.001]'
+        result: false

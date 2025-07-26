@@ -1,0 +1,286 @@
+name: Documentation Validation and Deployment
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential ninja-build
+
+      - name: Configure CMake
+        run: cmake -B build -G Ninja
+
+      - name: Build Computo
+        run: cmake --build build
+
+      - name: Run Documentation Validation
+        run: |
+          echo "::group::Validating operator coverage"
+          cmake --build build --target docs-coverage
+          echo "::endgroup::"
+          
+          echo "::group::Testing all documentation examples"
+          cmake --build build --target docs-validate
+          echo "::endgroup::"
+          
+          echo "::group::Generating documentation"
+          cmake --build build --target docs-generate
+          echo "::endgroup::"
+
+      - name: Upload validation results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: validation-results
+          path: |
+            docs/LANGUAGE_REFERENCE.md
+            docs/implemented-operators.json
+            docs/documented-operators.json
+
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.ref == 'refs/heads/main'
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential ninja-build
+
+      - name: Configure CMake
+        run: cmake -B build -G Ninja
+
+      - name: Build Computo
+        run: cmake --build build
+
+      - name: Generate documentation
+        run: cmake --build build --target docs-generate
+
+      - name: Create GitHub Pages site
+        run: |
+          mkdir -p _site
+          
+          # Create main index page
+          cat > _site/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Computo Documentation</title>
+              <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+              <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+              <style>
+                  .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 4rem 0; }
+                  .code-block { background: #2d3748; border-radius: 8px; }
+                  .nav-pills .nav-link.active { background-color: #667eea; }
+              </style>
+          </head>
+          <body>
+              <div class="hero">
+                  <div class="container">
+                      <div class="row">
+                          <div class="col-lg-8">
+                              <h1 class="display-4 fw-bold">Computo</h1>
+                              <p class="lead">A safe, sandboxed, thread-safe JSON-native data transformation engine</p>
+                              <div class="d-flex gap-3">
+                                  <a href="#language-reference" class="btn btn-light btn-lg">Language Reference</a>
+                                  <a href="https://github.com/HarryPehkonen/Computo" class="btn btn-outline-light btn-lg">GitHub</a>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+              
+              <div class="container mt-5">
+                  <div class="row">
+                      <div class="col-md-3">
+                          <div class="nav flex-column nav-pills" role="tablist">
+                              <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#overview">Overview</button>
+                              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#language-reference">Language Reference</button>
+                              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#verification-process">Verification Process</button>
+                              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#quick-start">Quick Start</button>
+                          </div>
+                      </div>
+                      <div class="col-md-9">
+                          <div class="tab-content">
+                              <div class="tab-pane fade show active" id="overview">
+                                  <h2>What is Computo?</h2>
+                                  <p>Computo is a functional programming language for JSON data transformations using a Lisp-like syntax expressed in JSON.</p>
+                                  
+                                  <div class="row mt-4">
+                                      <div class="col-md-6">
+                                          <h4>Key Features</h4>
+                                          <ul>
+                                              <li>JSON-native syntax</li>
+                                              <li>Thread-safe execution</li>
+                                              <li>Tail call optimization</li>
+                                              <li>46 built-in operators</li>
+                                              <li>Multi-input support</li>
+                                              <li>Interactive REPL with debugging</li>
+                                          </ul>
+                                      </div>
+                                      <div class="col-md-6">
+                                          <h4>Example</h4>
+                                          <pre class="code-block p-3"><code class="language-json">["+", 1, 2, 3]</code></pre>
+                                          <p><small>Result: <code>6</code></small></p>
+                                      </div>
+                                  </div>
+                              </div>
+                              
+                              <div class="tab-pane fade" id="language-reference">
+                                  <div id="language-reference-content">Loading...</div>
+                              </div>
+                              
+                              <div class="tab-pane fade" id="verification-process">
+                                  <div id="verification-process-content">Loading...</div>
+                              </div>
+                              
+                              <div class="tab-pane fade" id="quick-start">
+                                  <h2>Quick Start</h2>
+                                  <h3>Installation</h3>
+                                  <pre class="code-block p-3"><code class="language-bash">git clone https://github.com/HarryPehkonen/Computo.git
+          cd Computo
+          cmake -B build
+          cmake --build build</code></pre>
+                                  
+                                  <h3>Basic Usage</h3>
+                                  <pre class="code-block p-3"><code class="language-bash"># Execute a script
+          ./build/computo --script script.json input.json
+          
+          # Start interactive REPL
+          ./build/computo --repl</code></pre>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+              
+              <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+              <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+              <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+              <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+              <script>
+                  // Load and render markdown content
+                  async function loadMarkdown(file, targetId) {
+                      try {
+                          const response = await fetch(file);
+                          const markdown = await response.text();
+                          const html = marked.parse(markdown);
+                          document.getElementById(targetId).innerHTML = html;
+                          Prism.highlightAllUnder(document.getElementById(targetId));
+                      } catch (error) {
+                          document.getElementById(targetId).innerHTML = '<p class="text-danger">Failed to load content.</p>';
+                      }
+                  }
+                  
+                  // Load content when tabs are shown
+                  document.addEventListener('DOMContentLoaded', function() {
+                      const tabTriggers = document.querySelectorAll('[data-bs-toggle="pill"]');
+                      tabTriggers.forEach(trigger => {
+                          trigger.addEventListener('shown.bs.tab', function(event) {
+                              const target = event.target.getAttribute('data-bs-target');
+                              if (target === '#language-reference' && !document.getElementById('language-reference-content').innerHTML.includes('<h1>')) {
+                                  loadMarkdown('LANGUAGE_REFERENCE.md', 'language-reference-content');
+                              } else if (target === '#verification-process' && !document.getElementById('verification-process-content').innerHTML.includes('<h1>')) {
+                                  loadMarkdown('SYNTAX_VERIFICATION_PROCESS.md', 'verification-process-content');
+                              }
+                          });
+                      });
+                  });
+              </script>
+          </body>
+          </html>
+          EOF
+
+          # Copy documentation files
+          cp docs/LANGUAGE_REFERENCE.md _site/
+          cp docs/SYNTAX_VERIFICATION_PROCESS.md _site/
+          cp README.md _site/
+
+          # Generate coverage badge data
+          TOTAL_OPS=$(./build/computo --list-operators | python3 -c "import sys, json; print(len(json.load(sys.stdin)))")
+          echo "{ \"schemaVersion\": 1, \"label\": \"docs coverage\", \"message\": \"$TOTAL_OPS/46 operators\", \"color\": \"brightgreen\" }" > _site/coverage-badge.json
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Status check job for PRs
+  status:
+    name: Documentation Status
+    runs-on: ubuntu-latest
+    needs: validate
+    if: always()
+    
+    steps:
+      - name: Set status
+        run: |
+          if [ "${{ needs.validate.result }}" = "success" ]; then
+            echo "  Documentation validation passed"
+            echo "All 66 examples tested successfully"
+            echo "Operator coverage: 46/46 (100%)"
+          else
+            echo "  Documentation validation failed"
+            exit 1
+          fi

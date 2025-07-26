@@ -266,6 +266,69 @@ if(CLANG_TIDY_EXE)
     add_dependencies(quality lint)
 endif()
 
+# --- Documentation Targets ---
+
+# Find Python for documentation scripts
+find_program(PYTHON_EXE python3 python)
+if(PYTHON_EXE)
+    # Gather implemented operators from binary
+    add_custom_target(docs-gather
+        COMMAND ${PYTHON_EXE} docs/extract-documented-ops.py > docs/documented-operators.json
+        COMMAND $<TARGET_FILE:computo_unified> --list-operators > docs/implemented-operators.json
+        DEPENDS computo_unified
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Gathering operator information"
+        VERBATIM
+    )
+
+    # Validate operator coverage
+    add_custom_target(docs-coverage
+        COMMAND ${PYTHON_EXE} docs/validate-coverage.py
+        DEPENDS computo_unified
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Validating operator documentation coverage"
+        VERBATIM
+    )
+
+    # Test all documentation examples
+    add_custom_target(docs-validate
+        COMMAND ${PYTHON_EXE} docs/test-examples.py
+        DEPENDS computo_unified
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Testing all documentation examples"
+        VERBATIM
+    )
+
+    # Generate reference documentation
+    add_custom_target(docs-generate
+        COMMAND ${PYTHON_EXE} docs/generate-reference.py -o docs/LANGUAGE_REFERENCE.md
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Generating reference documentation"
+        VERBATIM
+    )
+
+    # Complete documentation validation and generation
+    add_custom_target(docs
+        COMMENT "Complete documentation validation and generation"
+    )
+    add_dependencies(docs docs-coverage docs-validate docs-generate)
+
+    # Clean documentation artifacts
+    add_custom_target(docs-clean
+        COMMAND ${CMAKE_COMMAND} -E remove -f 
+            docs/implemented-operators.json 
+            docs/documented-operators.json
+            docs/LANGUAGE_REFERENCE.md
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Cleaning documentation artifacts"
+        VERBATIM
+    )
+
+    message(STATUS "Documentation targets available: docs, docs-coverage, docs-validate, docs-generate, docs-clean")
+else()
+    message(STATUS "Python not found - documentation targets disabled")
+endif()
+
 # --- Install Configuration ---
 install(TARGETS computo DESTINATION lib)
 install(DIRECTORY include/ DESTINATION include)

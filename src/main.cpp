@@ -1,6 +1,7 @@
 #include "cli_args.hpp"
 #include "repl.hpp"
 #include <computo.hpp>
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -51,6 +52,22 @@ auto main(int argc, char* argv[]) -> int {
 
         if (args.show_version) {
             computo::ArgumentParser::print_version();
+            return 0;
+        }
+
+        if (args.list_operators) {
+            auto& registry = computo::OperatorRegistry::get_instance();
+            auto operators = registry.get_operator_names();
+            
+            // Sort operators for consistent output
+            std::sort(operators.begin(), operators.end());
+            
+            // Output as JSON array
+            nlohmann::json output = nlohmann::json::array();
+            for (const auto& op : operators) {
+                output.push_back(op);
+            }
+            std::cout << output.dump() << "\n";
             return 0;
         }
 
