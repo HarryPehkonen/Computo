@@ -35,7 +35,7 @@ computo --repl script.json
 
 **Result:**
 ```
-6
+6.0
 ```
 
 ### Multiple Inputs Example
@@ -56,7 +56,7 @@ computo --script script.json input1.json input2.json
 
 **Result:**
 ```
-30
+30.0
 ```
 
 ## Language Syntax
@@ -77,13 +77,13 @@ All Computo scripts are valid JSON. The basic syntax for an operation is a JSON 
 ## Operators Reference
 
 ### Arithmetic (n-ary)
-- `["+", 1, 2, 3]` → `6`
-- `["-", 10, 3, 2]` → `5`
-- `["-", 5]` (unary negation) → `-5`
-- `["*", 2, 3, 4]` → `24`
-- `["/", 20, 2, 2]` → `5`
+- `["+", 1, 2, 3]` → `6.0`
+- `["-", 10, 3, 2]` → `5.0`
+- `["-", 5]` (unary negation) → `-5.0`
+- `["*", 2, 3, 4]` → `24.0`
+- `["/", 20, 2, 2]` → `5.0`
 - `["/", 4]` (reciprocal) → `0.25`
-- `["%", 20, 6]` → `2`
+- `["%", 20, 6]` → `2.0`
 
 ### Comparison (n-ary with chaining)
 - `[">", 5, 3, 1]` → `true` (evaluates as `5 > 3 && 3 > 1`)
@@ -108,8 +108,8 @@ All Computo scripts are valid JSON. The basic syntax for an operation is a JSON 
 - `["$inputs", "/0/users/0/name"]`: Navigate deep into the first input (inputs[0].users[0].name).
 - `["$", "/varname"]`: Access a variable defined with `let`.
 - `["$", "/config/database/connections/primary/host"]`: Navigate deep within variable data.
-- `["let", [["x", 10]], ["+", ["$", "/x"], 5]]`: Bind variables using array syntax. Result: `15`.
-- `["let", {"x": 10, "y": 20}, ["+", ["$", "/x"], ["$", "/y"]]]`: Bind variables using object syntax. Result: `30`.
+- `["let", [["x", 10]], ["+", ["$", "/x"], 5]]`: Bind variables using array syntax. Result: `15.0`.
+- `["let", {"x": 10, "y": 20}, ["+", ["$", "/x"], ["$", "/y"]]]`: Bind variables using object syntax. Result: `30.0`.
 
 ### Object Operations
 - `["obj", "name", "Alice", "age", 30]`: Create an object with static keys. Result: `{"name": "Alice", "age": 30}`.
