@@ -426,7 +426,7 @@ Test how errors propagate through complex nested expressions and ensure users ca
 
 #### Error Message Quality Tests
 ```
-Error at /map/lambda/body/obj/processed_name: Unknown operator "upcase". Did you mean "upper"?
+Error at /map/lambda/body/obj/processed_name: Unknown operator "upcase". Did you mean "strConcat"?
 
 Error at /let/total_salary/reduce/lambda/body: Cannot add number and null at argument 2. Consider using default values or filtering null values.
 

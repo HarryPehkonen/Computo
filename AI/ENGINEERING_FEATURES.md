@@ -161,7 +161,7 @@ This document catalogs all critical engineering features that must be preserved 
 **Current Implementation**: Comprehensive string processing and array manipulation.
 
 **Critical Aspects**:
-- String: `split`, `join`, `trim`, `upper`, `lower`, `strConcat`
+- String: `join`, `strConcat`
 - Array: `sort`, `reverse`, `unique`
 - Type validation and consistent error handling
 - Unicode-aware string operations

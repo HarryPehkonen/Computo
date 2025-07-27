@@ -61,7 +61,7 @@ make -C build test_performance
 - Functional programming primitives (car, cdr, cons, append)
 
 ### 3. String Operations
-- String transformation (upper, lower, trim)
+- String operations (join, strConcat)
 - Bulk string processing
 - String array operations
 
@@ -116,7 +116,7 @@ Test Name                Operation      Data Size  Avg (ms)    Min (ms)    Max (
 --------------------------------------------------------------------------------------------------------
 Arithmetic_Small         addition       1          0.010       0.008       0.025       0.015       100000      1024       
 Array_Map               map            1000       2.450       2.100       3.200       2.800       408         2048       
-String_Array            map_upper      5000       12.300      11.800      15.600      14.200      81          4096       
+String_Array            map_join       5000       12.300      11.800      15.600      14.200      81          4096       
 ```
 
 ### File Exports

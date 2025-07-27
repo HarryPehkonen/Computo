@@ -60,7 +60,7 @@ This phase completed the remaining operator set with comprehensive implementatio
 - [x] **Object Operations**: Implemented `obj`, `keys`, `values`, `objFromPairs`, `pick`, `omit`, `merge` with comprehensive tests.
 - [x] **Array Operations**: Implemented `map`, `filter`, `reduce`, `count`, `find`, `some`, `every` with lambda support and TCO handling.
 - [x] **Functional Programming**: Implemented `car`, `cdr`, `cons`, `append` with proper array handling.
-- [x] **String and Utility Operations**: Implemented `split`, `join`, `trim`, `upper`, `lower`, `strConcat`, `sort` (with advanced multi-field sorting and DSU optimization), `reverse`, `unique`, `uniqueSorted` (with sliding window algorithm), `zip`, `approx`.
+- [x] **String and Utility Operations**: Implemented `join`, `strConcat`, `sort` (with advanced multi-field sorting and DSU optimization), `reverse`, `unique`, `uniqueSorted` (with sliding window algorithm), `zip`, `approx`.
 - [x] **Performance Optimizations**: Added `extract_array_data()` helper function, DSU pattern for sort performance, and enhanced error messages.
 - [x] **Build System Optimization**: Separated code quality checks from compilation for fast development builds.
 
