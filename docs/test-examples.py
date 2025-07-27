@@ -56,9 +56,13 @@ class ComputoTester:
                         
                         # Check expected result if provided
                         if expected_result is not None:
-                            if actual_result != expected_result:
+                            # Use strict JSON serialization comparison to avoid type coercion
+                            # This ensures 6.0 and 6 are treated as different (which they should be for documentation accuracy)
+                            actual_json = json.dumps(actual_result, sort_keys=True)
+                            expected_json = json.dumps(expected_result, sort_keys=True)
+                            if actual_json != expected_json:
                                 success = False
-                                error = f"Expected {json.dumps(expected_result)}, got {json.dumps(actual_result)}"
+                                error = f"Expected {expected_json}, got {actual_json}"
                     except json.JSONDecodeError:
                         success = False
                         error = f"Invalid JSON output: {result.stdout}"

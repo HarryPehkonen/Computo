@@ -175,7 +175,7 @@ jobs:
                                       <div class="col-md-6">
                                           <h4>Example</h4>
                                           <pre class="code-block p-3"><code class="language-json">["+", 1, 2, 3]</code></pre>
-                                          <p><small>Result: <code>6</code></small></p>
+                                          <p><small>Result: <code>6.0</code></small></p>
                                       </div>
                                   </div>
                               </div>

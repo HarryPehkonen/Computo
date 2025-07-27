@@ -5,14 +5,14 @@ operators:
     examples:
       - name: "Basic addition"
         expression: '["+", 1, 2, 3]'
-        result: 6
+        result: 6.0
       - name: "Single argument (identity)"
         expression: '["+", 5]'
-        result: 5
+        result: 5.0
       - name: "Multi-input addition"
         expression: '["+", ["$inputs", "/0"], ["$inputs", "/1"]]'
         inputs: [10, 20]
-        result: 30
+        result: 30.0
 
   "-":
     description: "Subtraction (n-ary) or unary negation"
@@ -20,10 +20,10 @@ operators:
     examples:
       - name: "Basic subtraction"
         expression: '["-", 10, 3, 2]'
-        result: 5
+        result: 5.0
       - name: "Unary negation"
         expression: '["-", 5]'
-        result: -5
+        result: -5.0
 
   "*":
     description: "Multiplication (n-ary)"
@@ -31,7 +31,7 @@ operators:
     examples:
       - name: "Basic multiplication"
         expression: '["*", 2, 3, 4]'
-        result: 24
+        result: 24.0
 
   "/":
     description: "Division (n-ary) or reciprocal"
@@ -39,7 +39,7 @@ operators:
     examples:
       - name: "Basic division"
         expression: '["/", 20, 2, 2]'
-        result: 5
+        result: 5.0
       - name: "Reciprocal"
         expression: '["/", 4]'
         result: 0.25
@@ -50,7 +50,7 @@ operators:
     examples:
       - name: "Basic modulo"
         expression: '["%", 20, 6]'
-        result: 2
+        result: 2.0
 
   ">":
     description: "Greater than (supports chaining)"
@@ -172,10 +172,10 @@ operators:
     examples:
       - name: "Object syntax"
         expression: '["let", {"x": 10, "y": 20}, ["+", ["$", "/x"], ["$", "/y"]]]'
-        result: 30
+        result: 30.0
       - name: "Array syntax"
         expression: '["let", [["x", 10]], ["+", ["$", "/x"], 5]]'
-        result: 15
+        result: 15.0
       - name: "With input data"
         expression: '["let", {"user": ["$input", "/users/0"]}, ["$", "/user/name"]]'
         inputs: [{"users": [{"name": "Alice", "age": 30}]}]
@@ -277,7 +277,7 @@ operators:
     examples:
       - name: "Double values"
         expression: '["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]]'
-        result: {"array": [2, 4, 6]}
+        result: {"array": [2.0, 4.0, 6.0]}
 
   "filter":
     description: "Array filtering with lambda"
@@ -293,7 +293,7 @@ operators:
     examples:
       - name: "Sum array"
         expression: '["reduce", {"array": [1, 2, 3]}, ["lambda", ["acc", "item"], ["+", ["$", "/acc"], ["$", "/item"]]], 0]'
-        result: 6
+        result: 6.0
 
   "count":
     description: "Array length"
