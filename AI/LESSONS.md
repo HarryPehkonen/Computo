@@ -6,7 +6,7 @@ This document captures key development decisions, successful strategies, and les
 
 ## Architecture Decisions
 
-### 1. Clean Library/CLI Separation ✅ SUCCESSFUL
+### 1. Clean Library/CLI Separation   SUCCESSFUL
 
 **Decision**: Keep the core library (`libcomputo`) completely separate from debugging/CLI features.
 
@@ -23,7 +23,7 @@ This document captures key development decisions, successful strategies, and les
 
 **Key Insight**: Library users get a clean, fast API while developers get rich debugging tools. This separation was critical for maintainability.
 
-### 2. Conditional Compilation Strategy ✅ SUCCESSFUL
+### 2. Conditional Compilation Strategy   SUCCESSFUL
 
 **Decision**: Use CMake options and `#ifdef REPL` for feature separation rather than runtime flags.
 
@@ -47,7 +47,7 @@ endif()
 
 **Key Insight**: Conditional compilation is superior to runtime flags for debug features - it eliminates all overhead and prevents feature creep in production code.
 
-### 3. JSON-Native Operator Syntax ✅ SUCCESSFUL
+### 3. JSON-Native Operator Syntax   SUCCESSFUL
 
 **Decision**: Use `["operator", arg1, arg2, ...]` format instead of object-based syntax.
 
@@ -61,7 +61,7 @@ endif()
 
 **Key Insight**: Array-based syntax is more concise and eliminates parsing ambiguity when operators and data coexist.
 
-### 4. N-ary Operator Consistency ✅ SUCCESSFUL
+### 4. N-ary Operator Consistency   SUCCESSFUL
 
 **Decision**: Make all operators n-ary except `not` (unary only).
 
@@ -76,7 +76,7 @@ endif()
 
 ## Implementation Strategies
 
-### 5. Thread-Local Debug State ✅ SUCCESSFUL
+### 5. Thread-Local Debug State   SUCCESSFUL
 
 **Decision**: Use thread-local storage for debugging state instead of global variables.
 
@@ -97,7 +97,7 @@ private:
 
 **Key Insight**: Thread-local state is essential for a library that supports concurrent execution.
 
-### 6. ExecutionContext Design ✅ SUCCESSFUL
+### 6. ExecutionContext Design   SUCCESSFUL
 
 **Decision**: Use shared_ptr for immutable input data with copy-on-write for variable scopes.
 
@@ -119,7 +119,7 @@ class ExecutionContext {
 
 **Key Insight**: Immutable input data + mutable variable scope provides the right balance of efficiency and safety.
 
-### 7. Operator Registry with std::call_once ✅ SUCCESSFUL
+### 7. Operator Registry with std::call_once   SUCCESSFUL
 
 **Decision**: Initialize operator registry once using `std::call_once` rather than static initialization.
 
@@ -146,7 +146,7 @@ void initialize_operators() {
 
 ## Debug Infrastructure Lessons
 
-### 8. Debug Wrapper Pattern ✅ SUCCESSFUL
+### 8. Debug Wrapper Pattern   SUCCESSFUL
 
 **Decision**: Create a wrapper class that instruments the core library calls rather than modifying the library itself.
 
@@ -172,7 +172,7 @@ public:
 
 **Key Insight**: Wrapper pattern allows rich debugging without polluting the core library.
 
-### 9. Variable Extraction Strategy ⚠️ WORKAROUND
+### 9. Variable Extraction Strategy   WORKAROUND
 
 **Decision**: Extract variables from `let` expressions by parsing and re-evaluating bindings.
 
@@ -190,7 +190,7 @@ public:
 
 **Key Insight**: Sometimes a partial solution that works is better than a perfect solution that doesn't exist yet.
 
-### 10. REPL Command Structure ✅ SUCCESSFUL
+### 10. REPL Command Structure   SUCCESSFUL
 
 **Decision**: Use simple string matching for REPL commands rather than complex parsing.
 
@@ -215,7 +215,7 @@ if (processed_input == "vars") {
 
 ## Error Handling and User Experience
 
-### 11. Exception Hierarchy ✅ SUCCESSFUL
+### 11. Exception Hierarchy   SUCCESSFUL
 
 **Decision**: Create specific exception types with path information rather than generic error messages.
 
@@ -234,7 +234,7 @@ class InvalidArgumentException : public ComputoException;
 
 **Key Insight**: Structured exceptions with context information dramatically improve debugging experience.
 
-### 12. JSON Pointer Integration ✅ SUCCESSFUL
+### 12. JSON Pointer Integration   SUCCESSFUL
 
 **Decision**: Use standard JSON Pointer syntax for the `get` operator and variable paths.
 
@@ -248,7 +248,7 @@ class InvalidArgumentException : public ComputoException;
 
 ## Performance Considerations
 
-### 13. Zero-Overhead Production Builds ✅ SUCCESSFUL
+### 13. Zero-Overhead Production Builds   SUCCESSFUL
 
 **Decision**: Ensure production builds contain literally zero debug code.
 
@@ -265,7 +265,7 @@ class InvalidArgumentException : public ComputoException;
 
 **Key Insight**: True zero-overhead debugging requires compile-time feature selection, not runtime toggles.
 
-### 14. Tail Call Optimization Support ✅ SUCCESSFUL
+### 14. Tail Call Optimization Support   SUCCESSFUL
 
 **Decision**: Design evaluation engine to support TCO for recursive algorithms.
 
@@ -279,7 +279,7 @@ class InvalidArgumentException : public ComputoException;
 
 ## Anti-Patterns and Lessons Learned
 
-### 15. Avoid Global Debug State ❌ AVOIDED
+### 15. Avoid Global Debug State   AVOIDED
 
 **Anti-Pattern**: Using global variables for debug configuration.
 
@@ -291,7 +291,7 @@ class InvalidArgumentException : public ComputoException;
 
 **Correct Approach**: Use instance-specific debug wrappers or thread-local state.
 
-### 16. Avoid Runtime Debug Flags ❌ AVOIDED
+### 16. Avoid Runtime Debug Flags   AVOIDED
 
 **Anti-Pattern**: Adding `if (debug_mode)` checks throughout core library.
 
@@ -303,7 +303,7 @@ class InvalidArgumentException : public ComputoException;
 
 **Correct Approach**: Conditional compilation for debug features.
 
-### 17. Avoid Mixed Operator Arities ❌ AVOIDED
+### 17. Avoid Mixed Operator Arities   AVOIDED
 
 **Anti-Pattern**: Some operators binary, others n-ary based on mathematical tradition.
 
@@ -317,7 +317,7 @@ class InvalidArgumentException : public ComputoException;
 
 ## Build System and Development Workflow
 
-### 18. CMake Target Organization ✅ SUCCESSFUL
+### 18. CMake Target Organization   SUCCESSFUL
 
 **Decision**: Create separate build directories and targets for different use cases.
 
@@ -329,7 +329,7 @@ class InvalidArgumentException : public ComputoException;
 
 **Key Insight**: Build system clarity prevents many deployment and debugging issues.
 
-### 19. Single Header Library Design ✅ SUCCESSFUL
+### 19. Single Header Library Design   SUCCESSFUL
 
 **Decision**: Provide complete API in single `computo.hpp` header.
 
@@ -339,7 +339,7 @@ class InvalidArgumentException : public ComputoException;
 - Minimal dependencies (only nlohmann::json)
 - Standard library distribution pattern
 
-**Key Insight**: Single-header libraries have excellent adoption and integration characteristics.\n\n### 33. Solution 3: Lazy Debug Stack Construction ✅ IMPLEMENTED\n\n**Decision**: Implement TCO using lazy debug evaluation - debug infrastructure is only activated when actually needed.\n\n**What Worked**:\n- All TCO validation tests pass: 8/8 test cases successful\n- **Optimal performance balance**: Zero overhead when debugging is inactive\n- **Lazy evaluation approach**: `should_debug` flag determined once per evaluation  \n- **Simple trampoline pattern**: Lightweight `TailCall` struct with `while(true)` loop\n- **Selective TCO**: Only `if` and `let` operators use tail call optimization\n- **Perfect debugging compatibility**: Full pre-evaluation hook support when needed\n\n**Performance Results**:\n- Deep nested let (50 levels): **1606 μs** (30% better than Solution 2)\n- Tail-recursive countdown (20 levels): **494 μs** (matches best performance)\n- Deep list processing (1000 elements): **8422 μs** (excellent scalability)\n- Deep conditional nesting (200 levels): **61371 μs** (handles extreme cases)\n- Simple operations: **2-5 μs** (excellent baseline performance)\n\n**Key Technical Insights**:\n1. **Lazy Evaluation**: Debug overhead is eliminated when `ctx.has_pre_evaluation_hook()` returns false\n2. **Optimal Overhead**: Zero debug cost in production and when debugging is inactive\n3. **Simple Design**: Most straightforward implementation of the three solutions\n4. **Best Performance**: Fastest execution times across all test scenarios\n5. **Production Ready**: Minimal code complexity with maximum performance benefits\n\n**Production Readiness**: ✅ OPTIMAL\n- All existing tests pass (107/107)\n- All new TCO validation tests pass (8/8)  \n- Best performance characteristics of all three solutions\n- Zero overhead when debugging is inactive\n- Simplest implementation with lowest maintenance burden\n\n**Key Insight**: Solution 3 (Lazy Debug Stack Construction) represents the **optimal approach** for production systems. It provides the performance benefits of tail call optimization while eliminating debug overhead through lazy evaluation.\n\n## Experimental Conclusion: TCO Solution Comparison\n\n**Final Recommendation**: **Solution 3 (Lazy Debug Stack Construction)** is the optimal choice for production deployment.\n\n**Ranking by Performance**:\n1. 🥇 **Solution 3**: Lazy Debug Stack (1606 μs, zero overhead when inactive)\n2. 🥈 **Solution 1**: Explicit Debug Stack (2304 μs, 25-66% improvement over baseline)\n3. 🥉 **Solution 2**: CPS (2304 μs, excellent theoretical foundation)\n\n**Success Criteria Met**:\n✅ **Tail Call Optimization**: All solutions eliminate stack overflow in deep recursion\n✅ **Performance**: 20-66% improvement over baseline across all solutions\n✅ **Debugging Compatibility**: Full debugging capabilities preserved in all solutions\n✅ **Production Readiness**: All solutions ready for production deployment\n✅ **Zero Regressions**: All existing functionality maintained (107/107 tests pass)
+**Key Insight**: Single-header libraries have excellent adoption and integration characteristics.\n\n### 33. Solution 3: Lazy Debug Stack Construction   IMPLEMENTED\n\n**Decision**: Implement TCO using lazy debug evaluation - debug infrastructure is only activated when actually needed.\n\n**What Worked**:\n- All TCO validation tests pass: 8/8 test cases successful\n- **Optimal performance balance**: Zero overhead when debugging is inactive\n- **Lazy evaluation approach**: `should_debug` flag determined once per evaluation  \n- **Simple trampoline pattern**: Lightweight `TailCall` struct with `while(true)` loop\n- **Selective TCO**: Only `if` and `let` operators use tail call optimization\n- **Perfect debugging compatibility**: Full pre-evaluation hook support when needed\n\n**Performance Results**:\n- Deep nested let (50 levels): **1606 μs** (30% better than Solution 2)\n- Tail-recursive countdown (20 levels): **494 μs** (matches best performance)\n- Deep list processing (1000 elements): **8422 μs** (excellent scalability)\n- Deep conditional nesting (200 levels): **61371 μs** (handles extreme cases)\n- Simple operations: **2-5 μs** (excellent baseline performance)\n\n**Key Technical Insights**:\n1. **Lazy Evaluation**: Debug overhead is eliminated when `ctx.has_pre_evaluation_hook()` returns false\n2. **Optimal Overhead**: Zero debug cost in production and when debugging is inactive\n3. **Simple Design**: Most straightforward implementation of the three solutions\n4. **Best Performance**: Fastest execution times across all test scenarios\n5. **Production Ready**: Minimal code complexity with maximum performance benefits\n\n**Production Readiness**:   OPTIMAL\n- All existing tests pass (107/107)\n- All new TCO validation tests pass (8/8)  \n- Best performance characteristics of all three solutions\n- Zero overhead when debugging is inactive\n- Simplest implementation with lowest maintenance burden\n\n**Key Insight**: Solution 3 (Lazy Debug Stack Construction) represents the **optimal approach** for production systems. It provides the performance benefits of tail call optimization while eliminating debug overhead through lazy evaluation.\n\n## Experimental Conclusion: TCO Solution Comparison\n\n**Final Recommendation**: **Solution 3 (Lazy Debug Stack Construction)** is the optimal choice for production deployment.\n\n**Ranking by Performance**:\n1.   **Solution 3**: Lazy Debug Stack (1606 μs, zero overhead when inactive)\n2.   **Solution 1**: Explicit Debug Stack (2304 μs, 25-66% improvement over baseline)\n3.   **Solution 2**: CPS (2304 μs, excellent theoretical foundation)\n\n**Success Criteria Met**:\n  **Tail Call Optimization**: All solutions eliminate stack overflow in deep recursion\n  **Performance**: 20-66% improvement over baseline across all solutions\n  **Debugging Compatibility**: Full debugging capabilities preserved in all solutions\n  **Production Readiness**: All solutions ready for production deployment\n  **Zero Regressions**: All existing functionality maintained (107/107 tests pass)
 
 ## Future Development Recommendations
 
@@ -352,16 +352,16 @@ class InvalidArgumentException : public ComputoException;
 - Use callback interface for debug instrumentation
 - Maintain zero overhead in production builds
 
-### 21. Advanced Debug Features ✅ IMPLEMENTED
+### 21. Advanced Debug Features   IMPLEMENTED
 
 **Successful Foundation**: DebugExecutionWrapper provides extensible platform.
 
 **Implemented Features**:
-- `step` command: single-step interactive debugging ✅
-- `continue` command: resume execution until next breakpoint ✅
-- `finish` command: complete execution ignoring breakpoints ✅
-- `where` command: show current execution location ✅
-- `vars` command: display variables in current scope ✅
+- `step` command: single-step interactive debugging  
+- `continue` command: resume execution until next breakpoint  
+- `finish` command: complete execution ignoring breakpoints  
+- `where` command: show current execution location  
+- `vars` command: display variables in current scope  
 
 **Future Additions**:
 - `trace` command: execution path visualization
@@ -379,7 +379,7 @@ class InvalidArgumentException : public ComputoException;
 
 ## Advanced Debugging Infrastructure Lessons
 
-### 23. Interactive Debugger Implementation ✅ SUCCESSFUL
+### 23. Interactive Debugger Implementation   SUCCESSFUL
 
 **Decision**: Implement full debugging capabilities including script loading, breakpoints, and operator suggestions.
 
@@ -411,7 +411,7 @@ std::string suggest_operator(const std::string& misspelled) {
 
 **Key Insight**: Building debugging features incrementally on solid foundations enables rapid feature development.
 
-### 24. Operator Suggestion System ✅ SUCCESSFUL
+### 24. Operator Suggestion System   SUCCESSFUL
 
 **Decision**: Implement intelligent error messages with operator suggestions using Levenshtein distance.
 
@@ -430,7 +430,7 @@ std::string suggest_operator(const std::string& misspelled) {
 
 **Key Insight**: Simple algorithms (Levenshtein distance) can provide high-value user experience improvements with minimal implementation complexity.
 
-### 25. JSON Comments Support ✅ SUCCESSFUL
+### 25. JSON Comments Support   SUCCESSFUL
 
 **Decision**: Support JSON with comments for script files using nlohmann::json's built-in parsing options.
 
@@ -442,7 +442,7 @@ std::string suggest_operator(const std::string& misspelled) {
 
 **Key Insight**: Leveraging existing library features (nlohmann::json comment parsing) is more reliable than implementing custom parsers.
 
-### 26. Breakpoint Management Architecture ✅ SUCCESSFUL
+### 26. Breakpoint Management Architecture   SUCCESSFUL
 
 **Decision**: Implement persistent breakpoint system with separate operator and variable breakpoints.
 
@@ -465,7 +465,7 @@ class DebugExecutionWrapper {
 
 **Key Insight**: Using appropriate data structures (std::set) provides both efficiency and clean semantics for breakpoint management.
 
-### 27. Command Line Interface Evolution ✅ SUCCESSFUL
+### 27. Command Line Interface Evolution   SUCCESSFUL
 
 **Decision**: Extend REPL command system to support complex debugging workflows.
 
@@ -483,7 +483,7 @@ class DebugExecutionWrapper {
 
 **Key Insight**: Command line interfaces benefit from logical categorization and comprehensive help text with examples.
 
-### 28. Interactive Debug Session Implementation ✅ SUCCESSFUL
+### 28. Interactive Debug Session Implementation   SUCCESSFUL
 
 **Decision**: Implement full interactive debugging with `step`, `continue`, `finish`, and `where` commands.
 
@@ -516,7 +516,7 @@ class DebugExecutionWrapper {
 
 **Key Insight**: Callback-based user interaction enables clean separation between debug logic and REPL interface while supporting interactive debugging sessions.
 
-### 29. Debug Context Tracking ✅ SUCCESSFUL
+### 29. Debug Context Tracking   SUCCESSFUL
 
 **Decision**: Capture execution context for debugging without modifying core library.
 
@@ -543,7 +543,7 @@ struct DebugContext {
 
 **Key Insight**: Debug context provides significant value for debugging at all nesting levels without modifying core evaluation logic.
 
-### 30. Pre-Evaluation Hook System ✅ SUCCESSFUL
+### 30. Pre-Evaluation Hook System   SUCCESSFUL
 
 **Decision**: Implement nested breakpoint support using pre-evaluation hooks in the core library.
 
@@ -579,7 +579,7 @@ if (ctx.has_pre_evaluation_hook()) {
 
 **Key Insight**: Hook-based instrumentation enables deep debugging without modifying evaluation logic, but requires careful build configuration.
 
-### 31. CMake Build Configuration Lesson ⚠️ CRITICAL
+### 31. CMake Build Configuration Lesson   CRITICAL
 
 **Problem Discovered**: Core library (`libcomputo.a`) was compiled without `-DREPL` flag while REPL application had it, causing hook system to be compiled out of the library.
 
@@ -619,7 +619,7 @@ endif()
 
 ## Data Access Operator Consolidation (2024-07-09)
 
-### 33. Enhanced Data Access Operators ✅ SUCCESSFUL
+### 33. Enhanced Data Access Operators   SUCCESSFUL
 
 **Decision**: Consolidate `get`, `$`, `$input`, and `$inputs` operators into a unified data access system.
 
@@ -701,7 +701,7 @@ nlohmann::json var_access(const nlohmann::json& args, ExecutionContext& ctx) {
 
 ## Enhanced Sort Operator Implementation (2024-07-10)
 
-### 34. Multi-Field Sort with JSON Pointer Integration ✅ SUCCESSFUL
+### 34. Multi-Field Sort with JSON Pointer Integration   SUCCESSFUL
 
 **Decision**: Replace basic sort operator with comprehensive multi-field sorting using JSON Pointer syntax for field access.
 
@@ -796,7 +796,7 @@ nlohmann::json extract_field_value(const nlohmann::json& obj, const std::string&
 
 ## Enhanced Unique Operator with Sliding Window Algorithm (2024-07-10)
 
-### 35. Sliding Window Unique Algorithm ✅ SUCCESSFUL
+### 35. Sliding Window Unique Algorithm   SUCCESSFUL
 
 **Decision**: Replace basic unique operator with comprehensive multi-mode uniqueness detection using an elegant sliding window algorithm.
 
@@ -911,7 +911,7 @@ for (size_t i = 0; i < array.size(); ++i) {
 
 ## Critical Bug Fixes
 
-### CLI Input Handling Bug (2025-01-13) ✅ FIXED
+### CLI Input Handling Bug (2025-01-13)   FIXED
 
 **Bug**: Production CLI incorrectly handled `$input` vs `$inputs` operators, causing both to return the same wrapped array format.
 
@@ -995,7 +995,7 @@ echo '{"test": true}' > test_data.json
 
 **Key Insight**: **Interface boundaries are bug magnets**. The CLI-to-library interface used different types (`nlohmann::json` vs `std::vector<nlohmann::json>`) with similar semantics but different behavior. Always verify that interface contracts match exactly, not just approximately.
 
-### REPL Multiline Input Investigation (2025-01-14) ❌ REJECTED
+### REPL Multiline Input Investigation (2025-01-14)   REJECTED
 
 **Feature Request**: Users wanted multiline JSON support directly in the interactive REPL.
 
@@ -1009,7 +1009,7 @@ computo> [
 
 **Solutions Explored**:
 
-1. **TTY Detection + Stdin Mode** ⭐ Initially implemented
+1. **TTY Detection + Stdin Mode**   Initially implemented
    - Detect `isatty(STDIN_FILENO)` vs piped input
    - Parse complete JSON from stdin vs line-by-line commands
    - Cross-platform abstraction for Windows/POSIX
@@ -1051,9 +1051,9 @@ if (!Platform::is_stdin_tty()) {
 **Existing Solutions Realized**:
 The feature request was already solved by existing workflows:
 
-1. **File-based multiline**: `vim script.json` → `computo> run script.json` ✅
-2. **CLI mode**: `computo script.json input.json` ✅
-3. **Temp file workflow**: `echo "JSON" > temp.json && computo_repl temp.json` ✅
+1. **File-based multiline**: `vim script.json` → `computo> run script.json`  
+2. **CLI mode**: `computo script.json input.json`  
+3. **Temp file workflow**: `echo "JSON" > temp.json && computo_repl temp.json`  
 
 **Decision**: **REVERT** - Complexity not justified by user benefit.
 

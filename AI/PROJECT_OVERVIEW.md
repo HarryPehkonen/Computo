@@ -1,14 +1,27 @@
-# Computo Implementation Plan
+# Project Overview
+
+A safe, sandboxed, thread-safe JSON-native data transformation engine with a Lisp-like language syntax expressed in JSON.
+
+## Overview
+
+Computo consists of:
+- **libcomputo**: A minimal, thread-safe C++ library for JSON transformations
+- **computo**: A CLI tool for running Computo scripts
+- **computo_repl**: An interactive REPL with debugging features
+
+## Implementation Plan
 
 This document provides a high-level, phased implementation plan for building the Computo JSON transformation engine. We are adopting a **feature-driven, vertical slice** approach, where each component is implemented, tested, and documented iteratively.
 
 **Documentation References**: 
-- `ARCHITECTURE.md` - Core patterns and file structure
-- `BUILDING.md` - Comprehensive guide to building and testing
+- `ARCHITECTURE_GUIDE.md` - Core patterns and file structure
+- `DEVELOPMENT_WORKFLOW.md` - Comprehensive guide to building and testing
 - `README.md` - User-facing overview
 - `docs/` directory - Detailed developer documentation for specific components
 
-## Phase 1: Project Setup and Infrastructure
+## Development Phases
+
+### Phase 1: Project Setup and Infrastructure (COMPLETED)
 
 This phase established the foundational elements of the project.
 
@@ -18,7 +31,7 @@ This phase established the foundational elements of the project.
 - [x] **Dependencies**: Added nlohmann/json, Google Test, and optional readline.
 - [x] **Initial Compilation Test**: Verified basic compilation and test execution.
 
-## Phase 2: Core Architecture
+### Phase 2: Core Architecture (COMPLETED)
 
 This phase implemented the fundamental components of the Computo engine.
 
@@ -29,18 +42,18 @@ This phase implemented the fundamental components of the Computo engine.
 - [x] **TCO Verification and Deep Recursion Testing**: Created and passed tests to ensure TCO prevents stack overflows for `if` and `let` expressions.
 - [x] **Public API Implementation**: Implemented `execute(script, input)` and `execute(script, inputs)`.
 
-## Phase 3: Essential Operators (COMPLETED)
+### Phase 3: Essential Operators (COMPLETED)
 
 This phase focused on implementing the most critical operators, one vertical slice at a time.
 
-- [x] **Arithmetic Operators**: Implemented `+`, `-`, `*`, `/`, `%` with n-ary semantics, comprehensive tests, and dedicated documentation (`docs/operators/arithmetic.md`).
-- [x] **Comparison Operators**: Implemented `>` `<`, `>=` `<=` `==` `!=` with n-ary chaining semantics and comprehensive tests (`docs/operators/comparison.md`).
+- [x] **Arithmetic Operators**: Implemented `+`, `-`, `*`, `/`, `%` with n-ary semantics, comprehensive tests, and dedicated documentation.
+- [x] **Comparison Operators**: Implemented `>` `<`, `>=` `<=` `==` `!=` with n-ary chaining semantics and comprehensive tests.
 - [x] **Logical Operators**: Implemented `&&` `||` `not` with proper truthiness evaluation.
-- [x] **Basic Data Access**: Implemented `$input`, `$inputs`, `$`, and `let` with full JSON Pointer support (`docs/operators/data_access.md`).
+- [x] **Basic Data Access**: Implemented `$input`, `$inputs`, `$`, and `let` with full JSON Pointer support.
 - [x] **Control Flow**: Implemented `if` with TCO support.
 - [x] **Shared Utilities**: Implemented `is_truthy()` and `evaluate_lambda()` with proper TCO handling.
 
-## Phase 4: Advanced Operators (COMPLETED)
+### Phase 4: Advanced Operators (COMPLETED)
 
 This phase completed the remaining operator set with comprehensive implementations and optimizations.
 
@@ -51,7 +64,7 @@ This phase completed the remaining operator set with comprehensive implementatio
 - [x] **Performance Optimizations**: Added `extract_array_data()` helper function, DSU pattern for sort performance, and enhanced error messages.
 - [x] **Build System Optimization**: Separated code quality checks from compilation for fast development builds.
 
-## Phase 5: CLI Implementation (COMPLETED)
+### Phase 5: CLI Implementation (COMPLETED)
 
 This phase built unified user-facing command-line tools.
 
@@ -61,7 +74,7 @@ This phase built unified user-facing command-line tools.
 - [x] **API Simplification**: Unified execute API to single vector-based function, eliminating convenience overloads.
 - [x] **Build System Optimization**: Created single binary target, eliminated duplicate compilation, separated quality checks for faster development builds.
 
-## Phase 6: Debugging Infrastructure (COMPLETED)
+### Phase 6: Debugging Infrastructure (COMPLETED)
 
 This phase added comprehensive debugging capabilities to help developers verify, modify, and understand their scripts.
 
@@ -76,7 +89,7 @@ This phase added comprehensive debugging capabilities to help developers verify,
 - [x] **Debug Engine Integration**: Modified evaluation engine to check breakpoints, record execution steps, and trigger debug mode via `DebugBreakException`.
 - [x] **Code Quality**: Resolved all clang-tidy warnings including performance optimizations (enum base type) and readability improvements.
 
-## Phase 7: Comprehensive Testing and Polish (NEXT - Ready to Start)
+### Phase 7: Comprehensive Testing and Polish (NEXT)
 
 This final phase will ensure the project meets all quality and performance standards.
 
@@ -91,6 +104,45 @@ This final phase will ensure the project meets all quality and performance stand
 - [ ] **Build and Packaging**: Test builds on multiple platforms and prepare for distribution.
 - [ ] **Final Validation**: Verify all success criteria are met and anti-patterns are avoided.
 
+## Quick Start
+
+### Basic Usage
+
+```bash
+# Execute a script
+computo script.json
+
+# Execute with input data
+computo script.json input.json
+
+# Interactive REPL
+computo_repl
+```
+
+### Simple Example
+
+```json
+["+", 1, 2, 3]
+```
+Result: `6`
+
+## Language Syntax
+
+All Computo scripts are valid JSON. The basic syntax is:
+
+```json
+["operator", arg1, arg2, ...]
+```
+
+### Literals
+
+- Numbers: `42`, `3.14`
+- Strings: `"hello"`
+- Booleans: `true`, `false`
+- Null: `null`
+- Arrays: `{"array": [1, 2, 3]}`
+- Objects: `{"key": "value"}`
+
 ## Development Guidelines
 
 ### Code Quality Standards
@@ -103,18 +155,18 @@ This final phase will ensure the project meets all quality and performance stand
 ### Testing Philosophy
 - Write tests **before** implementing features when possible.
 - Test error conditions as thoroughly as success conditions.
-- Use integration scenarios from `AI/INTEGRATION_SCENARIOS.md` (as reference for future integration tests).
+- Use integration scenarios from integration documentation for future integration tests.
 - Maintain high code coverage.
 
 ### Performance Mindset
 - Profile before optimizing.
 - Measure performance impact of changes.
-- Use benchmarks from `AI/PERFORMANCE_BENCHMARKS.md` (as reference for future performance tests).
+- Use benchmarks from performance documentation for future performance tests.
 - Maintain thread safety without locks in hot paths.
 
 ### Reference the Documentation
 When implementing any feature, consult the relevant documentation:
-- **Architecture decisions**: `ARCHITECTURE.md`
-- **Development standards**: `docs/04_DEVELOPMENT_STANDARDS.md`
-- **Build process**: `BUILDING.md`
-- **Specific operator details**: `docs/operators/` directory
+- **Architecture decisions**: `ARCHITECTURE_GUIDE.md`
+- **Development standards**: Development workflow documentation
+- **Build process**: `DEVELOPMENT_WORKFLOW.md`
+- **Specific operator details**: Operator documentation files

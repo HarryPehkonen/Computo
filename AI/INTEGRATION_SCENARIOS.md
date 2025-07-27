@@ -521,7 +521,7 @@ echo '{"data": [1, 2, 3]}' > input.json
 #### Unicode and Special Characters
 ```json
 {
-  "unicode_data": "Hello 世界 🌍 émojis",
+  "unicode_data": "Hello 世界   émojis",
   "special_chars": "quotes\"backslash\\tab\tnewline\n"
 }
 ```

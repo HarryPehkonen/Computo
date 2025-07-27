@@ -813,8 +813,8 @@ std::cout << "Execution successful in " << duration << "ms" << std::endl;
 std::cout << "Breakpoint hit at operator: " << op_name << std::endl;
 
 // NEVER USE: Emojis or visual decorations
-// std::cout << "✅ Execution successful!" << std::endl;  // NO
-// std::cout << "🐛 Debug mode enabled" << std::endl;    // NO
+// std::cout << "  Execution successful!" << std::endl;  // NO
+// std::cout << "  Debug mode enabled" << std::endl;    // NO
 ```
 
 ### Documentation Requirements
@@ -1004,77 +1004,77 @@ nlohmann::json evaluate(nlohmann::json expr, ExecutionContext ctx) {
 ### Build System Requirements
 
 #### Production Builds
-- ✅ Zero debug overhead: No debug code compiled into binary
-- ✅ Minimal dependencies: No readline or debug library requirements
-- ✅ Fast compilation: Only core library and production main compiled
-- ✅ Small binary size: Minimal footprint for distribution
+-   Zero debug overhead: No debug code compiled into binary
+-   Minimal dependencies: No readline or debug library requirements
+-   Fast compilation: Only core library and production main compiled
+-   Small binary size: Minimal footprint for distribution
 
 #### REPL Builds
-- ✅ Full debug infrastructure: All debugging features available
-- ✅ Conditional compilation: `#ifdef REPL` blocks work correctly
-- ✅ Readline integration: Command history and editing when available
-- ✅ Clear build distinction: Different CMake targets for different purposes
+-   Full debug infrastructure: All debugging features available
+-   Conditional compilation: `#ifdef REPL` blocks work correctly
+-   Readline integration: Command history and editing when available
+-   Clear build distinction: Different CMake targets for different purposes
 
 ### Functional Requirements
 
 #### Production Binary
-- ✅ Direct script execution: `computo script.json input.json`
-- ✅ Zero debug overhead: Fastest possible execution
-- ✅ Minimal CLI: Only essential arguments supported
-- ✅ Error handling: Clean error messages without debug context
+-   Direct script execution: `computo script.json input.json`
+-   Zero debug overhead: Fastest possible execution
+-   Minimal CLI: Only essential arguments supported
+-   Error handling: Clean error messages without debug context
 
 #### REPL Binary Features
-- ✅ Interactive REPL: Command prompt with expression evaluation
-- ✅ Debug features: Tracing, profiling, breakpoints, variable watching
-- ✅ stdin/stdout protocol: Batch processing and pipeline integration
-- ✅ Context loading: Preload input files for REPL sessions
+-   Interactive REPL: Command prompt with expression evaluation
+-   Debug features: Tracing, profiling, breakpoints, variable watching
+-   stdin/stdout protocol: Batch processing and pipeline integration
+-   Context loading: Preload input files for REPL sessions
 
 ### Quality Requirements
 
 #### Code Organization
-- ✅ Clean feature separation: `#ifdef REPL` blocks clearly marked
-- ✅ Single source base: No code duplication between builds
-- ✅ Small, focused functions: < 25 lines per function
-- ✅ Clear interfaces: Obvious APIs with minimal dependencies
+-   Clean feature separation: `#ifdef REPL` blocks clearly marked
+-   Single source base: No code duplication between builds
+-   Small, focused functions: < 25 lines per function
+-   Clear interfaces: Obvious APIs with minimal dependencies
 
 #### Performance Design
-- ✅ Production builds: Literally zero debug overhead
-- ✅ REPL builds: Debug features only active when requested
-- ✅ Thread safety: Both builds support concurrent execution
-- ✅ Memory efficiency: Minimal footprint in production builds
+-   Production builds: Literally zero debug overhead
+-   REPL builds: Debug features only active when requested
+-   Thread safety: Both builds support concurrent execution
+-   Memory efficiency: Minimal footprint in production builds
 
 #### Style Guidelines
-- ✅ NDEBUG separation: Assert statements controlled by NDEBUG only
-- ✅ REPL feature flags: User features controlled by REPL flag only
-- ✅ NO EMOJIS: Professional, clean code and output
-- ✅ Consistent error handling: Clear, actionable error messages
+-   NDEBUG separation: Assert statements controlled by NDEBUG only
+-   REPL feature flags: User features controlled by REPL flag only
+-   NO EMOJIS: Professional, clean code and output
+-   Consistent error handling: Clear, actionable error messages
 
 ### Integration Requirements
 
 #### CMake Build System
-- ✅ Simple build commands: Clear cmake options for each build type
-- ✅ Dependency management: REPL builds add readline, production builds don't
-- ✅ Source organization: Conditional compilation of debug source files
-- ✅ Target naming: Clear distinction between production and REPL binaries
+-   Simple build commands: Clear cmake options for each build type
+-   Dependency management: REPL builds add readline, production builds don't
+-   Source organization: Conditional compilation of debug source files
+-   Target naming: Clear distinction between production and REPL binaries
 
 #### Cross-Platform Support
-- ✅ Readline optional: Graceful fallback when readline unavailable
-- ✅ Consistent behavior: Same functionality across different platforms
-- ✅ Resource management: Proper cleanup on all systems
-- ✅ Compiler compatibility: Works with different C++ compilers
+-   Readline optional: Graceful fallback when readline unavailable
+-   Consistent behavior: Same functionality across different platforms
+-   Resource management: Proper cleanup on all systems
+-   Compiler compatibility: Works with different C++ compilers
 
 ### User Experience
 
 #### Production Use Cases
-- ✅ CI/CD integration: Fast, reliable script execution
-- ✅ Automation scripts: Simple, predictable command-line interface
-- ✅ Performance testing: Zero overhead for accurate measurements
-- ✅ Distribution: Small binaries suitable for embedded environments
+-   CI/CD integration: Fast, reliable script execution
+-   Automation scripts: Simple, predictable command-line interface
+-   Performance testing: Zero overhead for accurate measurements
+-   Distribution: Small binaries suitable for embedded environments
 
 #### Development Use Cases
-- ✅ Interactive exploration: REPL for testing expressions
-- ✅ Script debugging: Breakpoints, tracing, variable inspection
-- ✅ Performance analysis: Profiling and slow operation detection
-- ✅ Batch testing: stdin/stdout protocol for test automation
+-   Interactive exploration: REPL for testing expressions
+-   Script debugging: Breakpoints, tracing, variable inspection
+-   Performance analysis: Profiling and slow operation detection
+-   Batch testing: stdin/stdout protocol for test automation
 
 This conditional compilation architecture provides a clean solution that delivers zero-overhead production builds while maintaining full debugging capabilities for development, using industry-standard `#ifdef` patterns for feature separation.

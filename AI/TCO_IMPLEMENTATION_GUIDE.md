@@ -38,7 +38,7 @@ struct EvaluationResult {
 
 ## TCO Implementation Patterns
 
-### ❌ WRONG (Causes Stack Overflow)
+###   WRONG (Causes Stack Overflow)
 
 ```cpp
 auto op_if(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
@@ -54,7 +54,7 @@ auto op_if(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResul
 }
 ```
 
-### ✅ RIGHT (Enables TCO)
+###   RIGHT (Enables TCO)
 
 ```cpp
 auto op_if(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
