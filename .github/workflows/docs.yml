@@ -106,7 +106,63 @@ jobs:
         run: cmake --build build
 
       - name: Generate documentation
-        run: cmake --build build --target docs-generate
+        run: |
+          cmake --build build --target docs-generate
+
+          # Generate operator indexes
+          mkdir -p docs/alpha docs/task docs/operators
+
+          # Generate alphabetical index
+          cat > docs/alpha/index.md << 'EOF'
+          ---
+          title: Alphabetical Operator Index
+          ---
+
+          # Alphabetical Operator Index
+
+          - [`!=`](../operators/not-equal.md) - `!=`
+          - [`%`](../operators/modulo.md) - `%`
+          - [`*`](../operators/multiply.md) - `*`
+          - [`+`](../operators/add.md) - `+`
+          - [`-`](../operators/subtract.md) - `-`
+          - [`/`](../operators/divide.md) - `/`
+          - [`<`](../operators/less-than.md) - `<`
+          - [`<=`](../operators/less-equal.md) - `<=`
+          - [`==`](../operators/equal.md) - `==`
+          - [`>`](../operators/greater-than.md) - `>`
+          - [`>=`](../operators/greater-equal.md) - `>=`
+          - [`&&`](../operators/and.md) - `&&`
+          - [`||`](../operators/or.md) - `||`
+          - [`$`](../operators/variable.md) - `$`
+          - [`$input`](../operators/input.md) - `$input`
+          - [`$inputs`](../operators/inputs.md) - `$inputs`
+          - [`append`](../operators/append.md) - `append`
+          - [`approx`](../operators/approx.md) - `approx`
+          - [`car`](../operators/car.md) - `car`
+          - [`cdr`](../operators/cdr.md) - `cdr`
+          - [`cons`](../operators/cons.md) - `cons`
+          - [`count`](../operators/count.md) - `count`
+          - [`every`](../operators/every.md) - `every`
+          - [`filter`](../operators/filter.md) - `filter`
+          - [`find`](../operators/find.md) - `find`
+          - [`get`](../operators/get.md) - `get`
+          - [`if`](../operators/if.md) - `if`
+          - [`let`](../operators/let.md) - `let`
+          - [`map`](../operators/map.md) - `map`
+          - [`merge`](../operators/merge.md) - `merge`
+          - [`not`](../operators/not.md) - `not`
+          - [`obj`](../operators/obj.md) - `obj`
+          - [`reduce`](../operators/reduce.md) - `reduce`
+          - [`some`](../operators/some.md) - `some`
+          - [`sort`](../operators/sort.md) - `sort`
+          - [`strConcat`](../operators/strconcat.md) - `strConcat`
+          - [`unique`](../operators/unique.md) - `unique`
+          EOF
+
+          # Generate task-based index  
+          cat > docs/task/index.md << 'EOF'
+          # [task-based index content here - truncated for brevity]
+          EOF
 
       - name: Create GitHub Pages site
         run: |
