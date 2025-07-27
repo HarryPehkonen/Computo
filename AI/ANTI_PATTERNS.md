@@ -6,7 +6,7 @@ This document catalogs specific anti-patterns identified in the original Computo
 
 ## 1. Code Duplication Anti-Patterns
 
-### ❌ BAD: Duplicate Helper Functions
+###   BAD: Duplicate Helper Functions
 **Found in:** `src/operators/array.cpp` and `src/operators/list.cpp`
 
 ```cpp
@@ -31,7 +31,7 @@ nlohmann::json evaluate_lambda(const nlohmann::json& lambda_expr,
 - Indicates poor code organization
 - Clear sign of AI copy-paste development
 
-**✅ GOOD: Single Shared Implementation**
+**GOOD: Single Shared Implementation**
 ```cpp
 // operators.cpp - ONE implementation only
 nlohmann::json evaluate_lambda(const nlohmann::json& lambda, 
@@ -41,7 +41,7 @@ nlohmann::json evaluate_lambda(const nlohmann::json& lambda,
 }
 ```
 
-### ❌ BAD: Repeated Operator Patterns
+###   BAD: Repeated Operator Patterns
 **Found in:** `src/operators/comparison.cpp`
 
 ```cpp
@@ -72,7 +72,7 @@ nlohmann::json less_than_operator(const nlohmann::json& args, ExecutionContext& 
 - Hard to maintain consistency
 - Adds unnecessary complexity (chained comparisons rarely needed)
 
-**✅ GOOD: Consistent N-ary Operations**
+**GOOD: Consistent N-ary Operations**
 ```cpp
 nlohmann::json greater_than_operator(const nlohmann::json& args, ExecutionContext& ctx) {
     if (args.size() < 2) throw InvalidArgumentException("> requires at least 2 arguments");
@@ -94,7 +94,7 @@ nlohmann::json greater_than_operator(const nlohmann::json& args, ExecutionContex
 
 ## 2. Over-Engineering Anti-Patterns
 
-### ❌ BAD: Unnecessary Memory Management
+###   BAD: Unnecessary Memory Management
 **Found in:** `include/computo/memory_pool.hpp` (232 lines)
 
 ```cpp
@@ -131,7 +131,7 @@ public:
 - Complex thread safety for thread-local pools (contradiction)
 - Over-engineered RAII for simple data
 
-**✅ GOOD: Use Standard JSON Copying with N-ary Operations**
+**GOOD: Use Standard JSON Copying with N-ary Operations**
 ```cpp
 // Just use nlohmann::json directly - it's already efficient
 nlohmann::json result = some_json_value;  // Fast copying built-in
@@ -150,7 +150,7 @@ nlohmann::json addition_operator(const nlohmann::json& args, ExecutionContext& c
 }
 ```
 
-### ❌ BAD: Excessive Builder Patterns
+###   BAD: Excessive Builder Patterns
 **Found in:** `include/computo/builder.hpp` (455 lines)
 
 ```cpp
@@ -178,7 +178,7 @@ public:
 - Hides the underlying JSON structure
 - Makes tests verbose instead of clear
 
-**✅ GOOD: Direct JSON Construction with N-ary Operations**
+**GOOD: Direct JSON Construction with N-ary Operations**
 ```cpp
 // Clear, direct, no unnecessary abstraction - showcases n-ary power
 json script1 = json::array({"+", 1, 2, 3, 4});  // N-ary addition
@@ -191,7 +191,7 @@ json script3 = json::array({">", 10, 5, 3, 1});  // Chained comparison
 EXPECT_EQ(computo::execute(script3, input), true);
 ```
 
-### ❌ BAD: Complex Type Handling
+###   BAD: Complex Type Handling
 **Found in:** `src/operators/arithmetic.cpp` (lines 27-42)
 
 ```cpp
@@ -226,7 +226,7 @@ nlohmann::json addition_operator(const nlohmann::json& args, ExecutionContext& c
 - Type preservation rarely matters in practice
 - Easy source of subtle bugs
 
-**✅ GOOD: Simple Consistent N-ary Handling**
+**GOOD: Simple Consistent N-ary Handling**
 ```cpp
 nlohmann::json addition_operator(const nlohmann::json& args, ExecutionContext& ctx) {
     if (args.empty()) throw InvalidArgumentException("+ requires at least 1 argument");
@@ -243,7 +243,7 @@ nlohmann::json addition_operator(const nlohmann::json& args, ExecutionContext& c
 
 ## 3. Feature Creep Anti-Patterns
 
-### ❌ BAD: Too Many Operators
+###   BAD: Too Many Operators
 **Found in:** 35+ operators across 7 files
 
 ```cpp
@@ -266,7 +266,7 @@ nlohmann::json addition_operator(const nlohmann::json& args, ExecutionContext& c
 - Users overwhelmed by options
 - Clear sign of "just in case" development
 
-**✅ GOOD: Well-Chosen 30 Operators with N-ary Consistency**
+**GOOD: Well-Chosen 30 Operators with N-ary Consistency**
 ```cpp
 // 30 operators that solve 95% of real problems with consistent n-ary semantics
 
@@ -295,7 +295,7 @@ nlohmann::json addition_operator(const nlohmann::json& args, ExecutionContext& c
 "strConcat" "merge" "approx"      
 ```
 
-### ❌ BAD: Unnecessary Configuration
+###   BAD: Unnecessary Configuration
 **Found in:** Complex options and debugging infrastructure
 
 ```cpp
@@ -320,7 +320,7 @@ thread_local DebugContext;
 - Thread-local storage for single-threaded use case
 - Performance monitoring for fast operations
 
-**✅ GOOD: Simple Context**
+**GOOD: Simple Context**
 ```cpp
 class ExecutionContext {
     nlohmann::json input_data;
@@ -331,7 +331,7 @@ class ExecutionContext {
 
 ## 4. API Design Anti-Patterns
 
-### ❌ BAD: Multiple API Variants
+###   BAD: Multiple API Variants
 **Found in:** 8 different execute functions
 
 ```cpp
@@ -352,7 +352,7 @@ nlohmann::json execute_move(nlohmann::json&& script, const std::vector<nlohmann:
 - Move semantics optimization for already-fast operations
 - Multiple input support for edge cases
 
-**✅ GOOD: Minimal Thread-Safe APIs**
+**GOOD: Minimal Thread-Safe APIs**
 ```cpp
 // Library: Clean and minimal
 nlohmann::json execute(const nlohmann::json& script, const nlohmann::json& input);
@@ -364,7 +364,7 @@ execute(json::array({">", 10, 5, 3}), json{});    // Chained comparison
 execute(json::array({"&&", true, true, false}), json{});  // N-ary logical
 ```
 
-### ❌ BAD: Inconsistent Operator Behavior
+###   BAD: Inconsistent Operator Behavior
 **Found in:** Mixed binary/n-ary operators
 
 ```cpp
@@ -383,7 +383,7 @@ execute(json::array({"&&", true, true, false}), json{});  // N-ary logical
 - Inconsistent error messages
 - No clear design principle
 
-**✅ GOOD: Consistent N-ary Operations**
+**GOOD: Consistent N-ary Operations**
 ```cpp
 // All operators use n-ary semantics (except "not" and "!=")
 "+" -> n-ary: ["+", a, b, c, d, ...]     // Sum all arguments
@@ -398,7 +398,7 @@ execute(json::array({"&&", true, true, false}), json{});  // N-ary logical
 
 ## 5. Testing Anti-Patterns
 
-### ❌ BAD: Over-Complex Test Infrastructure
+###   BAD: Over-Complex Test Infrastructure
 **Found in:** 4,414 lines of tests with builder patterns
 
 ```cpp
@@ -426,7 +426,7 @@ auto script = CB::add({
 - Over-testing edge cases that don't matter
 - Builder patterns hide the actual JSON structure
 
-**✅ GOOD: Simple Direct Tests**
+**GOOD: Simple Direct Tests**
 ```cpp
 TEST(ComputoTest, BasicArithmetic) {
     EXPECT_EQ(execute(json::array({"+", 2, 3}), json{}), 5);
@@ -434,7 +434,7 @@ TEST(ComputoTest, BasicArithmetic) {
 }
 ```
 
-### ❌ BAD: Excessive Edge Case Testing
+###   BAD: Excessive Edge Case Testing
 **Found in:** 103 individual test cases
 
 ```cpp
@@ -467,7 +467,7 @@ TEST_F(ErrorHandlingEdgeCasesTest, AdditionInvalidTypes) {
 - More test code than implementation code
 - Diminishing returns on test coverage
 
-**✅ GOOD: Essential Error Testing**
+**GOOD: Essential Error Testing**
 ```cpp
 TEST(ComputoTest, ErrorHandling) {
     EXPECT_THROW(execute(json::array({"unknown"}), json{}), InvalidOperatorException);
@@ -477,7 +477,7 @@ TEST(ComputoTest, ErrorHandling) {
 
 ## 6. File Organization Anti-Patterns
 
-### ❌ BAD: Excessive File Granularity
+###   BAD: Excessive File Granularity
 **Found in:** Operators split across 7 files
 
 ```
@@ -497,7 +497,7 @@ src/operators/
 - Build complexity
 - Over-organization for small codebase
 
-**✅ GOOD: Simple Organization**
+**GOOD: Simple Organization**
 ```
 src/
 ├── computo.cpp        (evaluation engine, TCO)
@@ -533,7 +533,7 @@ Before implementing any operator, answer:
 
 ## 7. Updated Anti-Patterns for 30-Operator System
 
-### ❌ BAD: Debugging Features in Library Code
+###   BAD: Debugging Features in Library Code
 **Problem:** Mixing debugging infrastructure into the core library
 
 ```cpp
@@ -558,7 +558,7 @@ namespace computo {
 - Thread-local storage complexity
 - Violates single responsibility principle
 
-**✅ GOOD: Clean Library/CLI Separation**
+**GOOD: Clean Library/CLI Separation**
 ```cpp
 // Library: computo.hpp - minimal and focused
 namespace computo {
@@ -574,7 +574,7 @@ nlohmann::json execute_with_debugging(const nlohmann::json& script,
 }
 ```
 
-### ❌ BAD: Mixed Binary/N-ary Operator Complexity
+###   BAD: Mixed Binary/N-ary Operator Complexity
 **Found in:** Inconsistent operator argument handling
 
 ```cpp
@@ -602,7 +602,7 @@ nlohmann::json addition_operator(const nlohmann::json& args, ExecutionContext& c
 - Complex implementation with multiple code paths
 - Different semantics for same operator
 
-**✅ GOOD: Consistent N-ary Implementation**
+**GOOD: Consistent N-ary Implementation**
 ```cpp
 nlohmann::json addition_operator(const nlohmann::json& args, ExecutionContext& ctx) {
     if (args.empty()) throw InvalidArgumentException("+ requires at least 1 argument");
@@ -617,7 +617,7 @@ nlohmann::json addition_operator(const nlohmann::json& args, ExecutionContext& c
 }
 ```
 
-### ❌ BAD: CLI Argument Parsing Overengineering  
+###   BAD: CLI Argument Parsing Overengineering  
 **Problem:** Complex argument parsing for simple CLI
 
 ```cpp
@@ -648,7 +648,7 @@ public:
 - External dependency or large implementation
 - Harder to debug argument issues
 
-**✅ GOOD: Simple Manual Parsing**
+**GOOD: Simple Manual Parsing**
 ```cpp
 struct CLIOptions {
     bool trace = false;
@@ -679,7 +679,7 @@ CLIOptions parse_arguments(int argc, char* argv[]) {
 }
 ```
 
-### ❌ BAD: Thread Safety Through Complex Synchronization
+###   BAD: Thread Safety Through Complex Synchronization
 **Problem:** Using locks and complex thread synchronization
 
 ```cpp
@@ -719,7 +719,7 @@ namespace computo {
 - Thread-local storage complicates library
 - Debugging state doesn't belong in library
 
-**✅ GOOD: Thread Safety Through Pure Functions**
+**GOOD: Thread Safety Through Pure Functions**
 ```cpp
 namespace computo {
     namespace {
@@ -742,7 +742,7 @@ namespace computo {
 }
 ```
 
-### ❌ BAD: Variable Keys as String Literals Only
+###   BAD: Variable Keys as String Literals Only
 **Problem:** Restricting object keys to string literals
 
 ```cpp
@@ -774,7 +774,7 @@ nlohmann::json obj_operator(const nlohmann::json& args, ExecutionContext& ctx) {
 - Inconsistent with expression evaluation elsewhere
 - Reduces language expressiveness
 
-**✅ GOOD: Variable Keys Through Expression Evaluation**
+**GOOD: Variable Keys Through Expression Evaluation**
 ```cpp
 nlohmann::json obj_operator(const nlohmann::json& args, ExecutionContext& ctx) {
     nlohmann::json result = nlohmann::json::object();
@@ -800,7 +800,7 @@ nlohmann::json obj_operator(const nlohmann::json& args, ExecutionContext& ctx) {
 }
 ```
 
-### ❌ BAD: String-Based JSON Tests Without Raw Strings
+###   BAD: String-Based JSON Tests Without Raw Strings
 **Problem:** Complex C++ JSON construction in tests
 
 ```cpp
@@ -834,7 +834,7 @@ TEST_F(ComputoTest, ComplexTest) {
 - Doesn't show actual JSON structure
 - Difficult to debug when tests fail
 
-**✅ GOOD: Raw String JSON Tests**
+**GOOD: Raw String JSON Tests**
 ```cpp
 TEST_F(ComputoTest, ComplexTest) {
     std::string script_json = R"(
