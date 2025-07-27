@@ -8,7 +8,7 @@ auto car_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluati
     }
 
     auto array_input = evaluate(args[0], ctx);
-    auto array_data = extract_array_data(array_input, "car", ctx.get_path_string());
+    auto array_data = extract_array_data(array_input, "car", ctx.get_path_string(), ctx.array_key);
 
     if (array_data.empty()) {
         throw InvalidArgumentException("'car' cannot be applied to empty array",
@@ -24,7 +24,7 @@ auto cdr_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluati
     }
 
     auto array_input = evaluate(args[0], ctx);
-    auto array_data = extract_array_data(array_input, "cdr", ctx.get_path_string());
+    auto array_data = extract_array_data(array_input, "cdr", ctx.get_path_string(), ctx.array_key);
 
     if (array_data.empty()) {
         throw InvalidArgumentException("'cdr' cannot be applied to empty array",
@@ -38,7 +38,7 @@ auto cdr_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluati
         result.push_back(array_data[i]);
     }
 
-    return EvaluationResult(nlohmann::json{{"array", result}});
+    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
 }
 
 auto cons_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
@@ -49,7 +49,7 @@ auto cons_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
 
     auto item = evaluate(args[0], ctx);
     auto array_input = evaluate(args[1], ctx);
-    auto array_data = extract_array_data(array_input, "cons", ctx.get_path_string());
+    auto array_data = extract_array_data(array_input, "cons", ctx.get_path_string(), ctx.array_key);
 
     nlohmann::json result = nlohmann::json::array();
 
@@ -61,7 +61,7 @@ auto cons_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
         result.push_back(element);
     }
 
-    return EvaluationResult(nlohmann::json{{"array", result}});
+    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
 }
 
 auto append_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
@@ -74,7 +74,8 @@ auto append_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
 
     for (const auto& arg_expr : args) {
         auto array_input = evaluate(arg_expr, ctx);
-        auto array_data = extract_array_data(array_input, "append", ctx.get_path_string());
+        auto array_data
+            = extract_array_data(array_input, "append", ctx.get_path_string(), ctx.array_key);
 
         // Add all elements from this array to the result
         for (const auto& element : array_data) {
@@ -82,7 +83,7 @@ auto append_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
         }
     }
 
-    return EvaluationResult(nlohmann::json{{"array", result}});
+    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
 }
 
 } // namespace computo::operators

@@ -1,7 +1,7 @@
 #include "cli_args.hpp"
 #include "repl.hpp"
-#include <computo.hpp>
 #include <algorithm>
+#include <computo.hpp>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -24,7 +24,7 @@ auto run_script_mode(const ComputoArgs& args) -> int {
 
         // Load inputs and execute
         auto inputs = load_input_files(args.input_files, args.enable_comments);
-        auto result = computo::execute(script, inputs);
+        auto result = computo::execute(script, inputs, nullptr, args.array_key);
 
         // Output result
         std::cout << result.dump(2) << "\n";
@@ -58,14 +58,14 @@ auto main(int argc, char* argv[]) -> int {
         if (args.list_operators) {
             auto& registry = computo::OperatorRegistry::get_instance();
             auto operators = registry.get_operator_names();
-            
+
             // Sort operators for consistent output
             std::sort(operators.begin(), operators.end());
-            
+
             // Output as JSON array
             nlohmann::json output = nlohmann::json::array();
-            for (const auto& op : operators) {
-                output.push_back(op);
+            for (const auto& operator_name : operators) {
+                output.push_back(operator_name);
             }
             std::cout << output.dump() << "\n";
             return 0;

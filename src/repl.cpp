@@ -364,7 +364,7 @@ void handle_run_command(const ReplCommand& cmd, ReplState& state) {
             auto script = load_json_file(cmd.args[0], state.args->enable_comments);
             
             // Create execution context with REPL variables
-            computo::ExecutionContext ctx(state.inputs);
+            computo::ExecutionContext ctx(state.inputs, state.args->array_key);
             auto ctx_with_vars = ctx.with_variables(state.repl_variables);
             auto result = computo::evaluate(script, ctx_with_vars, &state.debug_context);
             
@@ -389,7 +389,7 @@ void handle_json_script(const ReplCommand& cmd, ReplState& state) {
         auto script = nlohmann::json::parse(cmd.raw_input);
         
         // Create execution context with REPL variables
-        computo::ExecutionContext ctx(state.inputs);
+        computo::ExecutionContext ctx(state.inputs, state.args->array_key);
         auto ctx_with_vars = ctx.with_variables(state.repl_variables);
         auto result = computo::evaluate(script, ctx_with_vars, &state.debug_context);
         

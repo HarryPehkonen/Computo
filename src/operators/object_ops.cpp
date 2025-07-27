@@ -42,7 +42,7 @@ auto keys_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
         result.push_back(key);
     }
 
-    return EvaluationResult(nlohmann::json{{"array", result}});
+    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
 }
 
 auto values_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
@@ -62,7 +62,7 @@ auto values_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
         result.push_back(value);
     }
 
-    return EvaluationResult(nlohmann::json{{"array", result}});
+    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
 }
 
 auto objFromPairs_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
@@ -72,7 +72,8 @@ auto objFromPairs_operator(const nlohmann::json& args, ExecutionContext& ctx) ->
     }
 
     auto pairs_input = evaluate(args[0], ctx);
-    auto pairs = extract_array_data(pairs_input, "objFromPairs", ctx.get_path_string());
+    auto pairs
+        = extract_array_data(pairs_input, "objFromPairs", ctx.get_path_string(), ctx.array_key);
 
     nlohmann::json result = nlohmann::json::object();
 
@@ -94,6 +95,7 @@ auto objFromPairs_operator(const nlohmann::json& args, ExecutionContext& ctx) ->
     return EvaluationResult(result);
 }
 
+// NOLINTBEGIN(readability-function-size)
 auto pick_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() != 2) {
         throw InvalidArgumentException("'pick' requires exactly 2 arguments (object, keys)",
@@ -108,7 +110,8 @@ auto pick_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
                                        ctx.get_path_string());
     }
 
-    auto keys_to_pick = extract_array_data(keys_input, "pick", ctx.get_path_string());
+    auto keys_to_pick
+        = extract_array_data(keys_input, "pick", ctx.get_path_string(), ctx.array_key);
 
     nlohmann::json result = nlohmann::json::object();
 
@@ -125,6 +128,7 @@ auto pick_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
 
     return EvaluationResult(result);
 }
+// NOLINTEND(readability-function-size)
 
 // NOLINTBEGIN(readability-function-size)
 auto omit_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
@@ -141,7 +145,8 @@ auto omit_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
                                        ctx.get_path_string());
     }
 
-    auto keys_to_omit = extract_array_data(keys_input, "omit", ctx.get_path_string());
+    auto keys_to_omit
+        = extract_array_data(keys_input, "omit", ctx.get_path_string(), ctx.array_key);
 
     // Create set of keys to omit for O(1) lookup
     std::set<std::string> omit_keys;

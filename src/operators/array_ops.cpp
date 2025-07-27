@@ -19,7 +19,7 @@ auto map_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluati
     if (result.is_null()) {
         result = nlohmann::json::array();
     }
-    return EvaluationResult(nlohmann::json{{"array", result}});
+    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
 }
 
 auto filter_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
@@ -40,9 +40,10 @@ auto filter_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
     if (result.is_null()) {
         result = nlohmann::json::array();
     }
-    return EvaluationResult(nlohmann::json{{"array", result}});
+    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
 }
 
+// NOLINTBEGIN(readability-function-size)
 auto reduce_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() != 3) {
         throw InvalidArgumentException(
@@ -52,7 +53,8 @@ auto reduce_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
 
     auto array_input = evaluate(args[0], ctx);
     auto initial_value = evaluate(args[2], ctx);
-    auto array_data = extract_array_data(array_input, "reduce", ctx.get_path_string());
+    auto array_data
+        = extract_array_data(array_input, "reduce", ctx.get_path_string(), ctx.array_key);
 
     // Evaluate the lambda expression first (handles ["lambda", ...] syntax)
     auto lambda_expr = evaluate(args[1], ctx.with_path("lambda"));
@@ -74,6 +76,7 @@ auto reduce_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
 
     return EvaluationResult(accumulator);
 }
+// NOLINTEND(readability-function-size)
 
 auto count_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() != 1) {
@@ -82,7 +85,8 @@ auto count_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalua
     }
 
     auto array_input = evaluate(args[0], ctx);
-    auto array_data = extract_array_data(array_input, "count", ctx.get_path_string());
+    auto array_data
+        = extract_array_data(array_input, "count", ctx.get_path_string(), ctx.array_key);
 
     return EvaluationResult(static_cast<int>(array_data.size()));
 }

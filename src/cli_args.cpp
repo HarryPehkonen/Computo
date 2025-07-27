@@ -44,6 +44,11 @@ auto ArgumentParser::parse(int argc, char* const argv[]) -> ComputoArgs {
         } else if (strcmp(argv[i], "--list-operators") == 0) {
             args.list_operators = true;
             return args;
+        } else if (strncmp(argv[i], "--array=", 8) == 0) {
+            args.array_key = std::string(argv[i] + 8);
+            if (args.array_key.empty()) {
+                throw ArgumentError("--array requires a non-empty key");
+            }
         } else if (argv[i][0] == '-') {
             throw ArgumentError("Unknown option: " + std::string(argv[i]));
         } else {
@@ -73,6 +78,7 @@ MODES:
 OPTIONS:
     --comments         Enable JSON comment parsing
     --debug            Enable debugging features (REPL only)
+    --array=<key>      Use custom array wrapper key (default: "array")
     --list-operators   Output JSON array of all available operators
     --help, -h         Show this help message
     --version, -v      Show version information
@@ -80,6 +86,7 @@ OPTIONS:
 EXAMPLES:
     computo --script transform.json data.json
     computo --script script.json input1.json input2.json
+    computo --script transform.json data.json --array="@data"
     computo --repl --comments users.json orders.json
     computo --repl --debug
 )";

@@ -114,12 +114,14 @@ auto get_type_name(const nlohmann::json& value) -> std::string {
     return "unknown";
 }
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 auto extract_array_data(const nlohmann::json& array_input, const std::string& op_name,
-                        const std::string& path) -> nlohmann::json {
-    // Handle both {"array": [...]} format and direct array format
-    if (array_input.is_object() && array_input.contains("array")
-        && array_input["array"].is_array()) {
-        return array_input["array"];
+                        const std::string& path, const std::string& array_key) -> nlohmann::json {
+    // NOLINTEND(bugprone-easily-swappable-parameters)
+    // Handle both {array_key: [...]} format and direct array format
+    if (array_input.is_object() && array_input.contains(array_key)
+        && array_input[array_key].is_array()) {
+        return array_input[array_key];
     }
     if (array_input.is_array()) {
         return array_input;
@@ -213,7 +215,8 @@ auto process_array_with_lambda(
     }
 
     auto array_input = evaluate(args[0], ctx);
-    auto array_data = extract_array_data(array_input, op_name, ctx.get_path_string());
+    auto array_data
+        = extract_array_data(array_input, op_name, ctx.get_path_string(), ctx.array_key);
 
     nlohmann::json final_result; // The processor will populate this
 

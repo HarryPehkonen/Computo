@@ -31,7 +31,7 @@ auto join_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
                                        ctx.get_path_string());
     }
 
-    auto array_data = extract_array_data(array_input, "join", ctx.get_path_string());
+    auto array_data = extract_array_data(array_input, "join", ctx.get_path_string(), ctx.array_key);
 
     std::string delimiter = delim_val.get<std::string>();
     std::string result;
@@ -97,7 +97,7 @@ auto sort_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
 
     // 1. Argument parsing and data extraction remain here
     auto array_input = evaluate(args[0], ctx);
-    auto array_data = extract_array_data(array_input, "sort", ctx.get_path_string());
+    auto array_data = extract_array_data(array_input, "sort", ctx.get_path_string(), ctx.array_key);
 
     // Parse arguments to determine sorting strategy
     SortConfig config;
@@ -117,7 +117,7 @@ auto sort_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
         sort_object_array(result, config);
     }
 
-    return EvaluationResult(nlohmann::json{{"array", result}});
+    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
 }
 
 auto reverse_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
@@ -127,7 +127,8 @@ auto reverse_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Eval
     }
 
     auto array_input = evaluate(args[0], ctx);
-    auto array_data = extract_array_data(array_input, "reverse", ctx.get_path_string());
+    auto array_data
+        = extract_array_data(array_input, "reverse", ctx.get_path_string(), ctx.array_key);
 
     nlohmann::json result = nlohmann::json::array();
 
@@ -136,7 +137,7 @@ auto reverse_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Eval
         result.push_back(*it);
     }
 
-    return EvaluationResult(nlohmann::json{{"array", result}});
+    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
 }
 
 auto unique_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
@@ -146,7 +147,8 @@ auto unique_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
     }
 
     auto array_input = evaluate(args[0], ctx);
-    auto array_data = extract_array_data(array_input, "unique", ctx.get_path_string());
+    auto array_data
+        = extract_array_data(array_input, "unique", ctx.get_path_string(), ctx.array_key);
 
     nlohmann::json result = nlohmann::json::array();
     std::set<nlohmann::json> seen;
@@ -158,7 +160,7 @@ auto unique_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
         }
     }
 
-    return EvaluationResult(nlohmann::json{{"array", result}});
+    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
 }
 
 // --- uniqueSorted operator implementation ---
@@ -242,7 +244,8 @@ auto unique_sorted_operator(const nlohmann::json& args, ExecutionContext& ctx) -
     }
 
     auto array_input = evaluate(args[0], ctx);
-    auto array_data = extract_array_data(array_input, "uniqueSorted", ctx.get_path_string());
+    auto array_data
+        = extract_array_data(array_input, "uniqueSorted", ctx.get_path_string(), ctx.array_key);
 
     // Parse configuration
     UniqueSortedConfig config;
@@ -256,7 +259,7 @@ auto unique_sorted_operator(const nlohmann::json& args, ExecutionContext& ctx) -
 
     // Handle empty array
     if (array_data.empty()) {
-        return EvaluationResult(nlohmann::json{{"array", result}});
+        return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
     }
 
     // Sliding window algorithm with two booleans
@@ -293,7 +296,7 @@ auto unique_sorted_operator(const nlohmann::json& args, ExecutionContext& ctx) -
         left = right;
     }
 
-    return EvaluationResult(nlohmann::json{{"array", result}});
+    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
 }
 // NOLINTEND(readability-function-size)
 
@@ -305,8 +308,10 @@ auto zip_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluati
     auto array1_input = evaluate(args[0], ctx);
     auto array2_input = evaluate(args[1], ctx);
 
-    auto array1_data = extract_array_data(array1_input, "zip", ctx.get_path_string());
-    auto array2_data = extract_array_data(array2_input, "zip", ctx.get_path_string());
+    auto array1_data
+        = extract_array_data(array1_input, "zip", ctx.get_path_string(), ctx.array_key);
+    auto array2_data
+        = extract_array_data(array2_input, "zip", ctx.get_path_string(), ctx.array_key);
 
     nlohmann::json result = nlohmann::json::array();
 
@@ -318,7 +323,7 @@ auto zip_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluati
         result.push_back(pair);
     }
 
-    return EvaluationResult(nlohmann::json{{"array", result}});
+    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
 }
 
 auto approx_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {

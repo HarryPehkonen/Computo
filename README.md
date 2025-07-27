@@ -37,6 +37,52 @@ computo --repl
 computo --repl script.json
 ```
 
+### CLI Options
+
+```bash
+# Execution modes
+--script <file>       Execute JSON script from file
+--repl               Start interactive REPL
+
+# Data options  
+--comments           Enable JSON comment parsing
+--array=<key>        Use custom array wrapper key (default: "array")
+
+# Debug options
+--debug              Enable debugging features (REPL only)
+
+# Information
+--list-operators     Output JSON array of all available operators
+--help, -h           Show help message
+--version, -v        Show version information
+```
+
+#### Array Key Customization
+
+The `--array=<key>` option allows you to customize the array wrapper key, enabling output of literal `{"array": [...]}` objects:
+
+```bash
+# Default behavior uses "array" key
+computo --script script.json
+# Output: {"array": [1, 2, 3]}
+
+# Custom key allows literal "array" objects in output
+computo --script script.json --array="@data" 
+# Can now output: {"data": [1, 2, 3], "array": ["preserved"]}
+```
+
+**Example:**
+```json
+// With --array="$array", this script:
+["obj", "data", {"$array": [1, 2, 3]}, "metadata", {"array": ["original"]}]
+
+// Produces:
+{
+  "data": [1, 2, 3],
+  "metadata": {"array": ["original"]}  
+}
+```
+
 ### Simple Example
 
 **Script:**

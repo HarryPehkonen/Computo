@@ -54,11 +54,13 @@ auto get_type_name(const nlohmann::json& value) -> std::string;
  * @param array_input The input that may be {"array": [...]} or [...]
  * @param op_name The operator name for error messages
  * @param path The execution path for error messages
+ * @param array_key The custom array wrapper key (defaults to "array")
  * @return The actual array data
  */
 auto extract_array_data(const nlohmann::json& array_input, 
                         const std::string& op_name, 
-                        const std::string& path) -> nlohmann::json;
+                        const std::string& path,
+                        const std::string& array_key = "array") -> nlohmann::json;
 
 /**
  * Calculate Levenshtein distance between two strings

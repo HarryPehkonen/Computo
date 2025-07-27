@@ -135,12 +135,14 @@ private:
 public:
     std::map<std::string, nlohmann::json> variables;
     std::vector<std::string> path;
+    std::string array_key; // Custom array wrapper key
 
     // Single input constructor
-    explicit ExecutionContext(const nlohmann::json& input);
+    explicit ExecutionContext(const nlohmann::json& input, std::string array_key = "array");
 
     // Multiple inputs constructor
-    explicit ExecutionContext(const std::vector<nlohmann::json>& inputs);
+    explicit ExecutionContext(const std::vector<nlohmann::json>& inputs,
+                              std::string array_key = "array");
 
     // Accessors
     [[nodiscard]] auto input() const -> const nlohmann::json& { return *input_ptr_; }
@@ -268,6 +270,7 @@ auto evaluate(const nlohmann::json& expr, const ExecutionContext& ctx,
 // Unified execution function - inputs vector can be empty, single element, or
 // multiple elements
 auto execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs = {},
-             DebugContext* debug_context = nullptr) -> nlohmann::json;
+             DebugContext* debug_context = nullptr, std::string array_key = "array")
+    -> nlohmann::json;
 
 } // namespace computo

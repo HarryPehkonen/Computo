@@ -12,19 +12,21 @@ std::unique_ptr<OperatorRegistry> OperatorRegistry::instance_;
 
 // --- ExecutionContext Implementation ---
 
-ExecutionContext::ExecutionContext(const nlohmann::json& input)
+ExecutionContext::ExecutionContext(const nlohmann::json& input, std::string array_key)
     : input_ptr_(std::make_shared<nlohmann::json>(input)),
       inputs_ptr_(
-          std::make_shared<std::vector<nlohmann::json>>(std::vector<nlohmann::json>{input})) {}
+          std::make_shared<std::vector<nlohmann::json>>(std::vector<nlohmann::json>{input})),
+      array_key(std::move(array_key)) {}
 
-ExecutionContext::ExecutionContext(const std::vector<nlohmann::json>& inputs)
+ExecutionContext::ExecutionContext(const std::vector<nlohmann::json>& inputs, std::string array_key)
     : input_ptr_(inputs.empty() ? std::make_shared<nlohmann::json>(null_input_)
                                 : std::make_shared<nlohmann::json>(inputs[0])),
-      inputs_ptr_(std::make_shared<std::vector<nlohmann::json>>(inputs)) {}
+      inputs_ptr_(std::make_shared<std::vector<nlohmann::json>>(inputs)),
+      array_key(std::move(array_key)) {}
 
 auto ExecutionContext::with_variables(const std::map<std::string, nlohmann::json>& vars) const
     -> ExecutionContext {
-    ExecutionContext new_ctx(*inputs_ptr_);
+    ExecutionContext new_ctx(*inputs_ptr_, array_key);
     new_ctx.variables = variables; // Copy existing
     new_ctx.path = path;           // Copy path
     for (const auto& pair : vars) {
@@ -225,14 +227,14 @@ void OperatorRegistry::initialize_operators() {
 
 // --- Core Evaluation Helper Functions ---
 
-// Handles {"array": [...]} syntax
+// Handles {"array": [...]} syntax (with custom array key support)
 auto evaluate_array_object(const nlohmann::json& expr, const ExecutionContext& ctx,
                            DebugContext* debug_ctx) -> EvaluationResult {
-    if (!expr["array"].is_array()) {
+    if (!expr[ctx.array_key].is_array()) {
         throw InvalidArgumentException("Array object must contain an array", ctx.get_path_string());
     }
     // Array objects are unwrapped and returned as-is (no evaluation of elements)
-    return EvaluationResult(expr["array"]);
+    return EvaluationResult(expr[ctx.array_key]);
 }
 
 static auto handle_debug_integration(const std::string& operator_name, const ExecutionContext& ctx,
@@ -309,7 +311,7 @@ auto evaluate_internal(const nlohmann::json& expr, const ExecutionContext& ctx,
                        DebugContext* debug_ctx) -> EvaluationResult {
     // 1. Handle simple literals (numbers, strings, booleans, null, objects)
     if (!expr.is_array()) {
-        if (expr.is_object() && expr.size() == 1 && expr.contains("array")) {
+        if (expr.is_object() && expr.size() == 1 && expr.contains(ctx.array_key)) {
             return evaluate_array_object(expr, ctx, debug_ctx);
         }
         return EvaluationResult(expr); // It's a literal object or scalar
@@ -341,8 +343,8 @@ auto evaluate(const nlohmann::json& expr, const ExecutionContext& ctx, DebugCont
 
 // Unified execution function
 auto execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs,
-             DebugContext* debug_context) -> nlohmann::json {
-    ExecutionContext ctx(inputs);
+             DebugContext* debug_context, std::string array_key) -> nlohmann::json {
+    ExecutionContext ctx(inputs, std::move(array_key));
     return evaluate(script, ctx, debug_context);
 }
 
