@@ -65,9 +65,9 @@ TEST_F(CLIArrayKeyTest, DefaultArrayKeyViaCLI) {
     // Should contain "array" key in output
     EXPECT_NE(output.find("\"array\""), std::string::npos);
     EXPECT_NE(output.find("["), std::string::npos);
-    EXPECT_NE(output.find("2.0"), std::string::npos);
-    EXPECT_NE(output.find("4.0"), std::string::npos);
-    EXPECT_NE(output.find("6.0"), std::string::npos);
+    EXPECT_NE(output.find("2"), std::string::npos);
+    EXPECT_NE(output.find("4"), std::string::npos);
+    EXPECT_NE(output.find("6"), std::string::npos);
 }
 
 TEST_F(CLIArrayKeyTest, CustomArrayKeyViaCLI) {
@@ -78,9 +78,9 @@ TEST_F(CLIArrayKeyTest, CustomArrayKeyViaCLI) {
     // Should contain "@test" key in output, not "array"
     EXPECT_NE(output.find("\"@test\""), std::string::npos);
     EXPECT_EQ(output.find("\"array\""), std::string::npos);
-    EXPECT_NE(output.find("2.0"), std::string::npos);
-    EXPECT_NE(output.find("4.0"), std::string::npos);
-    EXPECT_NE(output.find("6.0"), std::string::npos);
+    EXPECT_NE(output.find("2"), std::string::npos);
+    EXPECT_NE(output.find("4"), std::string::npos);
+    EXPECT_NE(output.find("6"), std::string::npos);
 }
 
 TEST_F(CLIArrayKeyTest, HelpShowsArrayOption) {

@@ -1,7 +1,7 @@
 #include "computo.hpp"
 #include <gtest/gtest.h>
 
-using json = nlohmann::json;
+using json = jsom::JsonDocument;
 
 class DebugIntegrationTest : public ::testing::Test {
 protected:
@@ -105,7 +105,7 @@ TEST_F(DebugIntegrationTest, ExecutionTracing) {
     debug_ctx->set_trace_enabled(true);
     debug_ctx->set_debug_enabled(true);
 
-    auto script = json::parse(R"(["+", 1, 2])");
+    auto script = jsom::parse_document(R"(["+", 1, 2])");
 
     try {
         auto result = computo::execute(script, {json(nullptr)}, debug_ctx.get());
@@ -135,7 +135,7 @@ TEST_F(DebugIntegrationTest, OperatorBreakpointTriggering) {
     debug_ctx->set_debug_enabled(true);
     debug_ctx->set_operator_breakpoint("+");
 
-    auto script = json::parse(R"(["+", 1, 2])");
+    auto script = jsom::parse_document(R"(["+", 1, 2])");
 
     // Should throw DebugBreakException when hitting the + operator
     EXPECT_THROW(
@@ -158,7 +158,7 @@ TEST_F(DebugIntegrationTest, StepMode) {
     debug_ctx->set_debug_enabled(true);
     debug_ctx->set_step_mode(true);
 
-    auto script = json::parse(R"(["+", 1, 2])");
+    auto script = jsom::parse_document(R"(["+", 1, 2])");
 
     // Should trigger a step mode breakpoint
     EXPECT_THROW(
@@ -172,7 +172,7 @@ TEST_F(DebugIntegrationTest, ComplexScriptDebugging) {
     debug_ctx->set_trace_enabled(true);
     debug_ctx->set_operator_breakpoint("map");
 
-    auto script = json::parse(R"([
+    auto script = jsom::parse_document(R"([
         "let", [["data", {"array": [1, 2, 3]}]],
         ["map", ["$", "/data"], ["lambda", ["x"], ["+", ["$", "/x"], 1]]]
     ])");
@@ -223,7 +223,7 @@ TEST_F(DebugIntegrationTest, DebugExceptionInfo) {
     debug_ctx->set_debug_enabled(true);
     debug_ctx->set_operator_breakpoint("*");
 
-    auto script = json::parse(R"(["*", 2, 3])");
+    auto script = jsom::parse_document(R"(["*", 2, 3])");
 
     try {
         computo::execute(script, {json(nullptr)}, debug_ctx.get());
@@ -242,7 +242,7 @@ TEST_F(DebugIntegrationTest, MultipleInputsDebugging) {
     debug_ctx->set_trace_enabled(true);
     debug_ctx->set_operator_breakpoint("$inputs");
 
-    auto script = json::parse(R"(["$inputs", "/1"])");
+    auto script = jsom::parse_document(R"(["$inputs", "/1"])");
     std::vector<json> inputs = {json(10), json(20), json(30)};
 
     // Should hit breakpoint on $inputs operator
@@ -255,7 +255,7 @@ TEST_F(DebugIntegrationTest, LetVariableDebugging) {
     debug_ctx->set_debug_enabled(true);
     debug_ctx->set_trace_enabled(true);
 
-    auto script = json::parse(R"([
+    auto script = jsom::parse_document(R"([
         "let", [["x", 10], ["y", 20]],
         ["+", ["$", "/x"], ["$", "/y"]]
     ])");
@@ -292,7 +292,7 @@ TEST_F(DebugIntegrationTest, CurrentLocationTracking) {
     // Initial location should be "start"
     EXPECT_EQ(debug_ctx->get_current_location(), "start");
 
-    auto script = json::parse(R"(["+", 1, 2])");
+    auto script = jsom::parse_document(R"(["+", 1, 2])");
 
     try {
         computo::execute(script, {json(nullptr)}, debug_ctx.get());
@@ -306,7 +306,7 @@ TEST_F(DebugIntegrationTest, CurrentLocationTracking) {
 
 // Test no debugging when debug context is null
 TEST_F(DebugIntegrationTest, NullDebugContext) {
-    auto script = json::parse(R"(["+", 1, 2])");
+    auto script = jsom::parse_document(R"(["+", 1, 2])");
 
     // Should execute normally without debugging
     EXPECT_NO_THROW({
@@ -320,7 +320,7 @@ TEST_F(DebugIntegrationTest, DebugDisabled) {
     debug_ctx->set_debug_enabled(false); // Explicitly disabled
     debug_ctx->set_operator_breakpoint("+");
 
-    auto script = json::parse(R"(["+", 1, 2])");
+    auto script = jsom::parse_document(R"(["+", 1, 2])");
 
     // Should execute normally even with breakpoints set
     EXPECT_NO_THROW({
@@ -334,7 +334,7 @@ TEST_F(DebugIntegrationTest, BreakOnPlusOperator) {
     debug_ctx->set_debug_enabled(true);
     debug_ctx->set_operator_breakpoint("+");
 
-    auto script = json::parse(R"(["+", 1, 2])");
+    auto script = jsom::parse_document(R"(["+", 1, 2])");
 
     // Should throw DebugBreakException when hitting the + operator
     bool breakpoint_hit = false;
@@ -367,7 +367,7 @@ TEST_F(DebugIntegrationTest, BreakOnNestedPlusOperator) {
     debug_ctx->set_operator_breakpoint("+");
 
     // Nested expression: ["+", ["+", 1, 2], 3] - should break on first +
-    auto script = json::parse(R"(["+", ["+", 1, 2], 3])");
+    auto script = jsom::parse_document(R"(["+", ["+", 1, 2], 3])");
 
     bool breakpoint_hit = false;
     std::string break_location;

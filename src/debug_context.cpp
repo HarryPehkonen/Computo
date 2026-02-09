@@ -50,8 +50,8 @@ auto DebugContext::is_step_mode() const -> bool { return step_mode_; }
 auto DebugContext::is_finish_mode() const -> bool { return finish_mode_; }
 
 void DebugContext::record_step(const std::string& operation, const std::string& location,
-                               const std::map<std::string, nlohmann::json>& variables,
-                               const nlohmann::json& expression) {
+                               const std::map<std::string, jsom::JsonDocument>& variables,
+                               const jsom::JsonDocument& expression) {
     if (trace_enabled_) {
         execution_trace_.emplace_back(operation, location, variables, expression);
     }

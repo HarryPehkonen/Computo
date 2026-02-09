@@ -6,25 +6,25 @@
 namespace computo {
 
 // Static member definitions
-const nlohmann::json ExecutionContext::null_input_ = nlohmann::json(nullptr);
+const jsom::JsonDocument ExecutionContext::null_input_ = jsom::JsonDocument(nullptr);
 std::once_flag OperatorRegistry::initialized_;
 std::unique_ptr<OperatorRegistry> OperatorRegistry::instance_;
 
 // --- ExecutionContext Implementation ---
 
-ExecutionContext::ExecutionContext(const nlohmann::json& input, std::string array_key)
-    : input_ptr_(std::make_shared<nlohmann::json>(input)),
+ExecutionContext::ExecutionContext(const jsom::JsonDocument& input, std::string array_key)
+    : input_ptr_(std::make_shared<jsom::JsonDocument>(input)),
       inputs_ptr_(
-          std::make_shared<std::vector<nlohmann::json>>(std::vector<nlohmann::json>{input})),
+          std::make_shared<std::vector<jsom::JsonDocument>>(std::vector<jsom::JsonDocument>{input})),
       array_key(std::move(array_key)) {}
 
-ExecutionContext::ExecutionContext(const std::vector<nlohmann::json>& inputs, std::string array_key)
-    : input_ptr_(inputs.empty() ? std::make_shared<nlohmann::json>(null_input_)
-                                : std::make_shared<nlohmann::json>(inputs[0])),
-      inputs_ptr_(std::make_shared<std::vector<nlohmann::json>>(inputs)),
+ExecutionContext::ExecutionContext(const std::vector<jsom::JsonDocument>& inputs, std::string array_key)
+    : input_ptr_(inputs.empty() ? std::make_shared<jsom::JsonDocument>(null_input_)
+                                : std::make_shared<jsom::JsonDocument>(inputs[0])),
+      inputs_ptr_(std::make_shared<std::vector<jsom::JsonDocument>>(inputs)),
       array_key(std::move(array_key)) {}
 
-auto ExecutionContext::with_variables(const std::map<std::string, nlohmann::json>& vars) const
+auto ExecutionContext::with_variables(const std::map<std::string, jsom::JsonDocument>& vars) const
     -> ExecutionContext {
     ExecutionContext new_ctx(*inputs_ptr_, array_key);
     new_ctx.variables = variables; // Copy existing
@@ -89,70 +89,70 @@ auto OperatorRegistry::get_operator_names() const -> std::vector<std::string> {
 
 namespace operators {
 // Forward declarations for operators defined in other files
-auto addition(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto subtraction(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto multiplication(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto division(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto modulo(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+auto addition(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto subtraction(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto multiplication(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto division(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto modulo(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 
 // Comparison Operators
-auto greater_than(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto less_than(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto greater_equal(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto less_equal(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto equal(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto not_equal(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+auto greater_than(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto less_than(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto greater_equal(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto less_equal(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto equal(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto not_equal(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 
 // Data Access Operators
-auto input_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto inputs_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto variable_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto let_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+auto input_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto inputs_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto variable_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto let_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 
 // Logical Operators
-auto logical_and(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto logical_or(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto logical_not(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+auto logical_and(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto logical_or(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto logical_not(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 
 // Control Flow Operators
-auto if_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+auto if_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 
 // Lambda Operator
-auto lambda_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+auto lambda_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 
 // Object Operators
-auto obj_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto keys_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto values_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto objFromPairs_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto pick_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto omit_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto merge_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+auto obj_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto keys_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto values_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto objFromPairs_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto pick_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto omit_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto merge_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 
 // Array Operators
-auto map_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto filter_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto reduce_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto count_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto find_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto some_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto every_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+auto map_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto filter_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto reduce_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto count_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto find_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto some_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto every_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 
 // Functional Programming Operators
-auto car_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto cdr_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto cons_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto append_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+auto car_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto cdr_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto cons_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto append_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 
 // String and Utility Operators
-auto join_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto strConcat_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto sort_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto reverse_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto unique_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto unique_sorted_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto zip_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto approx_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+auto join_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto strConcat_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto sort_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto reverse_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto unique_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto unique_sorted_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto zip_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto approx_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 } // namespace operators
 
 // NOLINTBEGIN(readability-function-size)
@@ -228,7 +228,7 @@ void OperatorRegistry::initialize_operators() {
 // --- Core Evaluation Helper Functions ---
 
 // Handles {"array": [...]} syntax (with custom array key support)
-auto evaluate_array_object(const nlohmann::json& expr, const ExecutionContext& ctx,
+auto evaluate_array_object(const jsom::JsonDocument& expr, const ExecutionContext& ctx,
                            DebugContext* debug_ctx) -> EvaluationResult {
     if (!expr[ctx.array_key].is_array()) {
         throw InvalidArgumentException("Array object must contain an array", ctx.get_path_string());
@@ -238,7 +238,7 @@ auto evaluate_array_object(const nlohmann::json& expr, const ExecutionContext& c
 }
 
 static auto handle_debug_integration(const std::string& operator_name, const ExecutionContext& ctx,
-                                     const nlohmann::json& expr, DebugContext* debug_ctx) -> void {
+                                     const jsom::JsonDocument& expr, DebugContext* debug_ctx) -> void {
     if (debug_ctx == nullptr || !debug_ctx->is_debug_enabled()) {
         return;
     }
@@ -263,7 +263,7 @@ static auto handle_debug_integration(const std::string& operator_name, const Exe
 // --- Core Evaluation (Updated with Registry and TCO) ---
 
 // Handles literal arrays like [1, 2, 3] or [true, "a"]
-auto evaluate_literal_array(const nlohmann::json& expr, const ExecutionContext& ctx,
+auto evaluate_literal_array(const jsom::JsonDocument& expr, const ExecutionContext& ctx,
                             DebugContext* debug_ctx) -> EvaluationResult {
     // Rule 3: Empty arrays are treated as literal arrays
     if (expr.empty()) {
@@ -272,7 +272,7 @@ auto evaluate_literal_array(const nlohmann::json& expr, const ExecutionContext& 
 
     // Rule 3: Non-string first elements → treat as literal array
     // Evaluate each element and return as literal array
-    nlohmann::json result = nlohmann::json::array();
+    jsom::JsonDocument result = jsom::JsonDocument::make_array();
     for (size_t i = 0; i < expr.size(); ++i) {
         auto element_result
             = evaluate_internal(expr[i], ctx.with_path(std::to_string(i)), debug_ctx);
@@ -282,16 +282,16 @@ auto evaluate_literal_array(const nlohmann::json& expr, const ExecutionContext& 
 }
 
 // Handles operator calls like ["+", 1, 2]
-auto evaluate_operator_call(const nlohmann::json& expr, const ExecutionContext& ctx,
+auto evaluate_operator_call(const jsom::JsonDocument& expr, const ExecutionContext& ctx,
                             DebugContext* debug_ctx) -> EvaluationResult {
     // Rule 1 & 2: String first element → operator call
-    std::string operator_name = expr[0].get<std::string>();
+    std::string operator_name = expr[0].as<std::string>();
 
     // Handle debug integration (breakpoints, tracing, stepping)
     handle_debug_integration(operator_name, ctx, expr, debug_ctx);
 
     // Extract arguments (everything after the operator name)
-    nlohmann::json args = nlohmann::json::array();
+    jsom::JsonDocument args = jsom::JsonDocument::make_array();
     for (size_t i = 1; i < expr.size(); ++i) {
         args.push_back(expr[i]);
     }
@@ -307,7 +307,7 @@ auto evaluate_operator_call(const nlohmann::json& expr, const ExecutionContext& 
     return operator_func(args, mutable_ctx);
 }
 
-auto evaluate_internal(const nlohmann::json& expr, const ExecutionContext& ctx,
+auto evaluate_internal(const jsom::JsonDocument& expr, const ExecutionContext& ctx,
                        DebugContext* debug_ctx) -> EvaluationResult {
     // 1. Handle simple literals (numbers, strings, booleans, null, objects)
     if (!expr.is_array()) {
@@ -326,8 +326,8 @@ auto evaluate_internal(const nlohmann::json& expr, const ExecutionContext& ctx,
 }
 
 // Trampoline function for TCO
-auto evaluate(const nlohmann::json& expr, const ExecutionContext& ctx, DebugContext* debug_ctx)
-    -> nlohmann::json {
+auto evaluate(const jsom::JsonDocument& expr, const ExecutionContext& ctx, DebugContext* debug_ctx)
+    -> jsom::JsonDocument {
     auto result = evaluate_internal(expr, ctx, debug_ctx);
 
     // Keep bouncing until we get a final result
@@ -342,8 +342,8 @@ auto evaluate(const nlohmann::json& expr, const ExecutionContext& ctx, DebugCont
 // --- Public API Implementation ---
 
 // Unified execution function
-auto execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs,
-             DebugContext* debug_context, std::string array_key) -> nlohmann::json {
+auto execute(const jsom::JsonDocument& script, const std::vector<jsom::JsonDocument>& inputs,
+             DebugContext* debug_context, std::string array_key) -> jsom::JsonDocument {
     ExecutionContext ctx(inputs, std::move(array_key));
     return evaluate(script, ctx, debug_context);
 }

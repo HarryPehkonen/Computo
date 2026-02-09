@@ -1,19 +1,19 @@
 #include <computo.hpp>
 #include <gtest/gtest.h>
 
-using json = nlohmann::json;
+using json = jsom::JsonDocument;
 
 class FunctionalOpsTest : public ::testing::Test {
 protected:
     void SetUp() override { input_data = json{{"test", "value"}}; }
 
     auto execute_script(const std::string& script_json) -> json {
-        auto script = json::parse(script_json);
+        auto script = jsom::parse_document(script_json);
         return computo::execute(script, {input_data});
     }
 
     static auto execute_script(const std::string& script_json, const json& input) -> json {
-        auto script = json::parse(script_json);
+        auto script = jsom::parse_document(script_json);
         return computo::execute(script, {input});
     }
 
@@ -39,7 +39,7 @@ TEST_F(FunctionalOpsTest, CarOperatorSingleElement) {
 
 TEST_F(FunctionalOpsTest, CarOperatorMixed) {
     auto result = execute_script(R"(["car", {"array": [{"name": "Alice"}, 123, true]}])");
-    auto expected = json::parse(R"({"name": "Alice"})");
+    auto expected = jsom::parse_document(R"({"name": "Alice"})");
     EXPECT_EQ(result, expected);
 }
 
@@ -53,25 +53,25 @@ TEST_F(FunctionalOpsTest, CarOperatorErrors) {
 
 TEST_F(FunctionalOpsTest, CdrOperatorBasic) {
     auto result = execute_script(R"(["cdr", {"array": [1, 2, 3, 4, 5]}])");
-    auto expected = json::parse(R"({"array": [2, 3, 4, 5]})");
+    auto expected = jsom::parse_document(R"({"array": [2, 3, 4, 5]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(FunctionalOpsTest, CdrOperatorDirectArray) {
     auto result = execute_script(R"(["cdr", {"array": ["first", "second", "third"]}])");
-    auto expected = json::parse(R"({"array": ["second", "third"]})");
+    auto expected = jsom::parse_document(R"({"array": ["second", "third"]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(FunctionalOpsTest, CdrOperatorSingleElement) {
     auto result = execute_script(R"(["cdr", {"array": [42]}])");
-    auto expected = json::parse(R"({"array": []})");
+    auto expected = jsom::parse_document(R"({"array": []})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(FunctionalOpsTest, CdrOperatorTwoElements) {
     auto result = execute_script(R"(["cdr", {"array": ["a", "b"]}])");
-    auto expected = json::parse(R"({"array": ["b"]})");
+    auto expected = jsom::parse_document(R"({"array": ["b"]})");
     EXPECT_EQ(result, expected);
 }
 
@@ -85,25 +85,25 @@ TEST_F(FunctionalOpsTest, CdrOperatorErrors) {
 
 TEST_F(FunctionalOpsTest, ConsOperatorBasic) {
     auto result = execute_script(R"(["cons", 0, {"array": [1, 2, 3]}])");
-    auto expected = json::parse(R"({"array": [0, 1, 2, 3]})");
+    auto expected = jsom::parse_document(R"({"array": [0, 1, 2, 3]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(FunctionalOpsTest, ConsOperatorDirectArray) {
     auto result = execute_script(R"(["cons", "new", {"array": ["existing1", "existing2"]}])");
-    auto expected = json::parse(R"({"array": ["new", "existing1", "existing2"]})");
+    auto expected = jsom::parse_document(R"({"array": ["new", "existing1", "existing2"]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(FunctionalOpsTest, ConsOperatorEmptyArray) {
     auto result = execute_script(R"(["cons", "first", {"array": []}])");
-    auto expected = json::parse(R"({"array": ["first"]})");
+    auto expected = jsom::parse_document(R"({"array": ["first"]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(FunctionalOpsTest, ConsOperatorObject) {
     auto result = execute_script(R"(["cons", {"name": "Alice"}, {"array": [1, 2]}])");
-    auto expected = json::parse(R"({"array": [{"name": "Alice"}, 1, 2]})");
+    auto expected = jsom::parse_document(R"({"array": [{"name": "Alice"}, 1, 2]})");
     EXPECT_EQ(result, expected);
 }
 
@@ -118,39 +118,39 @@ TEST_F(FunctionalOpsTest, ConsOperatorErrors) {
 
 TEST_F(FunctionalOpsTest, AppendOperatorBasic) {
     auto result = execute_script(R"(["append", {"array": [1, 2]}, {"array": [3, 4]}])");
-    auto expected = json::parse(R"({"array": [1, 2, 3, 4]})");
+    auto expected = jsom::parse_document(R"({"array": [1, 2, 3, 4]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(FunctionalOpsTest, AppendOperatorDirectArrays) {
     auto result = execute_script(R"(["append", {"array": ["a", "b"]}, {"array": ["c", "d"]}])");
-    auto expected = json::parse(R"({"array": ["a", "b", "c", "d"]})");
+    auto expected = jsom::parse_document(R"({"array": ["a", "b", "c", "d"]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(FunctionalOpsTest, AppendOperatorMultiple) {
     auto result
         = execute_script(R"(["append", {"array": [1]}, {"array": [2, 3]}, {"array": [4, 5, 6]}])");
-    auto expected = json::parse(R"({"array": [1, 2, 3, 4, 5, 6]})");
+    auto expected = jsom::parse_document(R"({"array": [1, 2, 3, 4, 5, 6]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(FunctionalOpsTest, AppendOperatorSingle) {
     auto result = execute_script(R"(["append", {"array": [1, 2, 3]}])");
-    auto expected = json::parse(R"({"array": [1, 2, 3]})");
+    auto expected = jsom::parse_document(R"({"array": [1, 2, 3]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(FunctionalOpsTest, AppendOperatorEmpty) {
     auto result = execute_script(R"(["append", {"array": []}, {"array": []}])");
-    auto expected = json::parse(R"({"array": []})");
+    auto expected = jsom::parse_document(R"({"array": []})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(FunctionalOpsTest, AppendOperatorMixed) {
     auto result
         = execute_script(R"(["append", {"array": []}, {"array": ["middle"]}, {"array": ["end"]}])");
-    auto expected = json::parse(R"({"array": ["middle", "end"]})");
+    auto expected = jsom::parse_document(R"({"array": ["middle", "end"]})");
     EXPECT_EQ(result, expected);
 }
 
@@ -174,7 +174,7 @@ TEST_F(FunctionalOpsTest, ConsWithExpressions) {
     // cons with computed values
     auto result = execute_script(
         R"(["cons", ["+", 1, 2], ["map", {"array": [1, 2]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]]])");
-    auto expected = json::parse(R"({"array": [3, 2, 4]})");
+    auto expected = jsom::parse_document(R"({"array": [3, 2, 4]})");
     EXPECT_EQ(result, expected);
 }
 
@@ -182,6 +182,6 @@ TEST_F(FunctionalOpsTest, AppendWithTransformations) {
     // append transformed arrays
     auto result = execute_script(
         R"(["append", ["map", {"array": [1, 2]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]], ["map", {"array": [3, 4]}, ["lambda", ["x"], ["+", ["$", "/x"], 10]]]])");
-    auto expected = json::parse(R"({"array": [2, 4, 13, 14]})");
+    auto expected = jsom::parse_document(R"({"array": [2, 4, 13, 14]})");
     EXPECT_EQ(result, expected);
 }

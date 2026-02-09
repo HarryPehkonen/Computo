@@ -17,7 +17,7 @@ namespace computo {
 
 // --- File Utilities (used by REPL) ---
 
-auto load_json_file(const std::string& filename, bool enable_comments) -> nlohmann::json {
+auto load_json_file(const std::string& filename, bool enable_comments) -> jsom::JsonDocument {
     std::ifstream file(filename);
     if (!file.is_open()) {
         throw std::runtime_error("Could not open file: " + filename);
@@ -27,20 +27,18 @@ auto load_json_file(const std::string& filename, bool enable_comments) -> nlohma
 
     try {
         if (enable_comments) {
-            bool allow_exceptions = true;
-            bool ignore_comments = true;
-            return nlohmann::json::parse(content, nullptr, allow_exceptions, ignore_comments);
+            return jsom::parse_document(content, jsom::ParsePresets::Comments);
         } else {
-            return nlohmann::json::parse(content);
+            return jsom::parse_document(content);
         }
-    } catch (const nlohmann::json::parse_error& e) {
+    } catch (const std::runtime_error& e) {
         throw std::runtime_error("JSON parse error in " + filename + ": " + e.what());
     }
 }
 
 auto load_input_files(const std::vector<std::string>& filenames, bool enable_comments)
-    -> std::vector<nlohmann::json> {
-    std::vector<nlohmann::json> inputs;
+    -> std::vector<jsom::JsonDocument> {
+    std::vector<jsom::JsonDocument> inputs;
     inputs.reserve(filenames.size());
 
     for (const auto& filename : filenames) {
@@ -149,11 +147,11 @@ const std::unordered_map<std::string, ReplCommandType> ReplCommandParser::comman
 
 // Create a struct to hold REPL state
 struct ReplState {
-    std::vector<nlohmann::json> inputs;
+    std::vector<jsom::JsonDocument> inputs;
     computo::DebugContext debug_context;
     std::vector<std::string> command_history;
     bool in_debug_mode = false;
-    std::map<std::string, nlohmann::json> repl_variables;
+    std::map<std::string, jsom::JsonDocument> repl_variables;
     const ComputoArgs* args;
 };
 
@@ -227,18 +225,18 @@ void handle_vars_command(const ReplCommand& /*cmd*/, ReplState& state) {
     if (!state.repl_variables.empty()) {
         std::cout << "  REPL variables:\n";
         for (const auto& [name, value] : state.repl_variables) {
-            std::cout << "    " << name << ": " << value.dump() << "\n";
+            std::cout << "    " << name << ": " << value.to_json() << "\n";
         }
     }
     
     // Always show input variables
     std::cout << "  Input variables:\n";
     if (!state.inputs.empty()) {
-        std::cout << "    $input: " << state.inputs[0].dump() << "\n";
+        std::cout << "    $input: " << state.inputs[0].to_json() << "\n";
         if (state.inputs.size() > 1) {
             std::cout << "    $inputs: array of " << state.inputs.size() << " elements\n";
             for (size_t i = 0; i < state.inputs.size(); ++i) {
-                std::cout << "      $inputs[" << i << "]: " << state.inputs[i].dump() << "\n";
+                std::cout << "      $inputs[" << i << "]: " << state.inputs[i].to_json() << "\n";
             }
         }
     } else {
@@ -262,7 +260,7 @@ void handle_vars_command(const ReplCommand& /*cmd*/, ReplState& state) {
             if (step_with_vars) {
                 std::cout << "  Local variables from recent execution:\n";
                 for (const auto& [name, value] : step_with_vars->variables) {
-                    std::cout << "    " << name << ": " << value.dump() << "\n";
+                    std::cout << "    " << name << ": " << value.to_json() << "\n";
                 }
                 std::cout << "    (from step: " << step_with_vars->operation 
                          << " at " << step_with_vars->location << ")\n";
@@ -368,7 +366,7 @@ void handle_run_command(const ReplCommand& cmd, ReplState& state) {
             auto ctx_with_vars = ctx.with_variables(state.repl_variables);
             auto result = computo::evaluate(script, ctx_with_vars, &state.debug_context);
             
-            std::cout << result.dump(2) << "\n";
+            std::cout << result.to_json(true) << "\n";
         } catch (const computo::DebugBreakException& e) {
             std::cout << "\nBreakpoint hit: " << e.get_reason() << "\n";
             std::cout << "Location: " << e.get_location() << "\n";
@@ -386,20 +384,20 @@ void handle_run_command(const ReplCommand& cmd, ReplState& state) {
 
 void handle_json_script(const ReplCommand& cmd, ReplState& state) {
     try {
-        auto script = nlohmann::json::parse(cmd.raw_input);
+        auto script = jsom::parse_document(cmd.raw_input);
         
         // Create execution context with REPL variables
         computo::ExecutionContext ctx(state.inputs, state.args->array_key);
         auto ctx_with_vars = ctx.with_variables(state.repl_variables);
         auto result = computo::evaluate(script, ctx_with_vars, &state.debug_context);
         
-        std::cout << result.dump(2) << "\n";
+        std::cout << result.to_json(true) << "\n";
     } catch (const computo::DebugBreakException& e) {
         std::cout << "\nBreakpoint hit: " << e.get_reason() << "\n";
         std::cout << "Location: " << e.get_location() << "\n";
         std::cout << "Use 'step', 'continue', or 'finish' to proceed\n";
         state.in_debug_mode = true;
-    } catch (const nlohmann::json::parse_error& e) {
+    } catch (const std::runtime_error& e) {
         std::cerr << "JSON parse error: " << e.what() << "\n";
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << "\n";
@@ -425,10 +423,10 @@ void handle_set_command(const ReplCommand& cmd, ReplState& state) {
         }
         
         try {
-            auto value = nlohmann::json::parse(json_str);
+            auto value = jsom::parse_document(json_str);
             state.repl_variables[var_name] = value;
-            std::cout << "Set " << var_name << " = " << value.dump() << "\n";
-        } catch (const nlohmann::json::parse_error& e) {
+            std::cout << "Set " << var_name << " = " << value.to_json() << "\n";
+        } catch (const std::runtime_error& e) {
             std::cerr << "JSON parse error: " << e.what() << "\n";
             std::cout << "Try: set " << var_name << " \"" << json_str << "\" (for strings)\n";
         }

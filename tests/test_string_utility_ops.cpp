@@ -1,19 +1,19 @@
 #include <computo.hpp>
 #include <gtest/gtest.h>
 
-using json = nlohmann::json;
+using json = jsom::JsonDocument;
 
 class StringUtilityOpsTest : public ::testing::Test {
 protected:
     void SetUp() override { input_data = json{{"test", "value"}}; }
 
     auto execute_script(const std::string& script_json) -> json {
-        auto script = json::parse(script_json);
+        auto script = jsom::parse_document(script_json);
         return computo::execute(script, {input_data});
     }
 
     static auto execute_script(const std::string& script_json, const json& input) -> json {
-        auto script = json::parse(script_json);
+        auto script = jsom::parse_document(script_json);
         return computo::execute(script, {input});
     }
 
@@ -100,37 +100,37 @@ TEST_F(StringUtilityOpsTest, StrConcatOperatorErrors) {
 
 TEST_F(StringUtilityOpsTest, SortOperatorBasicStrings) {
     auto result = execute_script(R"(["sort", {"array": ["zebra", "apple", "banana"]}])");
-    auto expected = json::parse(R"({"array": ["apple", "banana", "zebra"]})");
+    auto expected = jsom::parse_document(R"({"array": ["apple", "banana", "zebra"]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(StringUtilityOpsTest, SortOperatorDescending) {
     auto result = execute_script(R"(["sort", {"array": ["apple", "banana", "zebra"]}, "desc"])");
-    auto expected = json::parse(R"({"array": ["zebra", "banana", "apple"]})");
+    auto expected = jsom::parse_document(R"({"array": ["zebra", "banana", "apple"]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(StringUtilityOpsTest, SortOperatorNumbers) {
     auto result = execute_script(R"(["sort", {"array": [3, 1, 4, 1, 5]}])");
-    auto expected = json::parse(R"({"array": [1, 1, 3, 4, 5]})");
+    auto expected = jsom::parse_document(R"({"array": [1, 1, 3, 4, 5]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(StringUtilityOpsTest, SortOperatorMixed) {
     auto result = execute_script(R"(["sort", {"array": [true, false, 1, 0, "z", "a", null]}])");
-    auto expected = json::parse(R"({"array": [null, 0, 1, "a", "z", false, true]})");
+    auto expected = jsom::parse_document(R"({"array": [null, 0, 1, "a", "z", false, true]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(StringUtilityOpsTest, SortOperatorEmpty) {
     auto result = execute_script(R"(["sort", {"array": []}])");
-    auto expected = json::parse(R"({"array": []})");
+    auto expected = jsom::parse_document(R"({"array": []})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(StringUtilityOpsTest, SortOperatorExplicitAscending) {
     auto result = execute_script(R"(["sort", {"array": [3, 1, 4, 1, 5]}, "asc"])");
-    auto expected = json::parse(R"({"array": [1, 1, 3, 4, 5]})");
+    auto expected = jsom::parse_document(R"({"array": [1, 1, 3, 4, 5]})");
     EXPECT_EQ(result, expected);
 }
 
@@ -142,7 +142,7 @@ TEST_F(StringUtilityOpsTest, SortOperatorObjectSingleField) {
         {"name": "alice", "age": 25},
         {"name": "bob", "age": 35}
     ]}, "/name"])");
-    auto expected = json::parse(R"({"array": [
+    auto expected = jsom::parse_document(R"({"array": [
         {"name": "alice", "age": 25},
         {"name": "bob", "age": 35},
         {"name": "charlie", "age": 30}
@@ -156,7 +156,7 @@ TEST_F(StringUtilityOpsTest, SortOperatorObjectFieldDescending) {
         {"name": "bob", "age": 35},
         {"name": "charlie", "age": 30}
     ]}, ["/age", "desc"]])");
-    auto expected = json::parse(R"({"array": [
+    auto expected = jsom::parse_document(R"({"array": [
         {"name": "bob", "age": 35},
         {"name": "charlie", "age": 30},
         {"name": "alice", "age": 25}
@@ -171,7 +171,7 @@ TEST_F(StringUtilityOpsTest, SortOperatorMultiField) {
         {"dept": "engineering", "salary": 85000},
         {"dept": "marketing", "salary": 80000}
     ]}, "/dept", ["/salary", "desc"]])");
-    auto expected = json::parse(R"({"array": [
+    auto expected = jsom::parse_document(R"({"array": [
         {"dept": "engineering", "salary": 90000},
         {"dept": "engineering", "salary": 85000},
         {"dept": "marketing", "salary": 80000},
@@ -186,7 +186,7 @@ TEST_F(StringUtilityOpsTest, SortOperatorNestedField) {
         {"user": {"profile": {"score": 92}}},
         {"user": {"profile": {"score": 78}}}
     ]}, "/user/profile/score"])");
-    auto expected = json::parse(R"({"array": [
+    auto expected = jsom::parse_document(R"({"array": [
         {"user": {"profile": {"score": 78}}},
         {"user": {"profile": {"score": 85}}},
         {"user": {"profile": {"score": 92}}}
@@ -200,7 +200,7 @@ TEST_F(StringUtilityOpsTest, SortOperatorMissingField) {
         {"name": "bob"},
         {"name": "charlie", "age": 30}
     ]}, "/age"])");
-    auto expected = json::parse(R"({"array": [
+    auto expected = jsom::parse_document(R"({"array": [
         {"name": "bob"},
         {"name": "alice", "age": 25},
         {"name": "charlie", "age": 30}
@@ -215,7 +215,7 @@ TEST_F(StringUtilityOpsTest, SortOperatorFieldWithMixedTypes) {
         {"value": null},
         {"value": true}
     ]}, "/value"])");
-    auto expected = json::parse(R"({"array": [
+    auto expected = jsom::parse_document(R"({"array": [
         {"value": null},
         {"value": 42},
         {"value": "hello"},
@@ -235,31 +235,31 @@ TEST_F(StringUtilityOpsTest, SortOperatorErrors) {
 
 TEST_F(StringUtilityOpsTest, ReverseOperatorBasic) {
     auto result = execute_script(R"(["reverse", {"array": ["a", "b", "c"]}])");
-    auto expected = json::parse(R"({"array": ["c", "b", "a"]})");
+    auto expected = jsom::parse_document(R"({"array": ["c", "b", "a"]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(StringUtilityOpsTest, ReverseOperatorNumbers) {
     auto result = execute_script(R"(["reverse", {"array": [1, 2, 3, 4, 5]}])");
-    auto expected = json::parse(R"({"array": [5, 4, 3, 2, 1]})");
+    auto expected = jsom::parse_document(R"({"array": [5, 4, 3, 2, 1]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(StringUtilityOpsTest, ReverseOperatorMixedTypes) {
     auto result = execute_script(R"(["reverse", {"array": [true, 42, "hello", null]}])");
-    auto expected = json::parse(R"({"array": [null, "hello", 42, true]})");
+    auto expected = jsom::parse_document(R"({"array": [null, "hello", 42, true]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(StringUtilityOpsTest, ReverseOperatorSingleElement) {
     auto result = execute_script(R"(["reverse", {"array": ["only"]}])");
-    auto expected = json::parse(R"({"array": ["only"]})");
+    auto expected = jsom::parse_document(R"({"array": ["only"]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(StringUtilityOpsTest, ReverseOperatorEmpty) {
     auto result = execute_script(R"(["reverse", {"array": []}])");
-    auto expected = json::parse(R"({"array": []})");
+    auto expected = jsom::parse_document(R"({"array": []})");
     EXPECT_EQ(result, expected);
 }
 
@@ -273,31 +273,31 @@ TEST_F(StringUtilityOpsTest, ReverseOperatorErrors) {
 
 TEST_F(StringUtilityOpsTest, UniqueOperatorBasic) {
     auto result = execute_script(R"(["unique", {"array": ["a", "b", "a", "c", "b"]}])");
-    auto expected = json::parse(R"({"array": ["a", "b", "c"]})");
+    auto expected = jsom::parse_document(R"({"array": ["a", "b", "c"]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(StringUtilityOpsTest, UniqueOperatorNumbers) {
     auto result = execute_script(R"(["unique", {"array": [3, 1, 4, 1, 5, 3]}])");
-    auto expected = json::parse(R"({"array": [3, 1, 4, 5]})");
+    auto expected = jsom::parse_document(R"({"array": [3, 1, 4, 5]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(StringUtilityOpsTest, UniqueOperatorMixedTypes) {
     auto result = execute_script(R"(["unique", {"array": [1, "1", true, 1, false, "1"]}])");
-    auto expected = json::parse(R"({"array": [1, "1", true, false]})");
+    auto expected = jsom::parse_document(R"({"array": [1, "1", true, false]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(StringUtilityOpsTest, UniqueOperatorEmpty) {
     auto result = execute_script(R"(["unique", {"array": []}])");
-    auto expected = json::parse(R"({"array": []})");
+    auto expected = jsom::parse_document(R"({"array": []})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(StringUtilityOpsTest, UniqueOperatorAllSame) {
     auto result = execute_script(R"(["unique", {"array": ["x", "x", "x"]}])");
-    auto expected = json::parse(R"({"array": ["x"]})");
+    auto expected = jsom::parse_document(R"({"array": ["x"]})");
     EXPECT_EQ(result, expected);
 }
 
@@ -311,32 +311,32 @@ TEST_F(StringUtilityOpsTest, UniqueOperatorErrors) {
 
 TEST_F(StringUtilityOpsTest, ZipOperatorBasic) {
     auto result = execute_script(R"(["zip", {"array": ["a", "b", "c"]}, {"array": [1, 2, 3]}])");
-    auto expected = json::parse(R"({"array": [["a", 1], ["b", 2], ["c", 3]]})");
+    auto expected = jsom::parse_document(R"({"array": [["a", 1], ["b", 2], ["c", 3]]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(StringUtilityOpsTest, ZipOperatorUnequalLengths) {
     auto result = execute_script(R"(["zip", {"array": ["a", "b"]}, {"array": [1, 2, 3, 4]}])");
-    auto expected = json::parse(R"({"array": [["a", 1], ["b", 2]]})");
+    auto expected = jsom::parse_document(R"({"array": [["a", 1], ["b", 2]]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(StringUtilityOpsTest, ZipOperatorComplexElements) {
     auto result = execute_script(
         R"(["zip", {"array": [{"name": "alice"}, {"name": "bob"}]}, {"array": [25, 30]}])");
-    auto expected = json::parse(R"({"array": [[{"name": "alice"}, 25], [{"name": "bob"}, 30]]})");
+    auto expected = jsom::parse_document(R"({"array": [[{"name": "alice"}, 25], [{"name": "bob"}, 30]]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(StringUtilityOpsTest, ZipOperatorEmptyArrays) {
     auto result = execute_script(R"(["zip", {"array": []}, {"array": []}])");
-    auto expected = json::parse(R"({"array": []})");
+    auto expected = jsom::parse_document(R"({"array": []})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(StringUtilityOpsTest, ZipOperatorOneEmpty) {
     auto result = execute_script(R"(["zip", {"array": []}, {"array": [1, 2, 3]}])");
-    auto expected = json::parse(R"({"array": []})");
+    auto expected = jsom::parse_document(R"({"array": []})");
     EXPECT_EQ(result, expected);
 }
 

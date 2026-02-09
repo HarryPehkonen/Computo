@@ -6,15 +6,15 @@ namespace computo::operators {
 
 // --- Sort Item Constructors ---
 
-SortItem::SortItem(nlohmann::json element, std::vector<nlohmann::json> keys)
+SortItem::SortItem(jsom::JsonDocument element, std::vector<jsom::JsonDocument> keys)
     : original_element(std::move(element)), sort_keys(std::move(keys)) {}
 
-SingleFieldSortItem::SingleFieldSortItem(nlohmann::json element, nlohmann::json key)
+SingleFieldSortItem::SingleFieldSortItem(jsom::JsonDocument element, jsom::JsonDocument key)
     : original_element(std::move(element)), sort_key(std::move(key)) {}
 
 // --- Type Ordering Functions ---
 
-auto get_type_order(const nlohmann::json& val) -> uint8_t {
+auto get_type_order(const jsom::JsonDocument& val) -> uint8_t {
     if (val.is_null()) {
         return static_cast<uint8_t>(JsonTypeOrder::Null);
     }
@@ -24,7 +24,7 @@ auto get_type_order(const nlohmann::json& val) -> uint8_t {
     if (val.is_string()) {
         return static_cast<uint8_t>(JsonTypeOrder::String);
     }
-    if (val.is_boolean()) {
+    if (val.is_bool()) {
         return static_cast<uint8_t>(JsonTypeOrder::Boolean);
     }
     if (val.is_array()) {
@@ -37,7 +37,7 @@ auto get_type_order(const nlohmann::json& val) -> uint8_t {
 }
 
 // NOLINTBEGIN(readability-function-size)
-auto type_aware_compare(const nlohmann::json& first, const nlohmann::json& second) -> int {
+auto type_aware_compare(const jsom::JsonDocument& first, const jsom::JsonDocument& second) -> int {
     uint8_t type_first = get_type_order(first);
     uint8_t type_second = get_type_order(second);
 
@@ -47,8 +47,8 @@ auto type_aware_compare(const nlohmann::json& first, const nlohmann::json& secon
 
     // Same type, compare values
     if (first.is_number()) {
-        double val_first = first.get<double>();
-        double val_second = second.get<double>();
+        double val_first = first.as<double>();
+        double val_second = second.as<double>();
         if (val_first < val_second) {
             return -1;
         }
@@ -58,13 +58,13 @@ auto type_aware_compare(const nlohmann::json& first, const nlohmann::json& secon
         return 0;
     }
     if (first.is_string()) {
-        std::string str_first = first.get<std::string>();
-        std::string str_second = second.get<std::string>();
+        std::string str_first = first.as<std::string>();
+        std::string str_second = second.as<std::string>();
         return str_first.compare(str_second);
     }
-    if (first.is_boolean()) {
-        bool bool_first = first.get<bool>();
-        bool bool_second = second.get<bool>();
+    if (first.is_bool()) {
+        bool bool_first = first.as<bool>();
+        bool bool_second = second.as<bool>();
         if (static_cast<int>(bool_first) < static_cast<int>(bool_second)) {
             return -1;
         }
@@ -86,26 +86,26 @@ auto type_aware_compare(const nlohmann::json& first, const nlohmann::json& secon
 
 // --- Field Extraction and Parsing ---
 
-auto extract_sort_field_value(const nlohmann::json& obj, const std::string& pointer)
-    -> nlohmann::json {
+auto extract_sort_field_value(const jsom::JsonDocument& obj, const std::string& pointer)
+    -> jsom::JsonDocument {
     if (pointer.empty()) {
         return obj; // Empty pointer means the value itself
     }
 
     try {
-        return obj.at(nlohmann::json::json_pointer(pointer));
+        return obj.at(pointer);
     } catch (const std::exception&) {
-        return nlohmann::json{}; // Field not found, return null
+        return jsom::JsonDocument{}; // Field not found, return null
     }
 }
 
 // NOLINTBEGIN(readability-function-size)
-auto parse_field_descriptor(const nlohmann::json& field_spec) -> FieldDescriptor {
+auto parse_field_descriptor(const jsom::JsonDocument& field_spec) -> FieldDescriptor {
     FieldDescriptor desc;
 
     if (field_spec.is_string()) {
         // Simple string field: "/field" -> ascending
-        desc.pointer = field_spec.get<std::string>();
+        desc.pointer = field_spec.as<std::string>();
         desc.ascending = true;
     } else if (field_spec.is_array()) {
         // Array format: ["/field", "desc"] or ["/field", "asc"]
@@ -117,11 +117,11 @@ auto parse_field_descriptor(const nlohmann::json& field_spec) -> FieldDescriptor
         if (!field_spec[0].is_string()) {
             throw InvalidArgumentException("Invalid field descriptor: first "
                                            "element must be a string, got: "
-                                               + field_spec[0].dump(),
+                                               + field_spec[0].to_json(),
                                            "");
         }
 
-        desc.pointer = field_spec[0].get<std::string>();
+        desc.pointer = field_spec[0].as<std::string>();
         desc.ascending = true; // default
 
         if (field_spec.size() > 1) {
@@ -129,10 +129,10 @@ auto parse_field_descriptor(const nlohmann::json& field_spec) -> FieldDescriptor
                 throw InvalidArgumentException(
                     "Invalid field descriptor: direction must be a string, "
                     "got: "
-                        + field_spec[1].dump(),
+                        + field_spec[1].to_json(),
                     "");
             }
-            std::string direction = field_spec[1].get<std::string>();
+            std::string direction = field_spec[1].as<std::string>();
             if (direction != "asc" && direction != "desc") {
                 throw InvalidArgumentException(
                     "Invalid sort direction: '" + direction + "'. Must be 'asc' or 'desc'", "");
@@ -141,7 +141,7 @@ auto parse_field_descriptor(const nlohmann::json& field_spec) -> FieldDescriptor
         }
     } else {
         throw InvalidArgumentException(
-            "Field descriptor must be string or array, got: " + field_spec.dump(), "");
+            "Field descriptor must be string or array, got: " + field_spec.to_json(), "");
     }
 
     return desc;
@@ -149,7 +149,7 @@ auto parse_field_descriptor(const nlohmann::json& field_spec) -> FieldDescriptor
 // NOLINTEND(readability-function-size)
 
 // NOLINTBEGIN(readability-function-size)
-auto parse_sort_arguments(const nlohmann::json& args) -> SortConfig {
+auto parse_sort_arguments(const jsom::JsonDocument& args) -> SortConfig {
     SortConfig config;
 
     if (args.size() == 1) {
@@ -159,7 +159,7 @@ auto parse_sort_arguments(const nlohmann::json& args) -> SortConfig {
     } else if (args.size() == 2) {
         // Disambiguation logic
         if (args[1].is_string()) {
-            std::string second_arg = args[1].get<std::string>();
+            std::string second_arg = args[1].as<std::string>();
             if (second_arg == "desc" || second_arg == "asc") {
                 // Simple array with direction
                 config.is_simple_array = true;
@@ -191,9 +191,9 @@ auto parse_sort_arguments(const nlohmann::json& args) -> SortConfig {
 // --- DSU Comparator Functions ---
 
 auto create_multi_field_comparator(const std::vector<FieldDescriptor>& fields)
-    -> std::function<bool(const nlohmann::json&, const nlohmann::json&)> {
+    -> std::function<bool(const jsom::JsonDocument&, const jsom::JsonDocument&)> {
 
-    return [fields](const nlohmann::json& left, const nlohmann::json& right) -> bool {
+    return [fields](const jsom::JsonDocument& left, const jsom::JsonDocument& right) -> bool {
         for (const auto& field : fields) {
             auto val_left = extract_sort_field_value(left, field.pointer);
             auto val_right = extract_sort_field_value(right, field.pointer);
@@ -237,17 +237,17 @@ auto create_single_field_dsu_comparator(const FieldDescriptor& field)
 
 // --- Sort Strategy Functions ---
 
-auto sort_simple_array(nlohmann::json& array_data, const SortConfig& config) -> void {
+auto sort_simple_array(jsom::JsonDocument& array_data, const SortConfig& config) -> void {
     // Simple array sorting - use direct std::sort for optimal performance
     bool ascending = (config.direction == "asc");
     std::sort(array_data.begin(), array_data.end(),
-              [ascending](const nlohmann::json& left, const nlohmann::json& right) {
+              [ascending](const jsom::JsonDocument& left, const jsom::JsonDocument& right) {
                   int cmp = type_aware_compare(left, right);
                   return ascending ? (cmp < 0) : (cmp > 0);
               });
 }
 
-auto sort_object_array_single_field(nlohmann::json& array_data, const FieldDescriptor& field)
+auto sort_object_array_single_field(jsom::JsonDocument& array_data, const FieldDescriptor& field)
     -> void {
     std::vector<SingleFieldSortItem> decorated_items;
     decorated_items.reserve(array_data.size());
@@ -263,20 +263,20 @@ auto sort_object_array_single_field(nlohmann::json& array_data, const FieldDescr
     std::sort(decorated_items.begin(), decorated_items.end(), single_field_comparator);
 
     // Undecorate: Extract sorted original elements
-    array_data = nlohmann::json::array();
+    array_data = jsom::JsonDocument::make_array();
     for (const auto& item : decorated_items) {
         array_data.push_back(item.original_element);
     }
 }
 
-auto sort_object_array_multi_field(nlohmann::json& array_data,
+auto sort_object_array_multi_field(jsom::JsonDocument& array_data,
                                    const std::vector<FieldDescriptor>& fields) -> void {
     std::vector<SortItem> decorated_items;
     decorated_items.reserve(array_data.size());
 
     // Decorate: Extract all sort keys upfront (O(n) instead of O(n log n))
     for (const auto& element : array_data) {
-        std::vector<nlohmann::json> keys;
+        std::vector<jsom::JsonDocument> keys;
         keys.reserve(fields.size());
 
         for (const auto& field : fields) {
@@ -291,13 +291,13 @@ auto sort_object_array_multi_field(nlohmann::json& array_data,
     std::sort(decorated_items.begin(), decorated_items.end(), dsu_comparator);
 
     // Undecorate: Extract sorted original elements
-    array_data = nlohmann::json::array();
+    array_data = jsom::JsonDocument::make_array();
     for (const auto& item : decorated_items) {
         array_data.push_back(item.original_element);
     }
 }
 
-auto sort_object_array(nlohmann::json& array_data, const SortConfig& config) -> void {
+auto sort_object_array(jsom::JsonDocument& array_data, const SortConfig& config) -> void {
     if (config.fields.size() == 1) {
         sort_object_array_single_field(array_data, config.fields[0]);
     } else {

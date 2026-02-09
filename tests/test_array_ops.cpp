@@ -1,19 +1,19 @@
 #include <computo.hpp>
 #include <gtest/gtest.h>
 
-using json = nlohmann::json;
+using json = jsom::JsonDocument;
 
 class ArrayOpsTest : public ::testing::Test {
 protected:
     void SetUp() override { input_data = json{{"test", "value"}}; }
 
     auto execute_script(const std::string& script_json) -> json {
-        auto script = json::parse(script_json);
+        auto script = jsom::parse_document(script_json);
         return computo::execute(script, {input_data});
     }
 
     static auto execute_script(const std::string& script_json, const json& input) -> json {
-        auto script = json::parse(script_json);
+        auto script = jsom::parse_document(script_json);
         return computo::execute(script, {input});
     }
 
@@ -25,27 +25,27 @@ protected:
 TEST_F(ArrayOpsTest, MapOperatorBasic) {
     auto result = execute_script(
         R"(["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]])");
-    auto expected = json::parse(R"({"array": [2, 4, 6]})");
+    auto expected = jsom::parse_document(R"({"array": [2, 4, 6]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(ArrayOpsTest, MapOperatorDirectArray) {
     auto result = execute_script(
         R"(["map", {"array": [10, 20, 30]}, ["lambda", ["x"], ["+", ["$", "/x"], 5]]])");
-    auto expected = json::parse(R"({"array": [15, 25, 35]})");
+    auto expected = jsom::parse_document(R"({"array": [15, 25, 35]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(ArrayOpsTest, MapOperatorEmpty) {
     auto result = execute_script(R"(["map", {"array": []}, ["lambda", ["x"], ["$", "/x"]]])");
-    auto expected = json::parse(R"({"array": []})");
+    auto expected = jsom::parse_document(R"({"array": []})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(ArrayOpsTest, MapOperatorStringTransform) {
     auto result = execute_script(
         R"(["map", {"array": ["hello", "world"]}, ["lambda", ["s"], ["strConcat", "prefix_", ["$", "/s"]]]])");
-    auto expected = json::parse(R"({"array": ["prefix_hello", "prefix_world"]})");
+    auto expected = jsom::parse_document(R"({"array": ["prefix_hello", "prefix_world"]})");
     EXPECT_EQ(result, expected);
 }
 
@@ -60,27 +60,27 @@ TEST_F(ArrayOpsTest, MapOperatorErrors) {
 TEST_F(ArrayOpsTest, FilterOperatorBasic) {
     auto result = execute_script(
         R"(["filter", {"array": [1, 2, 3, 4, 5]}, ["lambda", ["x"], [">", ["$", "/x"], 3]]])");
-    auto expected = json::parse(R"({"array": [4, 5]})");
+    auto expected = jsom::parse_document(R"({"array": [4, 5]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(ArrayOpsTest, FilterOperatorDirectArray) {
     auto result = execute_script(
         R"(["filter", {"array": [10, 15, 20, 25]}, ["lambda", ["x"], ["==", ["%", ["$", "/x"], 5], 0]]])");
-    auto expected = json::parse(R"({"array": [10, 15, 20, 25]})");
+    auto expected = jsom::parse_document(R"({"array": [10, 15, 20, 25]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(ArrayOpsTest, FilterOperatorEmpty) {
     auto result = execute_script(R"(["filter", {"array": []}, ["lambda", ["x"], true]])");
-    auto expected = json::parse(R"({"array": []})");
+    auto expected = jsom::parse_document(R"({"array": []})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(ArrayOpsTest, FilterOperatorNoneMatch) {
     auto result = execute_script(
         R"(["filter", {"array": [1, 2, 3]}, ["lambda", ["x"], [">", ["$", "/x"], 10]]])");
-    auto expected = json::parse(R"({"array": []})");
+    auto expected = jsom::parse_document(R"({"array": []})");
     EXPECT_EQ(result, expected);
 }
 

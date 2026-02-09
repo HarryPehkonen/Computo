@@ -1,9 +1,9 @@
 #include "operators/shared.hpp"
 #include <computo.hpp>
 #include <gtest/gtest.h>
-#include <nlohmann/json.hpp>
+#include <jsom/jsom.hpp>
 
-using json = nlohmann::json;
+using json = jsom::JsonDocument;
 using namespace computo;
 
 class SharedUtilitiesTest : public ::testing::Test {
@@ -45,18 +45,18 @@ TEST_F(SharedUtilitiesTest, IsTruthyStrings) {
 
 TEST_F(SharedUtilitiesTest, IsTruthyArrays) {
     const std::vector<int> TEST_VALUES = {1, 2, 3};
-    EXPECT_TRUE(is_truthy(json::array({TEST_VALUES[0], TEST_VALUES[1], TEST_VALUES[2]})));
-    EXPECT_TRUE(is_truthy(json::array({0})));
-    EXPECT_TRUE(is_truthy(json::array({""})));
+    EXPECT_TRUE(is_truthy(json(std::vector<json>{TEST_VALUES[0], TEST_VALUES[1], TEST_VALUES[2]})));
+    EXPECT_TRUE(is_truthy(json(std::vector<json>{0})));
+    EXPECT_TRUE(is_truthy(json(std::vector<json>{""})));
 
-    EXPECT_FALSE(is_truthy(json::array()));
+    EXPECT_FALSE(is_truthy(json::make_array()));
 }
 
 TEST_F(SharedUtilitiesTest, IsTruthyObjects) {
-    EXPECT_TRUE(is_truthy(json::object({{"key", "value"}})));
-    EXPECT_TRUE(is_truthy(json::object({{"key", false}})));
+    EXPECT_TRUE(is_truthy(json{{"key", "value"}}));
+    EXPECT_TRUE(is_truthy(json{{"key", false}}));
 
-    EXPECT_FALSE(is_truthy(json::object()));
+    EXPECT_FALSE(is_truthy(json::make_object()));
 }
 
 TEST_F(SharedUtilitiesTest, IsTruthyNull) { EXPECT_FALSE(is_truthy(json(nullptr))); }
@@ -65,17 +65,17 @@ TEST_F(SharedUtilitiesTest, IsTruthyNull) { EXPECT_FALSE(is_truthy(json(nullptr)
 
 TEST_F(SharedUtilitiesTest, ValidateNumericArgsSuccess) {
     const double TWO_POINT_FIVE = 2.5;
-    json args = json::array({1, TWO_POINT_FIVE, -3, 0});
+    json args = json(std::vector<json>{1, TWO_POINT_FIVE, -3, 0});
     EXPECT_NO_THROW(validate_numeric_args(args, "test_op", "test_path"));
 }
 
 TEST_F(SharedUtilitiesTest, ValidateNumericArgsEmptyArray) {
-    json args = json::array();
+    json args = json::make_array();
     EXPECT_NO_THROW(validate_numeric_args(args, "test_op", "test_path"));
 }
 
 TEST_F(SharedUtilitiesTest, ValidateNumericArgsFailureString) {
-    json args = json::array({1, "not_a_number", 3});
+    json args = json(std::vector<json>{1, "not_a_number", 3});
     EXPECT_THROW(
         {
             try {
@@ -93,7 +93,7 @@ TEST_F(SharedUtilitiesTest, ValidateNumericArgsFailureString) {
 
 TEST_F(SharedUtilitiesTest, ValidateNumericArgsFailureArray) {
     const std::vector<int> TEST_ARRAY_VALUES = {2, 3};
-    json args = json::array({1, json::array({TEST_ARRAY_VALUES[0], TEST_ARRAY_VALUES[1]})});
+    json args = json(std::vector<json>{1, json(std::vector<json>{TEST_ARRAY_VALUES[0], TEST_ARRAY_VALUES[1]})});
     EXPECT_THROW(
         {
             try {
@@ -109,7 +109,7 @@ TEST_F(SharedUtilitiesTest, ValidateNumericArgsFailureArray) {
 }
 
 TEST_F(SharedUtilitiesTest, ValidateNumericArgsFailureNull) {
-    json args = json::array({1, nullptr, 3});
+    json args = json(std::vector<json>{1, nullptr, 3});
     EXPECT_THROW(
         {
             try {
@@ -128,7 +128,7 @@ TEST_F(SharedUtilitiesTest, ValidateNumericArgsFailureNull) {
 
 TEST_F(SharedUtilitiesTest, EvaluateLambdaSimple) {
     // Lambda: [["x"], ["$", "/x"]]
-    json lambda = json::array({json::array({"x"}), json::array({"$", "/x"})});
+    json lambda = json(std::vector<json>{json(std::vector<json>{"x"}), json(std::vector<json>{"$", "/x"})});
 
     const int TEST_VALUE = 42;
     std::vector<json> args = {json(TEST_VALUE)};
@@ -146,8 +146,8 @@ TEST_F(SharedUtilitiesTest, EvaluateLambdaSimple) {
 TEST_F(SharedUtilitiesTest, EvaluateLambdaMultipleParams) {
     // Lambda: [["x", "y"], ["+", ["$", "/x"], ["$", "/y"]]]
     json lambda
-        = json::array({json::array({"x", "y"}),
-                       json::array({"+", json::array({"$", "/x"}), json::array({"$", "/y"})})});
+        = json(std::vector<json>{json(std::vector<json>{"x", "y"}),
+                       json(std::vector<json>{"+", json(std::vector<json>{"$", "/x"}), json(std::vector<json>{"$", "/y"})})});
 
     const int FIRST_VALUE = 10;
     const int SECOND_VALUE = 20;
@@ -167,7 +167,7 @@ TEST_F(SharedUtilitiesTest, EvaluateLambdaMultipleParams) {
 TEST_F(SharedUtilitiesTest, EvaluateLambdaNoParams) {
     // Lambda: [[], 42]
     const int TEST_VALUE = 42;
-    json lambda = json::array({json::array(), json(TEST_VALUE)});
+    json lambda = json(std::vector<json>{json::make_array(), json(TEST_VALUE)});
 
     std::vector<json> args = {};
     auto lambda_result = evaluate_lambda(lambda, args, ctx);
@@ -184,7 +184,7 @@ TEST_F(SharedUtilitiesTest, EvaluateLambdaNoParams) {
 TEST_F(SharedUtilitiesTest, EvaluateLambdaInvalidFormat) {
     // Not an array
     const int BODY_VALUE = 42;
-    json lambda = json::object({{"params", json::array()}, {"body", BODY_VALUE}});
+    json lambda = json{{"params", json::make_array()}, {"body", BODY_VALUE}};
     std::vector<json> args = {};
 
     EXPECT_THROW(
@@ -205,7 +205,7 @@ TEST_F(SharedUtilitiesTest, EvaluateLambdaWrongSize) {
     // Too many elements
     const int BODY_VALUE = 42;
     const int EXTRA_VALUE = 43;
-    json lambda = json::array({json::array({"x"}), json(BODY_VALUE), json(EXTRA_VALUE)});
+    json lambda = json(std::vector<json>{json(std::vector<json>{"x"}), json(BODY_VALUE), json(EXTRA_VALUE)});
     const int FIRST_VALUE = 10;
     std::vector<json> args = {json(FIRST_VALUE)};
 
@@ -226,7 +226,7 @@ TEST_F(SharedUtilitiesTest, EvaluateLambdaWrongSize) {
 TEST_F(SharedUtilitiesTest, EvaluateLambdaInvalidParams) {
     // Parameters not an array
     const int BODY_VALUE = 42;
-    json lambda = json::array({json("x"), json(BODY_VALUE)});
+    json lambda = json(std::vector<json>{json("x"), json(BODY_VALUE)});
     const int FIRST_VALUE = 10;
     std::vector<json> args = {json(FIRST_VALUE)};
 
@@ -245,7 +245,7 @@ TEST_F(SharedUtilitiesTest, EvaluateLambdaInvalidParams) {
 TEST_F(SharedUtilitiesTest, EvaluateLambdaParamCountMismatch) {
     // Lambda expects 2 params, got 1
     const int BODY_VALUE = 42;
-    json lambda = json::array({json::array({"x", "y"}), json(BODY_VALUE)});
+    json lambda = json(std::vector<json>{json(std::vector<json>{"x", "y"}), json(BODY_VALUE)});
     const int FIRST_VALUE = 10;
     std::vector<json> args = {json(FIRST_VALUE)};
 
@@ -265,7 +265,7 @@ TEST_F(SharedUtilitiesTest, EvaluateLambdaNonStringParam) {
     // Parameter name is not a string
     const int PARAM_VALUE = 42;
     const int BODY_VALUE = 42;
-    json lambda = json::array({json::array({PARAM_VALUE}), json(BODY_VALUE)});
+    json lambda = json(std::vector<json>{json(std::vector<json>{PARAM_VALUE}), json(BODY_VALUE)});
     const int FIRST_VALUE = 10;
     std::vector<json> args = {json(FIRST_VALUE)};
 
@@ -313,7 +313,7 @@ TEST_F(SharedUtilitiesTest, ToNumericFailure) {
     EXPECT_THROW(
         {
             try {
-                to_numeric(json::array({TEST_ARRAY_VALUES[0], TEST_ARRAY_VALUES[1]}), "test_op",
+                to_numeric(json(std::vector<json>{TEST_ARRAY_VALUES[0], TEST_ARRAY_VALUES[1]}), "test_op",
                            "test_path");
             } catch (const InvalidArgumentException& e) {
                 EXPECT_STREQ("Invalid argument: test_op requires numeric "
@@ -333,11 +333,11 @@ TEST_F(SharedUtilitiesTest, GetTypeName) {
     EXPECT_EQ(get_type_name(json(nullptr)), "null");
     EXPECT_EQ(get_type_name(json(true)), "boolean");
     EXPECT_EQ(get_type_name(json(false)), "boolean");
-    EXPECT_EQ(get_type_name(json(TEST_INT)), "integer");
+    EXPECT_EQ(get_type_name(json(TEST_INT)), "number");
     EXPECT_EQ(get_type_name(json(PI)), "number");
     EXPECT_EQ(get_type_name(json("hello")), "string");
-    EXPECT_EQ(get_type_name(json::array()), "array");
-    EXPECT_EQ(get_type_name(json::object()), "object");
+    EXPECT_EQ(get_type_name(json::make_array()), "array");
+    EXPECT_EQ(get_type_name(json::make_object()), "object");
 }
 
 // --- Integration Tests ---
@@ -345,9 +345,9 @@ TEST_F(SharedUtilitiesTest, GetTypeName) {
 TEST_F(SharedUtilitiesTest, LambdaWithComplexExpression) {
     // Lambda that filters even numbers: [["x"], ["==", ["%", ["$", "/x"], 2],
     // 0]]
-    json lambda = json::array(
-        {json::array({"x"}),
-         json::array({"==", json::array({"%", json::array({"$", "/x"}), json(2)}), json(0)})});
+    json lambda = json(std::vector<json>{
+        json(std::vector<json>{"x"}),
+        json(std::vector<json>{"==", json(std::vector<json>{"%", json(std::vector<json>{"$", "/x"}), json(2)}), json(0)})});
 
     // Test with even number
     const int EVEN_VALUE = 4;
@@ -384,7 +384,7 @@ TEST_F(SharedUtilitiesTest, LambdaVariableShadowing) {
 
     // Lambda: [["x"], ["$", "/x"]] - should use lambda parameter, not outer
     // variable
-    json lambda = json::array({json::array({"x"}), json::array({"$", "/x"})});
+    json lambda = json(std::vector<json>{json(std::vector<json>{"x"}), json(std::vector<json>{"$", "/x"})});
 
     const int TEST_VALUE = 42;
     std::vector<json> args = {json(TEST_VALUE)};
@@ -509,7 +509,7 @@ TEST_F(SharedUtilitiesTest, SuggestSimilarNamesVariableExamples) {
 TEST_F(SharedUtilitiesTest, OperatorSuggestionIntegration) {
     // Test invalid operator throws exception with suggestion
     try {
-        computo::execute(json::parse(R"(["mpa", [1, 2, 3], ["x"], ["*", ["$", "/x"], 2]])"),
+        computo::execute(jsom::parse_document(R"(["mpa", [1, 2, 3], ["x"], ["*", ["$", "/x"], 2]])"),
                          {json(nullptr)});
         FAIL() << "Expected InvalidOperatorException";
     } catch (const computo::InvalidOperatorException& e) {
@@ -522,7 +522,7 @@ TEST_F(SharedUtilitiesTest, OperatorSuggestionIntegration) {
 TEST_F(SharedUtilitiesTest, OperatorSuggestionNoCloseMatch) {
     // Test invalid operator with no close matches
     try {
-        computo::execute(json::parse(R"(["completely_nonexistent_operator", 1, 2])"),
+        computo::execute(jsom::parse_document(R"(["completely_nonexistent_operator", 1, 2])"),
                          {json(nullptr)});
         FAIL() << "Expected InvalidOperatorException";
     } catch (const computo::InvalidOperatorException& e) {

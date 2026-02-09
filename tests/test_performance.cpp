@@ -16,7 +16,7 @@
 #include <unistd.h>
 #endif
 
-using json = nlohmann::json;
+using json = jsom::JsonDocument;
 using namespace std::chrono;
 
 // --- Performance Measurement Infrastructure ---
@@ -171,28 +171,28 @@ public:
     }
 
     void export_json(const std::string& filename) const {
-        json results_json = json::array();
+        json results_json = json::make_array();
         for (const auto& result : results_) {
             json result_json = {{"test_name", result.test_name},
                                 {"operation", result.operation},
-                                {"data_size", result.data_size},
+                                {"data_size", static_cast<int>(result.data_size)},
                                 {"avg_time_ms", result.avg_time_ms},
                                 {"min_time_ms", result.min_time_ms},
                                 {"max_time_ms", result.max_time_ms},
                                 {"p50_time_ms", result.p50_time_ms},
                                 {"p95_time_ms", result.p95_time_ms},
                                 {"p99_time_ms", result.p99_time_ms},
-                                {"ops_per_second", result.operations_per_second},
-                                {"memory_peak_kb", result.memory_peak_kb},
-                                {"memory_after_kb", result.memory_after_kb}};
+                                {"ops_per_second", static_cast<int>(result.operations_per_second)},
+                                {"memory_peak_kb", static_cast<int>(result.memory_peak_kb)},
+                                {"memory_after_kb", static_cast<int>(result.memory_after_kb)}};
             results_json.push_back(result_json);
         }
 
-        json output = {{"timestamp", std::chrono::system_clock::now().time_since_epoch().count()},
+        json output = {{"timestamp", static_cast<int>(std::chrono::system_clock::now().time_since_epoch().count())},
                        {"results", results_json}};
 
         std::ofstream file(filename);
-        file << output.dump(2);
+        file << output.to_json(true);
     }
 
     const std::vector<BenchmarkResult>& get_results() const { return results_; }
@@ -219,12 +219,12 @@ protected:
     }
 
     auto execute_script(const std::string& script_json, const json& input = json(nullptr)) -> json {
-        auto script = json::parse(script_json);
+        auto script = jsom::parse_document(script_json);
         return computo::execute(script, {input});
     }
 
     auto create_large_array(std::size_t size) -> json {
-        json array = json::array();
+        json array = json::make_array();
         for (std::size_t i = 0; i < size; ++i) {
             array.push_back(static_cast<int>(i));
         }
@@ -232,9 +232,9 @@ protected:
     }
 
     auto create_large_object(std::size_t size) -> json {
-        json obj = json::object();
+        json obj = json::make_object();
         for (std::size_t i = 0; i < size; ++i) {
-            obj["key" + std::to_string(i)] = static_cast<int>(i);
+            obj.set("key" + std::to_string(i), json(static_cast<int>(i)));
         }
         return obj;
     }
@@ -244,9 +244,9 @@ protected:
             return json("leaf_value");
         }
 
-        json obj = json::object();
+        json obj = json::make_object();
         for (std::size_t i = 0; i < breadth; ++i) {
-            obj["child" + std::to_string(i)] = create_nested_structure(depth - 1, breadth);
+            obj.set("child" + std::to_string(i), create_nested_structure(depth - 1, breadth));
         }
         return obj;
     }
@@ -377,7 +377,7 @@ TEST_F(PerformanceBenchmarkTest, StringOperationsBenchmark) {
     const std::vector<std::size_t> sizes = {10, 100, 500};
 
     for (std::size_t size : sizes) {
-        json string_array = json::array();
+        json string_array = json::make_array();
         for (std::size_t i = 0; i < size; ++i) {
             string_array.push_back("test_string_" + std::to_string(i) + "_with_some_content");
         }
@@ -606,28 +606,31 @@ TEST_F(PerformanceBenchmarkTest, FunctionalProgrammingBenchmark) {
 
 TEST_F(PerformanceBenchmarkTest, LambdaFunctionBenchmark) {
     // Simple lambda operations
+    auto lambda_input_5 = json{{"array", json(std::vector<json>{1, 2, 3, 4, 5})}};
+    auto lambda_input_10 = json{{"array", json(std::vector<json>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})}};
+
     suite_->run_benchmark(
         "Lambda_Simple", "map_lambda",
-        [this]() {
+        [this, lambda_input_5]() {
             execute_script(R"(["map", ["$input"], [["x"], ["*", ["$", "/x"], 2]]])",
-                           {{"array", {1, 2, 3, 4, 5}}});
+                           lambda_input_5);
         },
         5);
 
     suite_->run_benchmark(
         "Lambda_Simple", "filter_lambda",
-        [this]() {
+        [this, lambda_input_10]() {
             execute_script(R"(["filter", ["$input"], [["x"], [">", ["$", "/x"], 5]]])",
-                           {{"array", {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}}});
+                           lambda_input_10);
         },
         10);
 
     suite_->run_benchmark(
         "Lambda_Simple", "reduce_lambda",
-        [this]() {
+        [this, lambda_input_5]() {
             execute_script(
                 R"(["reduce", ["$input"], [["acc", "x"], ["+", ["$", "/acc"], ["$", "/x"]]], 0])",
-                {{"array", {1, 2, 3, 4, 5}}});
+                lambda_input_5);
         },
         5);
 
@@ -741,12 +744,14 @@ TEST_F(PerformanceBenchmarkTest, VariableScopingBenchmark) {
 
 TEST_F(PerformanceBenchmarkTest, RealWorldScenariosBenchmark) {
     // Data processing pipeline
-    auto sales_data = json::array();
+    auto sales_data = json::make_array();
     for (int i = 0; i < 1000; ++i) {
-        sales_data.push_back({{"id", i},
-                              {"amount", (i % 100) + 50},
-                              {"category", i % 5 == 0 ? "premium" : "standard"},
-                              {"date", "2024-01-" + std::to_string((i % 28) + 1)}});
+        std::string category = (i % 5 == 0) ? "premium" : "standard";
+        json item = {{"id", i},
+                     {"amount", (i % 100) + 50},
+                     {"category", category},
+                     {"date", "2024-01-" + std::to_string((i % 28) + 1)}};
+        sales_data.push_back(item);
     }
 
     // Complex aggregation pipeline
@@ -792,7 +797,7 @@ TEST_F(PerformanceBenchmarkTest, RealWorldScenariosBenchmark) {
 TEST_F(PerformanceBenchmarkTest, SortBaselineBenchmark) {
     // Test data generators for sort benchmarks
     auto create_object_array = [](std::size_t size, int field_depth = 1) -> json {
-        json array = json::array();
+        json array = json::make_array();
         for (std::size_t i = 0; i < size; ++i) {
             json obj = {
                 {"id", static_cast<int>(size - i)}, // Reverse order for sorting
@@ -804,9 +809,11 @@ TEST_F(PerformanceBenchmarkTest, SortBaselineBenchmark) {
             if (field_depth > 1) {
                 json nested = obj;
                 for (int d = 1; d < field_depth; ++d) {
-                    nested = {{"level" + std::to_string(d), nested}};
+                    json wrapper = json::make_object();
+                    wrapper.set("level" + std::to_string(d), nested);
+                    nested = wrapper;
                 }
-                obj["nested"] = nested;
+                obj.set("nested", nested);
             }
 
             array.push_back(obj);
@@ -937,7 +944,7 @@ TEST_F(PerformanceBenchmarkTest, DebugOverheadBenchmark) {
             debug_ctx.set_debug_enabled(true);
             debug_ctx.set_trace_enabled(true);
 
-            auto script = json::parse(R"(["map", ["$input"], [["x"], ["*", ["$", "/x"], 2]]])");
+            auto script = jsom::parse_document(R"(["map", ["$input"], [["x"], ["*", ["$", "/x"], 2]]])");
             computo::execute(script, {test_data}, &debug_ctx);
         },
         1000);

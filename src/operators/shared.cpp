@@ -5,15 +5,15 @@
 
 namespace computo {
 
-auto is_truthy(const nlohmann::json& value) -> bool {
-    if (value.is_boolean()) {
-        return value.get<bool>();
+auto is_truthy(const jsom::JsonDocument& value) -> bool {
+    if (value.is_bool()) {
+        return value.as<bool>();
     }
     if (value.is_number()) {
-        return value.get<double>() != 0.0;
+        return value.as<double>() != 0.0;
     }
     if (value.is_string()) {
-        return !value.get<std::string>().empty();
+        return !value.as<std::string>().empty();
     }
     if (value.is_array() || value.is_object()) {
         return !value.empty();
@@ -26,7 +26,7 @@ auto is_truthy(const nlohmann::json& value) -> bool {
 }
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-auto validate_numeric_args(const nlohmann::json& args, const std::string& op_name,
+auto validate_numeric_args(const jsom::JsonDocument& args, const std::string& op_name,
                            const std::string& path) -> void {
     for (size_t i = 0; i < args.size(); ++i) {
         if (!args[i].is_number()) {
@@ -39,8 +39,8 @@ auto validate_numeric_args(const nlohmann::json& args, const std::string& op_nam
 }
 
 // NOLINTBEGIN(readability-function-size)
-auto evaluate_lambda(const nlohmann::json& lambda_expr,
-                     const std::vector<nlohmann::json>& lambda_args, ExecutionContext& ctx)
+auto evaluate_lambda(const jsom::JsonDocument& lambda_expr,
+                     const std::vector<jsom::JsonDocument>& lambda_args, ExecutionContext& ctx)
     -> EvaluationResult {
     // Lambda must be an array with exactly 2 elements: [params, body]
     if (!lambda_expr.is_array() || lambda_expr.size() != 2) {
@@ -62,13 +62,13 @@ auto evaluate_lambda(const nlohmann::json& lambda_expr,
     }
 
     // Build variable bindings
-    std::map<std::string, nlohmann::json> bindings;
+    std::map<std::string, jsom::JsonDocument> bindings;
     for (size_t i = 0; i < lambda_expr[0].size(); ++i) {
         if (!lambda_expr[0][i].is_string()) {
             throw InvalidArgumentException("Lambda parameter names must be strings",
                                            ctx.get_path_string());
         }
-        std::string param_name = lambda_expr[0][i].get<std::string>();
+        std::string param_name = lambda_expr[0][i].as<std::string>();
         bindings[param_name] = lambda_args[i];
     }
 
@@ -79,27 +79,24 @@ auto evaluate_lambda(const nlohmann::json& lambda_expr,
 // NOLINTEND(readability-function-size)
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-auto to_numeric(const nlohmann::json& value, const std::string& op_name, const std::string& path)
+auto to_numeric(const jsom::JsonDocument& value, const std::string& op_name, const std::string& path)
     -> double {
     if (!value.is_number()) {
         std::ostringstream oss;
         oss << op_name << " requires numeric argument, got " << get_type_name(value);
         throw InvalidArgumentException(oss.str(), path);
     }
-    return value.get<double>();
+    return value.as<double>();
 }
 
-auto get_type_name(const nlohmann::json& value) -> std::string {
+auto get_type_name(const jsom::JsonDocument& value) -> std::string {
     if (value.is_null()) {
         return "null";
     }
-    if (value.is_boolean()) {
+    if (value.is_bool()) {
         return "boolean";
     }
-    if (value.is_number_integer()) {
-        return "integer";
-    }
-    if (value.is_number_float()) {
+    if (value.is_number()) {
         return "number";
     }
     if (value.is_string()) {
@@ -115,8 +112,8 @@ auto get_type_name(const nlohmann::json& value) -> std::string {
 }
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
-auto extract_array_data(const nlohmann::json& array_input, const std::string& op_name,
-                        const std::string& path, const std::string& array_key) -> nlohmann::json {
+auto extract_array_data(const jsom::JsonDocument& array_input, const std::string& op_name,
+                        const std::string& path, const std::string& array_key) -> jsom::JsonDocument {
     // NOLINTEND(bugprone-easily-swappable-parameters)
     // Handle both {array_key: [...]} format and direct array format
     if (array_input.is_object() && array_input.contains(array_key)
@@ -205,9 +202,9 @@ auto suggest_similar_names(const std::string& target, const std::vector<std::str
 
 // NOLINTBEGIN(readability-function-size)
 auto process_array_with_lambda(
-    const nlohmann::json& args, ExecutionContext& ctx, const std::string& op_name,
-    const std::function<bool(const nlohmann::json& item, const nlohmann::json& lambda_result,
-                             nlohmann::json& final_result)>& processor) -> nlohmann::json {
+    const jsom::JsonDocument& args, ExecutionContext& ctx, const std::string& op_name,
+    const std::function<bool(const jsom::JsonDocument& item, const jsom::JsonDocument& lambda_result,
+                             jsom::JsonDocument& final_result)>& processor) -> jsom::JsonDocument {
     if (args.size() != 2) {
         throw InvalidArgumentException("'" + op_name
                                            + "' requires exactly 2 arguments (array, lambda)",
@@ -218,13 +215,13 @@ auto process_array_with_lambda(
     auto array_data
         = extract_array_data(array_input, op_name, ctx.get_path_string(), ctx.array_key);
 
-    nlohmann::json final_result; // The processor will populate this
+    jsom::JsonDocument final_result; // The processor will populate this
 
     // Evaluate the lambda expression first (handles ["lambda", ...] syntax)
     auto lambda_expr = evaluate(args[1], ctx.with_path("lambda"));
 
     for (const auto& item : array_data) {
-        std::vector<nlohmann::json> lambda_args = {item};
+        std::vector<jsom::JsonDocument> lambda_args = {item};
         auto lambda_result = evaluate_lambda(lambda_expr, lambda_args, ctx);
 
         // Resolve any tail calls from lambda evaluation
@@ -245,16 +242,16 @@ auto process_array_with_lambda(
 }
 // NOLINTEND(readability-function-size)
 
-auto evaluate_json_pointer(const nlohmann::json& root, const std::string& pointer_str,
-                           const std::string& path_context) -> nlohmann::json {
+auto evaluate_json_pointer(const jsom::JsonDocument& root, const std::string& pointer_str,
+                           const std::string& path_context) -> jsom::JsonDocument {
     if (pointer_str.empty() || pointer_str[0] != '/') {
         throw InvalidArgumentException("Requires JSON Pointer format starting with '/'",
                                        path_context);
     }
 
     try {
-        return root.at(nlohmann::json::json_pointer(pointer_str));
-    } catch (const nlohmann::json::exception& e) {
+        return root.at(pointer_str);
+    } catch (const std::exception& e) {
         throw InvalidArgumentException(
             "Invalid JSON Pointer path '" + pointer_str + "': " + e.what(), path_context);
     }

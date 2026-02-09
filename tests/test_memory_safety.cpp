@@ -11,7 +11,7 @@
 #include <unistd.h>
 #endif
 
-using json = nlohmann::json;
+using json = jsom::JsonDocument;
 
 // Memory usage monitoring utilities
 class MemoryMonitor {
@@ -95,7 +95,7 @@ protected:
 
     // Helper to create large JSON arrays
     [[nodiscard]] auto create_large_array(size_t size) -> json {
-        json array = json::array();
+        json array = json::make_array();
         for (size_t i = 0; i < size; ++i) {
             array.push_back(static_cast<int>(i));
         }
@@ -104,9 +104,9 @@ protected:
 
     // Helper to create large JSON objects
     [[nodiscard]] auto create_large_object(size_t size) -> json {
-        json obj = json::object();
+        json obj = json::make_object();
         for (size_t i = 0; i < size; ++i) {
-            obj["key" + std::to_string(i)] = static_cast<int>(i);
+            obj.set("key" + std::to_string(i), json(static_cast<int>(i)));
         }
         return obj;
     }
@@ -117,9 +117,9 @@ protected:
             return json(42);
         }
 
-        json obj = json::object();
+        json obj = json::make_object();
         for (size_t i = 0; i < breadth; ++i) {
-            obj["child" + std::to_string(i)] = create_nested_structure(depth - 1, breadth);
+            obj.set("child" + std::to_string(i), create_nested_structure(depth - 1, breadth));
         }
         return obj;
     }
@@ -132,7 +132,7 @@ TEST_F(MemorySafetyTest, LargeArrayMapOperation) {
 
     // Test map operation on large array - add 1 to each element
     // Input array format: {"array": [0, 1, 2, ...]}
-    json script = json::parse(R"(["map", ["$input"], ["lambda", ["x"], ["+", ["$", "/x"], 1]]])");
+    json script = jsom::parse_document(R"(["map", ["$input"], ["lambda", ["x"], ["+", ["$", "/x"], 1]]])");
 
     memory_monitor_.update_peak_memory();
     json result = computo::execute(script, {large_array});
@@ -155,7 +155,7 @@ TEST_F(MemorySafetyTest, LargeArrayFilterOperation) {
 
     // Filter even numbers - use == for equality comparison and correct array syntax
     // Input array format: {"array": [0, 1, 2, ...]}
-    json script = json::parse(
+    json script = jsom::parse_document(
         R"(["filter", ["$input"], ["lambda", ["x"], ["==", ["%", ["$", "/x"], 2], 0]]])");
 
     memory_monitor_.update_peak_memory();
@@ -168,7 +168,7 @@ TEST_F(MemorySafetyTest, LargeArrayFilterOperation) {
 
     // Verify all results are even
     for (const auto& item : result["array"]) {
-        EXPECT_EQ(item.get<int>() % 2, 0);
+        EXPECT_EQ(item.as<int>() % 2, 0);
     }
 }
 
@@ -180,7 +180,7 @@ TEST_F(MemorySafetyTest, BasicOperationsMemoryStress) {
 
     // Test repeated arithmetic operations that should not leak memory
     for (size_t i = 0; i < ITERATIONS; ++i) {
-        json script = json::parse(R"(["+", 1, 2, 3, 4, 5])");
+        json script = jsom::parse_document(R"(["+", 1, 2, 3, 4, 5])");
         json result = computo::execute(script, {json(nullptr)});
         EXPECT_EQ(result, 15);
 
@@ -200,16 +200,16 @@ TEST_F(MemorySafetyTest, InputProcessingMemoryTest) {
     memory_monitor_.update_peak_memory();
 
     // Test simple input access operations
-    json script1 = json::parse(R"(["$input"])");
+    json script1 = jsom::parse_document(R"(["$input"])");
     json result1 = computo::execute(script1, {large_input_array});
     EXPECT_EQ(result1, large_input_array);
 
     // Test input with path access using JSON Pointer syntax
-    json large_object = json::object();
-    large_object["data"] = large_input_array;
-    large_object["count"] = static_cast<int>(ARRAY_SIZE);
+    json large_object = json::make_object();
+    large_object.set("data", large_input_array);
+    large_object.set("count", json(static_cast<int>(ARRAY_SIZE)));
 
-    json script2 = json::parse(R"(["let", {"obj": ["$input"]}, ["$", "/obj/count"]])");
+    json script2 = jsom::parse_document(R"(["let", {"obj": ["$input"]}, ["$", "/obj/count"]])");
     json result2 = computo::execute(script2, {large_object});
     EXPECT_EQ(result2, static_cast<int>(ARRAY_SIZE));
 
@@ -228,7 +228,7 @@ TEST_F(MemorySafetyTest, MultipleInputProcessing) {
     }
 
     // Process all inputs using $inputs operator
-    json script = json::parse(R"(["$inputs"])");
+    json script = jsom::parse_document(R"(["$inputs"])");
 
     memory_monitor_.update_peak_memory();
     json result = computo::execute(script, inputs);
@@ -251,7 +251,7 @@ TEST_F(MemorySafetyTest, VariableMemoryManagement) {
 
     // Test variable creation and access with let operator
     for (size_t i = 0; i < LOOP_COUNT; ++i) {
-        json script = json::parse(R"(["let", [["x", 42], ["y", "hello"]], ["+", ["$", "/x"], 1]])");
+        json script = jsom::parse_document(R"(["let", [["x", 42], ["y", "hello"]], ["+", ["$", "/x"], 1]])");
         json result = computo::execute(script, {json(nullptr)});
         EXPECT_EQ(result, 43);
 
@@ -272,7 +272,7 @@ TEST_F(MemorySafetyTest, ExceptionHandlingCleanup) {
         EXPECT_THROW(
             {
                 // Division by zero should throw
-                json script = json::parse(R"(["/", 10, 0])");
+                json script = jsom::parse_document(R"(["/", 10, 0])");
                 computo::execute(script, {json(nullptr)});
             },
             computo::InvalidArgumentException);
@@ -280,7 +280,7 @@ TEST_F(MemorySafetyTest, ExceptionHandlingCleanup) {
         EXPECT_THROW(
             {
                 // Invalid operator should throw
-                json script = json::parse(R"(["invalid_operator", 1, 2])");
+                json script = jsom::parse_document(R"(["invalid_operator", 1, 2])");
                 computo::execute(script, {json(nullptr)});
             },
             computo::InvalidOperatorException);
@@ -288,7 +288,7 @@ TEST_F(MemorySafetyTest, ExceptionHandlingCleanup) {
         EXPECT_THROW(
             {
                 // Invalid argument to modulo should throw
-                json script = json::parse(R"(["%", 10, 0])");
+                json script = jsom::parse_document(R"(["%", 10, 0])");
                 computo::execute(script, {json(nullptr)});
             },
             computo::InvalidArgumentException);
@@ -310,7 +310,7 @@ TEST_F(MemorySafetyTest, DebugContextMemoryManagement) {
 
     // Execute multiple operations with debug tracing
     for (int i = 0; i < 50; ++i) {
-        json script = json::parse(R"(["+", 1, 2, 3])");
+        json script = jsom::parse_document(R"(["+", 1, 2, 3])");
         json result = computo::execute(script, {json(nullptr)}, &debug_ctx_);
         EXPECT_EQ(result, 6);
     }
@@ -335,7 +335,7 @@ TEST_F(MemorySafetyTest, LargeObjectOperations) {
     memory_monitor_.update_peak_memory();
 
     // Test simple object access using JSON Pointer syntax
-    json access_script = json::parse(R"(["let", {"obj": ["$input"]}, ["$", "/obj/key1"]])");
+    json access_script = jsom::parse_document(R"(["let", {"obj": ["$input"]}, ["$", "/obj/key1"]])");
     json access_result = computo::execute(access_script, {large_object});
     EXPECT_EQ(access_result, 1);
 
@@ -345,15 +345,17 @@ TEST_F(MemorySafetyTest, LargeObjectOperations) {
 // Test 10: Nested Structure Operations
 TEST_F(MemorySafetyTest, NestedStructureOperations) {
     // Create a simple nested structure
-    json nested_obj = json::object();
-    nested_obj["level1"] = json::object();
-    nested_obj["level1"]["level2"] = json::object();
-    nested_obj["level1"]["level2"]["value"] = 42;
+    json level2 = json::make_object();
+    level2.set("value", json(42));
+    json level1 = json::make_object();
+    level1.set("level2", level2);
+    json nested_obj = json::make_object();
+    nested_obj.set("level1", level1);
 
     memory_monitor_.update_peak_memory();
 
     // Test nested property access using JSON Pointer syntax
-    json script = json::parse(R"(["let", {"obj": ["$input"]}, ["$", "/obj/level1/level2/value"]])");
+    json script = jsom::parse_document(R"(["let", {"obj": ["$input"]}, ["$", "/obj/level1/level2/value"]])");
 
     json result = computo::execute(script, {nested_obj});
     EXPECT_EQ(result, 42);
@@ -370,13 +372,13 @@ TEST_F(MemorySafetyTest, MemoryStressTestMixedOperations) {
     for (size_t i = 0; i < ITERATIONS; ++i) {
         // Mix of different operation types
         json arith_result
-            = computo::execute(json::parse(R"(["+", 1, 2, 3, 4, 5])"), {json(nullptr)});
+            = computo::execute(jsom::parse_document(R"(["+", 1, 2, 3, 4, 5])"), {json(nullptr)});
         EXPECT_EQ(arith_result, 15);
 
-        json comp_result = computo::execute(json::parse(R"([">", 10, 5])"), {json(nullptr)});
+        json comp_result = computo::execute(jsom::parse_document(R"([">", 10, 5])"), {json(nullptr)});
         EXPECT_EQ(comp_result, true);
 
-        json input_result = computo::execute(json::parse(R"(["$input"])"), {static_cast<int>(i)});
+        json input_result = computo::execute(jsom::parse_document(R"(["$input"])"), {static_cast<int>(i)});
         EXPECT_EQ(input_result, static_cast<int>(i));
 
         // Update memory tracking periodically
@@ -397,7 +399,7 @@ TEST_F(MemorySafetyTest, ExecutionContextScopeMemory) {
     // Test creating and destroying execution contexts in a loop
     for (size_t i = 0; i < NUM_ITERATIONS; ++i) {
         // Create contexts with let expressions (automatic cleanup)
-        json script = json::parse(R"(["let", [["x", 42], ["y", "test"]], ["*", ["$", "/x"], 2]])");
+        json script = jsom::parse_document(R"(["let", [["x", 42], ["y", "test"]], ["*", ["$", "/x"], 2]])");
         json result = computo::execute(script, {json(nullptr)});
         EXPECT_EQ(result, 84);
 

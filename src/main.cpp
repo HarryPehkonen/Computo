@@ -11,9 +11,9 @@
 namespace computo {
 
 // Forward declarations for file utilities (implemented in repl.cpp)
-auto load_json_file(const std::string& filename, bool enable_comments) -> nlohmann::json;
+auto load_json_file(const std::string& filename, bool enable_comments) -> jsom::JsonDocument;
 auto load_input_files(const std::vector<std::string>& filenames, bool enable_comments)
-    -> std::vector<nlohmann::json>;
+    -> std::vector<jsom::JsonDocument>;
 
 // --- Script Execution Mode ---
 
@@ -27,7 +27,7 @@ auto run_script_mode(const ComputoArgs& args) -> int {
         auto result = computo::execute(script, inputs, nullptr, args.array_key);
 
         // Output result
-        std::cout << result.dump(2) << "\n";
+        std::cout << result.to_json(true) << "\n";
         return 0;
 
     } catch (const std::exception& e) {
@@ -63,11 +63,11 @@ auto main(int argc, char* argv[]) -> int {
             std::sort(operators.begin(), operators.end());
 
             // Output as JSON array
-            nlohmann::json output = nlohmann::json::array();
+            jsom::JsonDocument output = jsom::JsonDocument::make_array();
             for (const auto& operator_name : operators) {
                 output.push_back(operator_name);
             }
-            std::cout << output.dump() << "\n";
+            std::cout << output.to_json() << "\n";
             return 0;
         }
 

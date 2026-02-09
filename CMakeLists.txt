@@ -62,7 +62,13 @@ if(MEMORY_DEBUG_FLAGS)
 endif()
 
 # --- Dependencies ---
-find_package(nlohmann_json REQUIRED)
+include(FetchContent)
+FetchContent_Declare(
+    JSOM
+    GIT_REPOSITORY https://github.com/HarryPehkonen/JSOM.git
+    GIT_TAG main
+)
+FetchContent_MakeAvailable(JSOM)
 find_package(GTest REQUIRED)
 find_library(READLINE_LIB readline)
 if(READLINE_LIB)
@@ -96,7 +102,7 @@ set(COMPUTO_HEADERS
 # Core Library (libcomputo) - compiled once for all targets
 add_library(computo STATIC ${COMPUTO_LIB_SOURCES} ${COMPUTO_HEADERS})
 target_include_directories(computo PUBLIC include PRIVATE src)
-target_link_libraries(computo PUBLIC nlohmann_json::nlohmann_json)
+target_link_libraries(computo PUBLIC JSOM::jsom)
 set_target_properties(computo PROPERTIES OUTPUT_NAME "computo")
 
 # Apply memory debugging flags if enabled
@@ -222,7 +228,7 @@ list(APPEND ALL_SOURCE_FILES ${TEST_FILES})
 
 # clang-format target
 find_program(CLANG_FORMAT_EXE clang-format)
-if(CLANG_FORMAT_EXE)
+if(CLANG_FORMAT_EXE AND NOT TARGET format)
     add_custom_target(format
         COMMAND ${CLANG_FORMAT_EXE} -i ${ALL_SOURCE_FILES}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
@@ -242,9 +248,9 @@ endif()
 
 # clang-tidy target (separate from build)
 find_program(CLANG_TIDY_EXE clang-tidy)
-if(CLANG_TIDY_EXE)
+if(CLANG_TIDY_EXE AND NOT TARGET lint)
     add_custom_target(lint
-        COMMAND ${CLANG_TIDY_EXE} ${COMPUTO_LIB_SOURCES} src/main.cpp 
+        COMMAND ${CLANG_TIDY_EXE} ${COMPUTO_LIB_SOURCES} src/main.cpp
         -p ${CMAKE_BINARY_DIR}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Running clang-tidy static analysis"
@@ -256,13 +262,15 @@ else()
 endif()
 
 # Combined quality target
-add_custom_target(quality
-    COMMENT "Running all code quality checks"
-)
-if(CLANG_FORMAT_EXE)
+if(NOT TARGET quality)
+    add_custom_target(quality
+        COMMENT "Running all code quality checks"
+    )
+endif()
+if(CLANG_FORMAT_EXE AND TARGET format-check)
     add_dependencies(quality format-check)
 endif()
-if(CLANG_TIDY_EXE)
+if(CLANG_TIDY_EXE AND TARGET lint)
     add_dependencies(quality lint)
 endif()
 

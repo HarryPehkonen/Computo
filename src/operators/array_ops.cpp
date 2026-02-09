@@ -2,13 +2,13 @@
 
 namespace computo::operators {
 
-auto map_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto map_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
 
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-    auto processor = [](const nlohmann::json& item, const nlohmann::json& lambda_result,
-                        nlohmann::json& final_result) -> bool {
+    auto processor = [](const jsom::JsonDocument& item, const jsom::JsonDocument& lambda_result,
+                        jsom::JsonDocument& final_result) -> bool {
         if (!final_result.is_array()) {
-            final_result = nlohmann::json::array();
+            final_result = jsom::JsonDocument::make_array();
         }
         final_result.push_back(lambda_result);
         return true; // Continue processing all items
@@ -17,17 +17,17 @@ auto map_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluati
     auto result = process_array_with_lambda(args, ctx, "map", processor);
     // Handle empty arrays
     if (result.is_null()) {
-        result = nlohmann::json::array();
+        result = jsom::JsonDocument::make_array();
     }
-    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
+    return EvaluationResult(jsom::JsonDocument{{ctx.array_key, result}});
 }
 
-auto filter_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto filter_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-    auto processor = [](const nlohmann::json& item, const nlohmann::json& lambda_result,
-                        nlohmann::json& final_result) -> bool {
+    auto processor = [](const jsom::JsonDocument& item, const jsom::JsonDocument& lambda_result,
+                        jsom::JsonDocument& final_result) -> bool {
         if (!final_result.is_array()) {
-            final_result = nlohmann::json::array();
+            final_result = jsom::JsonDocument::make_array();
         }
         if (is_truthy(lambda_result)) {
             final_result.push_back(item);
@@ -38,13 +38,13 @@ auto filter_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
     auto result = process_array_with_lambda(args, ctx, "filter", processor);
     // Handle empty arrays
     if (result.is_null()) {
-        result = nlohmann::json::array();
+        result = jsom::JsonDocument::make_array();
     }
-    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
+    return EvaluationResult(jsom::JsonDocument{{ctx.array_key, result}});
 }
 
 // NOLINTBEGIN(readability-function-size)
-auto reduce_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto reduce_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() != 3) {
         throw InvalidArgumentException(
             "'reduce' requires exactly 3 arguments (array, lambda, initial)",
@@ -59,10 +59,10 @@ auto reduce_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
     // Evaluate the lambda expression first (handles ["lambda", ...] syntax)
     auto lambda_expr = evaluate(args[1], ctx.with_path("lambda"));
 
-    nlohmann::json accumulator = initial_value;
+    jsom::JsonDocument accumulator = initial_value;
 
     for (const auto& item : array_data) {
-        std::vector<nlohmann::json> lambda_args = {accumulator, item};
+        std::vector<jsom::JsonDocument> lambda_args = {accumulator, item};
         auto lambda_result = evaluate_lambda(lambda_expr, lambda_args, ctx);
 
         // Resolve any tail calls from lambda evaluation
@@ -78,7 +78,7 @@ auto reduce_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
 }
 // NOLINTEND(readability-function-size)
 
-auto count_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto count_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() != 1) {
         throw InvalidArgumentException("'count' requires exactly 1 argument",
                                        ctx.get_path_string());
@@ -91,10 +91,10 @@ auto count_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalua
     return EvaluationResult(static_cast<int>(array_data.size()));
 }
 
-auto find_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto find_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-    auto processor = [](const nlohmann::json& item, const nlohmann::json& lambda_result,
-                        nlohmann::json& final_result) -> bool {
+    auto processor = [](const jsom::JsonDocument& item, const jsom::JsonDocument& lambda_result,
+                        jsom::JsonDocument& final_result) -> bool {
         if (is_truthy(lambda_result)) {
             final_result = item;
             return false; // Found item, stop processing
@@ -105,15 +105,15 @@ auto find_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
     auto result = process_array_with_lambda(args, ctx, "find", processor);
     // If result is still null (not set by processor), no item was found
     if (result.is_null()) {
-        return EvaluationResult(nlohmann::json(nullptr));
+        return EvaluationResult(jsom::JsonDocument(nullptr));
     }
     return EvaluationResult(result);
 }
 
-auto some_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto some_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-    auto processor = [](const nlohmann::json& item, const nlohmann::json& lambda_result,
-                        nlohmann::json& final_result) -> bool {
+    auto processor = [](const jsom::JsonDocument& item, const jsom::JsonDocument& lambda_result,
+                        jsom::JsonDocument& final_result) -> bool {
         if (is_truthy(lambda_result)) {
             final_result = true;
             return false; // Found truthy result, stop processing
@@ -129,10 +129,10 @@ auto some_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
     return EvaluationResult(result);
 }
 
-auto every_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto every_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-    auto processor = [](const nlohmann::json& item, const nlohmann::json& lambda_result,
-                        nlohmann::json& final_result) -> bool {
+    auto processor = [](const jsom::JsonDocument& item, const jsom::JsonDocument& lambda_result,
+                        jsom::JsonDocument& final_result) -> bool {
         if (!is_truthy(lambda_result)) {
             final_result = false;
             return false; // Found falsy result, stop processing

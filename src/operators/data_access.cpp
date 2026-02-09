@@ -2,7 +2,7 @@
 
 namespace computo::operators {
 
-auto input_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto input_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.empty()) {
         return EvaluationResult(ctx.input());
     }
@@ -12,15 +12,15 @@ auto input_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalua
                                        ctx.get_path_string());
     }
 
-    auto result = evaluate_json_pointer(ctx.input(), args[0].get<std::string>(),
+    auto result = evaluate_json_pointer(ctx.input(), args[0].as<std::string>(),
                                         ctx.get_path_string() + " (in $input)");
     return EvaluationResult(result);
 }
 
-auto inputs_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto inputs_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     // No arguments - return entire inputs array
     if (args.empty()) {
-        nlohmann::json result = nlohmann::json::array();
+        jsom::JsonDocument result = jsom::JsonDocument::make_array();
         for (const auto& input : ctx.inputs()) {
             result.push_back(input);
         }
@@ -33,24 +33,24 @@ auto inputs_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
     }
 
     // Create inputs array for JSON Pointer navigation
-    nlohmann::json inputs_array = nlohmann::json::array();
+    jsom::JsonDocument inputs_array = jsom::JsonDocument::make_array();
     for (const auto& input : ctx.inputs()) {
         inputs_array.push_back(input);
     }
 
-    auto result = evaluate_json_pointer(inputs_array, args[0].get<std::string>(),
+    auto result = evaluate_json_pointer(inputs_array, args[0].as<std::string>(),
                                         ctx.get_path_string() + " (in $inputs)");
     return EvaluationResult(result);
 }
 
 // NOLINTBEGIN(readability-function-size)
-auto variable_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto variable_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() != 1 || !args[0].is_string()) {
         throw InvalidArgumentException("'$' requires exactly 1 string argument (JSON Pointer)",
                                        ctx.get_path_string());
     }
 
-    std::string json_pointer = args[0].get<std::string>();
+    std::string json_pointer = args[0].as<std::string>();
 
     // Require JSON Pointer format starting with "/"
     if (json_pointer.empty() || json_pointer[0] != '/') {
@@ -96,13 +96,13 @@ auto variable_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Eva
 // NOLINTEND(readability-function-size)
 
 // NOLINTBEGIN(readability-function-size)
-auto let_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto let_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() != 2) {
         throw InvalidArgumentException("'let' requires exactly 2 arguments (bindings and body)",
                                        ctx.get_path_string());
     }
 
-    std::map<std::string, nlohmann::json> new_variables;
+    std::map<std::string, jsom::JsonDocument> new_variables;
 
     // Support both object format {"x": 42} and array format [["x", 42]]
     if (args[0].is_object()) {
@@ -120,7 +120,7 @@ auto let_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluati
                     "a string",
                     ctx.get_path_string());
             }
-            std::string var_name = binding[0].get<std::string>();
+            std::string var_name = binding[0].as<std::string>();
             new_variables[var_name]
                 = evaluate(binding[1], ctx.with_path("binding_value_for_" + var_name));
         }

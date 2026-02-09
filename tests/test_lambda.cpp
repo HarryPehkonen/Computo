@@ -1,19 +1,19 @@
 #include <computo.hpp>
 #include <gtest/gtest.h>
 
-using json = nlohmann::json;
+using json = jsom::JsonDocument;
 
 class LambdaTest : public ::testing::Test {
 protected:
     void SetUp() override { input_data = json{{"test", "value"}}; }
 
     auto execute_script(const std::string& script_json) -> json {
-        auto script = json::parse(script_json);
+        auto script = jsom::parse_document(script_json);
         return computo::execute(script, {input_data});
     }
 
     static auto execute_script(const std::string& script_json, const json& input) -> json {
-        auto script = json::parse(script_json);
+        auto script = jsom::parse_document(script_json);
         return computo::execute(script, {input});
     }
 
@@ -27,23 +27,23 @@ TEST_F(LambdaTest, LambdaOperatorBasic) {
     // Lambda should return an array with [params, body]
     EXPECT_TRUE(result.is_array());
     EXPECT_EQ(result.size(), 2);
-    EXPECT_EQ(result[0], json::array({"x"}));
-    EXPECT_EQ(result[1], json::parse(R"(["+", ["$", "/x"], 1])"));
+    EXPECT_EQ(result[0], json(std::vector<json>{"x"}));
+    EXPECT_EQ(result[1], jsom::parse_document(R"(["+", ["$", "/x"], 1])"));
 }
 
 TEST_F(LambdaTest, LambdaOperatorMultipleParams) {
     auto result = execute_script(R"(["lambda", ["a", "b"], ["*", ["$", "/a"], ["$", "/b"]]])");
     EXPECT_TRUE(result.is_array());
     EXPECT_EQ(result.size(), 2);
-    EXPECT_EQ(result[0], json::array({"a", "b"}));
-    EXPECT_EQ(result[1], json::parse(R"(["*", ["$", "/a"], ["$", "/b"]])"));
+    EXPECT_EQ(result[0], json(std::vector<json>{"a", "b"}));
+    EXPECT_EQ(result[1], jsom::parse_document(R"(["*", ["$", "/a"], ["$", "/b"]])"));
 }
 
 TEST_F(LambdaTest, LambdaOperatorEmptyParams) {
     auto result = execute_script(R"(["lambda", [], 42])");
     EXPECT_TRUE(result.is_array());
     EXPECT_EQ(result.size(), 2);
-    EXPECT_EQ(result[0], json::array());
+    EXPECT_EQ(result[0], json::make_array());
     EXPECT_EQ(result[1], json(42));
 }
 
@@ -78,8 +78,8 @@ TEST_F(LambdaTest, LambdaStorageInVariable) {
     // Should return the stored lambda
     EXPECT_TRUE(result.is_array());
     EXPECT_EQ(result.size(), 2);
-    EXPECT_EQ(result[0], json::array({"x"}));
-    EXPECT_EQ(result[1], json::parse(R"(["*", ["$", "/x"], 2])"));
+    EXPECT_EQ(result[0], json(std::vector<json>{"x"}));
+    EXPECT_EQ(result[1], jsom::parse_document(R"(["*", ["$", "/x"], 2])"));
 }
 
 TEST_F(LambdaTest, LambdaUsageFromVariable) {
@@ -88,7 +88,7 @@ TEST_F(LambdaTest, LambdaUsageFromVariable) {
         ["map", {"array": [1, 2, 3]}, ["$", "/doubler"]]
     ])");
 
-    auto expected = json::parse(R"({"array": [2, 4, 6]})");
+    auto expected = jsom::parse_document(R"({"array": [2, 4, 6]})");
     EXPECT_EQ(result, expected);
 }
 
@@ -106,7 +106,7 @@ TEST_F(LambdaTest, MultipleLambdaVariables) {
     ])");
 
     // First map: [1,2,3] + 1 = [2,3,4], then * 2 = [4,6,8]
-    auto expected = json::parse(R"({"array": [4, 6, 8]})");
+    auto expected = jsom::parse_document(R"({"array": [4, 6, 8]})");
     EXPECT_EQ(result, expected);
 }
 
@@ -152,7 +152,7 @@ TEST_F(LambdaTest, LambdaComposition) {
     // Should return the compose lambda function
     EXPECT_TRUE(result.is_array());
     EXPECT_EQ(result.size(), 2);
-    EXPECT_EQ(result[0], json::array({"f", "g", "x"}));
+    EXPECT_EQ(result[0], json(std::vector<json>{"f", "g", "x"}));
 }
 
 // --- Complex Integration Tests ---
@@ -171,12 +171,12 @@ TEST_F(LambdaTest, LambdaInComplexPipeline) {
     ])");
 
     // Filter evens: [2,4,6], then square: [4,16,36]
-    auto expected = json::parse(R"({"array": [4, 16, 36]})");
+    auto expected = jsom::parse_document(R"({"array": [4, 16, 36]})");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(LambdaTest, LambdaWithDeepNesting) {
-    auto input = json::parse(R"({
+    auto input = jsom::parse_document(R"({
         "users": [
             {"name": "Alice", "scores": [85, 92, 78]},
             {"name": "Bob", "scores": [90, 88, 94]}

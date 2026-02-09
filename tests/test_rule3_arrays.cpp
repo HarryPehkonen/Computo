@@ -1,17 +1,17 @@
 #include <computo.hpp>
 #include <gtest/gtest.h>
 
-using json = nlohmann::json;
+using json = jsom::JsonDocument;
 
 class Rule3ArrayTest : public ::testing::Test {
 protected:
     auto execute_script(const std::string& script_json) -> json {
-        auto script = json::parse(script_json);
+        auto script = jsom::parse_document(script_json);
         return computo::execute(script);
     }
 
     auto execute_script_with_input(const std::string& script_json, const json& input) -> json {
-        auto script = json::parse(script_json);
+        auto script = jsom::parse_document(script_json);
         return computo::execute(script, {input});
     }
 };
@@ -24,7 +24,7 @@ TEST_F(Rule3ArrayTest, NumericFirstElement) {
     // Currently this fails but should work according to the spec
     EXPECT_NO_THROW({
         auto result = execute_script("[1, 2, 3]");
-        EXPECT_EQ(result, json({1, 2, 3}));
+        EXPECT_EQ(result, json(std::vector<json>{1, 2, 3}));
     });
 }
 
@@ -32,7 +32,7 @@ TEST_F(Rule3ArrayTest, BooleanFirstElement) {
     // Test: [true, false, "test"] should work as literal array (Rule 3)
     EXPECT_NO_THROW({
         auto result = execute_script("[true, false, \"test\"]");
-        EXPECT_EQ(result, json({true, false, "test"}));
+        EXPECT_EQ(result, json(std::vector<json>{true, false, "test"}));
     });
 }
 
@@ -40,7 +40,7 @@ TEST_F(Rule3ArrayTest, NullFirstElement) {
     // Test: [null, 42] should work as literal array (Rule 3)
     EXPECT_NO_THROW({
         auto result = execute_script("[null, 42]");
-        EXPECT_EQ(result, json({nullptr, 42}));
+        EXPECT_EQ(result, json(std::vector<json>{nullptr, 42}));
     });
 }
 
@@ -48,7 +48,7 @@ TEST_F(Rule3ArrayTest, ArrayFirstElement) {
     // Test: [[], "hello"] should work as literal array (Rule 3)
     EXPECT_NO_THROW({
         auto result = execute_script("[[], \"hello\"]");
-        EXPECT_EQ(result, json({json::array(), "hello"}));
+        EXPECT_EQ(result, json(std::vector<json>{json::make_array(), "hello"}));
     });
 }
 
@@ -56,7 +56,7 @@ TEST_F(Rule3ArrayTest, ObjectFirstElement) {
     // Test: [{"key": "value"}, 123] should work as literal array (Rule 3)
     EXPECT_NO_THROW({
         auto result = execute_script("[{\"key\": \"value\"}, 123]");
-        EXPECT_EQ(result, json({json::object({{"key", "value"}}), 123}));
+        EXPECT_EQ(result, json(std::vector<json>{json{{"key", "value"}}, 123}));
     });
 }
 
@@ -77,7 +77,7 @@ TEST_F(Rule3ArrayTest, UnknownOperatorStillFails) {
 TEST_F(Rule3ArrayTest, ArrayObjectsStillWork) {
     // Test: {"array": [1, 2, 3]} should still work (Rule 4)
     auto result = execute_script("{\"array\": [1, 2, 3]}");
-    EXPECT_EQ(result, json({1, 2, 3}));
+    EXPECT_EQ(result, json(std::vector<json>{1, 2, 3}));
 }
 
 // Test mixed scenarios with Rule 3 arrays in operations
@@ -87,9 +87,9 @@ TEST_F(Rule3ArrayTest, Rule3ArraysInOperations) {
     EXPECT_NO_THROW({
         auto result = execute_script_with_input(
             "[\"map\", [\"$input\"], [\"lambda\", [\"x\"], [\"*\", [\"$\", \"/x\"], 2]]]",
-            json({1, 2, 3}));
+            json(std::vector<json>{1, 2, 3}));
         // Result should be in array object format when processing arrays
-        auto expected = json::parse(R"({"array":[2,4,6]})");
+        auto expected = jsom::parse_document(R"({"array":[2,4,6]})");
         EXPECT_EQ(result, expected);
     });
 }
@@ -100,7 +100,7 @@ TEST_F(Rule3ArrayTest, Rule3ArraysWithFunctionalOps) {
     EXPECT_NO_THROW({
         auto result = execute_script("[\"cons\", 42, [1, 2, 3, 4, 5]]");
         // Result should be in array object format when processing arrays
-        auto expected = json::parse(R"({"array":[42,1,2,3,4,5]})");
+        auto expected = jsom::parse_document(R"({"array":[42,1,2,3,4,5]})");
         EXPECT_EQ(result, expected);
     });
 
@@ -108,7 +108,7 @@ TEST_F(Rule3ArrayTest, Rule3ArraysWithFunctionalOps) {
     EXPECT_NO_THROW({
         auto result = execute_script("[\"append\", [1, 2, 3], [4, 5, 6]]");
         // Result should be in array object format when processing arrays
-        auto expected = json::parse(R"({"array":[1,2,3,4,5,6]})");
+        auto expected = jsom::parse_document(R"({"array":[1,2,3,4,5,6]})");
         EXPECT_EQ(result, expected);
     });
 }
@@ -117,13 +117,13 @@ TEST_F(Rule3ArrayTest, Rule3ArraysWithFunctionalOps) {
 TEST_F(Rule3ArrayTest, EmptyArrayRule3) {
     // Test: [] should work as empty literal array
     auto result = execute_script("[]");
-    EXPECT_EQ(result, json::array());
+    EXPECT_EQ(result, json::make_array());
 }
 
 TEST_F(Rule3ArrayTest, SingleElementRule3) {
     // Test: [42] should work as single-element literal array
     auto result = execute_script("[42]");
-    EXPECT_EQ(result, json({42}));
+    EXPECT_EQ(result, json(std::vector<json>{42}));
 }
 
 // Test nested scenarios
@@ -131,6 +131,6 @@ TEST_F(Rule3ArrayTest, NestedRule3Arrays) {
     // Test nested Rule 3 arrays: [[1, 2], [3, 4]]
     EXPECT_NO_THROW({
         auto result = execute_script("[[1, 2], [3, 4]]");
-        EXPECT_EQ(result, json({{1, 2}, {3, 4}}));
+        EXPECT_EQ(result, json(std::vector<json>{json(std::vector<json>{1, 2}), json(std::vector<json>{3, 4})}));
     });
 }

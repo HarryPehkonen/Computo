@@ -13,13 +13,13 @@ namespace computo {
  * - false, null, 0, "", empty arrays/objects are falsy
  * - Everything else is truthy
  */
-auto is_truthy(const nlohmann::json& value) -> bool;
+auto is_truthy(const jsom::JsonDocument& value) -> bool;
 
 /**
  * Validate that all arguments are numeric (int or double)
  * Throws InvalidArgumentException if any argument is not numeric
  */
-auto validate_numeric_args(const nlohmann::json& args, const std::string& op_name, const std::string& path) -> void;
+auto validate_numeric_args(const jsom::JsonDocument& args, const std::string& op_name, const std::string& path) -> void;
 
 /**
  * Evaluate a lambda expression (array starting with arguments list)
@@ -32,20 +32,20 @@ auto validate_numeric_args(const nlohmann::json& args, const std::string& op_nam
  * @param ctx The execution context
  * @return The result of evaluating the lambda body
  */
-auto evaluate_lambda(const nlohmann::json& lambda_expr, 
-                     const std::vector<nlohmann::json>& lambda_args,
+auto evaluate_lambda(const jsom::JsonDocument& lambda_expr, 
+                     const std::vector<jsom::JsonDocument>& lambda_args,
                      ExecutionContext& ctx) -> EvaluationResult;
 
 /**
  * Convert a JSON value to a numeric double
  * Throws InvalidArgumentException if the value is not numeric
  */
-auto to_numeric(const nlohmann::json& value, const std::string& op_name, const std::string& path) -> double;
+auto to_numeric(const jsom::JsonDocument& value, const std::string& op_name, const std::string& path) -> double;
 
 /**
  * Get the type name of a JSON value for error messages
  */
-auto get_type_name(const nlohmann::json& value) -> std::string;
+auto get_type_name(const jsom::JsonDocument& value) -> std::string;
 
 /**
  * Extract array data from either {"array": [...]} format or direct array format
@@ -57,10 +57,10 @@ auto get_type_name(const nlohmann::json& value) -> std::string;
  * @param array_key The custom array wrapper key (defaults to "array")
  * @return The actual array data
  */
-auto extract_array_data(const nlohmann::json& array_input, 
+auto extract_array_data(const jsom::JsonDocument& array_input, 
                         const std::string& op_name, 
                         const std::string& path,
-                        const std::string& array_key = "array") -> nlohmann::json;
+                        const std::string& array_key = "array") -> jsom::JsonDocument;
 
 /**
  * Calculate Levenshtein distance between two strings
@@ -95,8 +95,8 @@ auto suggest_similar_names(const std::string& target,
  * @param processor A callback that processes each (item, lambda_result) pair and can modify final_result
  * @return The processor's populated result
  */
-auto process_array_with_lambda(const nlohmann::json& args, ExecutionContext& ctx, const std::string& op_name,
-                               const std::function<bool(const nlohmann::json& item, const nlohmann::json& lambda_result, nlohmann::json& final_result)>& processor) -> nlohmann::json;
+auto process_array_with_lambda(const jsom::JsonDocument& args, ExecutionContext& ctx, const std::string& op_name,
+                               const std::function<bool(const jsom::JsonDocument& item, const jsom::JsonDocument& lambda_result, jsom::JsonDocument& final_result)>& processor) -> jsom::JsonDocument;
 
 /**
  * Evaluate a JSON Pointer path against a JSON object
@@ -108,7 +108,7 @@ auto process_array_with_lambda(const nlohmann::json& args, ExecutionContext& ctx
  * @return The value at the pointer location
  * @throws InvalidArgumentException if pointer is invalid or path not found
  */
-auto evaluate_json_pointer(const nlohmann::json& root, const std::string& pointer_str, const std::string& path_context) -> nlohmann::json;
+auto evaluate_json_pointer(const jsom::JsonDocument& root, const std::string& pointer_str, const std::string& path_context) -> jsom::JsonDocument;
 
 /**
  * Parse a variable path like "/varname/sub/path" into variable name and sub-path

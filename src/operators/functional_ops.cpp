@@ -2,7 +2,7 @@
 
 namespace computo::operators {
 
-auto car_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto car_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() != 1) {
         throw InvalidArgumentException("'car' requires exactly 1 argument", ctx.get_path_string());
     }
@@ -18,7 +18,7 @@ auto car_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluati
     return EvaluationResult(array_data[0]);
 }
 
-auto cdr_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto cdr_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() != 1) {
         throw InvalidArgumentException("'cdr' requires exactly 1 argument", ctx.get_path_string());
     }
@@ -31,17 +31,17 @@ auto cdr_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluati
                                        ctx.get_path_string());
     }
 
-    nlohmann::json result = nlohmann::json::array();
+    jsom::JsonDocument result = jsom::JsonDocument::make_array();
 
     // Add all elements except the first
     for (size_t i = 1; i < array_data.size(); ++i) {
         result.push_back(array_data[i]);
     }
 
-    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
+    return EvaluationResult(jsom::JsonDocument{{ctx.array_key, result}});
 }
 
-auto cons_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto cons_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() != 2) {
         throw InvalidArgumentException("'cons' requires exactly 2 arguments (item, array)",
                                        ctx.get_path_string());
@@ -51,7 +51,7 @@ auto cons_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
     auto array_input = evaluate(args[1], ctx);
     auto array_data = extract_array_data(array_input, "cons", ctx.get_path_string(), ctx.array_key);
 
-    nlohmann::json result = nlohmann::json::array();
+    jsom::JsonDocument result = jsom::JsonDocument::make_array();
 
     // Add the item first
     result.push_back(item);
@@ -61,16 +61,16 @@ auto cons_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
         result.push_back(element);
     }
 
-    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
+    return EvaluationResult(jsom::JsonDocument{{ctx.array_key, result}});
 }
 
-auto append_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto append_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.empty()) {
         throw InvalidArgumentException("'append' requires at least 1 argument",
                                        ctx.get_path_string());
     }
 
-    nlohmann::json result = nlohmann::json::array();
+    jsom::JsonDocument result = jsom::JsonDocument::make_array();
 
     for (const auto& arg_expr : args) {
         auto array_input = evaluate(arg_expr, ctx);
@@ -83,7 +83,7 @@ auto append_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
         }
     }
 
-    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
+    return EvaluationResult(jsom::JsonDocument{{ctx.array_key, result}});
 }
 
 } // namespace computo::operators

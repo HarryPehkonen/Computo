@@ -2,7 +2,7 @@
 
 namespace computo::operators {
 
-auto greater_than(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto greater_than(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() < 2) {
         throw InvalidArgumentException("'>' requires at least 2 arguments", ctx.get_path_string());
     }
@@ -13,14 +13,14 @@ auto greater_than(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluati
         if (!lhs.is_number() || !rhs.is_number()) {
             throw InvalidArgumentException("'>' requires numeric arguments", ctx.get_path_string());
         }
-        if (!(lhs.get<double>() > rhs.get<double>())) {
+        if (!(lhs.as<double>() > rhs.as<double>())) {
             return EvaluationResult(false);
         }
     }
     return EvaluationResult(true);
 }
 
-auto less_than(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto less_than(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() < 2) {
         throw InvalidArgumentException("'<' requires at least 2 arguments", ctx.get_path_string());
     }
@@ -31,14 +31,14 @@ auto less_than(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationR
         if (!lhs.is_number() || !rhs.is_number()) {
             throw InvalidArgumentException("'<' requires numeric arguments", ctx.get_path_string());
         }
-        if (!(lhs.get<double>() < rhs.get<double>())) {
+        if (!(lhs.as<double>() < rhs.as<double>())) {
             return EvaluationResult(false);
         }
     }
     return EvaluationResult(true);
 }
 
-auto greater_equal(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto greater_equal(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() < 2) {
         throw InvalidArgumentException("'>=' requires at least 2 arguments", ctx.get_path_string());
     }
@@ -50,14 +50,14 @@ auto greater_equal(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
             throw InvalidArgumentException("'>=' requires numeric arguments",
                                            ctx.get_path_string());
         }
-        if (!(lhs.get<double>() >= rhs.get<double>())) {
+        if (!(lhs.as<double>() >= rhs.as<double>())) {
             return EvaluationResult(false);
         }
     }
     return EvaluationResult(true);
 }
 
-auto less_equal(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto less_equal(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() < 2) {
         throw InvalidArgumentException("'<=' requires at least 2 arguments", ctx.get_path_string());
     }
@@ -69,14 +69,14 @@ auto less_equal(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluation
             throw InvalidArgumentException("'<=' requires numeric arguments",
                                            ctx.get_path_string());
         }
-        if (!(lhs.get<double>() <= rhs.get<double>())) {
+        if (!(lhs.as<double>() <= rhs.as<double>())) {
             return EvaluationResult(false);
         }
     }
     return EvaluationResult(true);
 }
 
-auto equal(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto equal(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() < 2) {
         throw InvalidArgumentException("'==' requires at least 2 arguments", ctx.get_path_string());
     }
@@ -91,7 +91,7 @@ auto equal(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResul
     return EvaluationResult(true);
 }
 
-auto not_equal(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto not_equal(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() != 2) {
         throw InvalidArgumentException("'!=' requires exactly 2 arguments", ctx.get_path_string());
     }

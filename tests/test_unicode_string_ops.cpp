@@ -2,7 +2,7 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
-using json = nlohmann::json;
+using json = jsom::JsonDocument;
 
 // Unicode Compatibility Tests
 //
@@ -16,23 +16,23 @@ protected:
     void SetUp() override { input_data = json{{"test", "value"}}; }
 
     auto execute_script(const std::string& script_json) -> json {
-        auto script = json::parse(script_json);
+        auto script = jsom::parse_document(script_json);
         return computo::execute(script, {input_data});
     }
 
     static auto execute_script(const std::string& script_json, const json& input) -> json {
-        auto script = json::parse(script_json);
+        auto script = jsom::parse_document(script_json);
         return computo::execute(script, {input});
     }
 
     // Helper to print results for debugging
     void debug_result(const std::string& test_name, const json& result) {
         std::cout << "=== " << test_name << " ===" << std::endl;
-        std::cout << "Result: " << result.dump() << std::endl;
+        std::cout << "Result: " << result.to_json() << std::endl;
         if (result.is_object() && result.contains("array")) {
             std::cout << "Array contents: ";
             for (const auto& item : result["array"]) {
-                std::cout << "\"" << item.get<std::string>() << "\" ";
+                std::cout << "\"" << item.as<std::string>() << "\" ";
             }
             std::cout << std::endl;
         }
@@ -108,7 +108,7 @@ TEST_F(UnicodeCompatibilityTest, StrConcatCJK) {
 // Tests that 'sort' operator handles Unicode strings (lexicographic byte ordering)
 
 TEST_F(UnicodeCompatibilityTest, SortUnicodeStrings) {
-    json unicode_array = {{"array", {"café", "naïve", "résumé", "apple", "zebra"}}};
+    json unicode_array = json{{"array", json(std::vector<json>{"café", "naïve", "résumé", "apple", "zebra"})}};
     auto result = execute_script(R"(["sort", ["$input"]])", unicode_array);
     debug_result("SortUnicodeStrings", result);
 
@@ -121,7 +121,7 @@ TEST_F(UnicodeCompatibilityTest, SortUnicodeStrings) {
 }
 
 TEST_F(UnicodeCompatibilityTest, SortEmoji) {
-    json emoji_array = {{"array", {"🌟", "🚀", "⭐", "🏆"}}};
+    json emoji_array = json{{"array", json(std::vector<json>{"🌟", "🚀", "⭐", "🏆"})}};
     auto result = execute_script(R"(["sort", ["$input"]])", emoji_array);
     debug_result("SortEmoji", result);
 
@@ -131,7 +131,7 @@ TEST_F(UnicodeCompatibilityTest, SortEmoji) {
 }
 
 TEST_F(UnicodeCompatibilityTest, SortMixedScripts) {
-    json mixed_array = {{"array", {"Hello", "世界", "café", "Мир", "🌍"}}};
+    json mixed_array = json{{"array", json(std::vector<json>{"Hello", "世界", "café", "Мир", "🌍"})}};
     auto result = execute_script(R"(["sort", ["$input"]])", mixed_array);
     debug_result("SortMixedScripts", result);
 

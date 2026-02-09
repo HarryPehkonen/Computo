@@ -10,7 +10,7 @@
 #include <vector>
 // Note: Using C++17 compatible synchronization (no std::barrier/std::latch)
 
-using json = nlohmann::json;
+using json = jsom::JsonDocument;
 using namespace std::chrono_literals;
 
 // Thread safety test utilities
@@ -179,14 +179,14 @@ protected:
     // Helper to create test data
     auto create_test_input(int value) -> json {
         return json{{"value", value},
-                    {"data", json::array({1, 2, 3, value})},
+                    {"data", json(std::vector<json>{1, 2, 3, value})},
                     {"nested", json{{"inner", value * 2}}}};
     }
 
     // Helper to create complex computation script
     auto create_computation_script() -> json {
         // Use a script that doesn't need variable references - just compute directly
-        return json::parse(R"(["*", ["$input"], 3])");
+        return jsom::parse_document(R"(["*", ["$input"], 3])");
     }
 
     // Helper to run concurrent test with different thread counts
@@ -271,7 +271,7 @@ TEST_F(ThreadSafetyTest, SameScriptMultipleThreadsStress) {
         thread_safety_utils::ThreadBarrier barrier(thread_count);
         std::atomic<int> iteration_counter{0};
 
-        json script = json::parse(R"(["+", 1, 2, 3, 4, 5])");
+        json script = jsom::parse_document(R"(["+", 1, 2, 3, 4, 5])");
         json expected_result = 15;
 
         std::vector<std::thread> threads;
@@ -320,7 +320,7 @@ TEST_F(ThreadSafetyTest, ExecutionContextThreadLocalSafety) {
         thread_safety_utils::ThreadBarrier barrier(thread_count);
 
         // Each thread will have its own unique computation - simplified
-        json script = json::parse(R"([
+        json script = jsom::parse_document(R"([
             "*", 
             ["+", ["$input"], ["$input"]], 
             100
@@ -345,7 +345,7 @@ TEST_F(ThreadSafetyTest, ExecutionContextThreadLocalSafety) {
                         collector.add_result(result);
                     } else {
                         throw std::runtime_error("Variable isolation failed: expected "
-                                                 + expected.dump() + ", got " + result.dump());
+                                                 + expected.to_json() + ", got " + result.to_json());
                     }
                 } catch (...) {
                     collector.add_exception(std::current_exception());
@@ -383,7 +383,7 @@ TEST_F(ThreadSafetyTest, DebugContextThreadSafety) {
         thread_safety_utils::ThreadSafeResultCollector<size_t> collector;
         thread_safety_utils::ThreadBarrier barrier(thread_count);
 
-        json script = json::parse(R"(["+", 1, 2, 3])");
+        json script = jsom::parse_document(R"(["+", 1, 2, 3])");
 
         std::vector<std::thread> threads;
         threads.reserve(thread_count);
@@ -440,29 +440,29 @@ TEST_F(ThreadSafetyTest, AllOperatorThreadSafety) {
 
         std::vector<OperatorTest> operator_tests = {
             // Arithmetic
-            {"addition", json::parse(R"(["+", 10, 20])"), json(nullptr), json(30)},
-            {"subtraction", json::parse(R"(["-", 20, 5])"), json(nullptr), json(15)},
-            {"multiplication", json::parse(R"(["*", 6, 7])"), json(nullptr), json(42)},
-            {"division", json::parse(R"(["/", 20, 4])"), json(nullptr), json(5)},
+            {"addition", jsom::parse_document(R"(["+", 10, 20])"), json(nullptr), json(30)},
+            {"subtraction", jsom::parse_document(R"(["-", 20, 5])"), json(nullptr), json(15)},
+            {"multiplication", jsom::parse_document(R"(["*", 6, 7])"), json(nullptr), json(42)},
+            {"division", jsom::parse_document(R"(["/", 20, 4])"), json(nullptr), json(5)},
 
             // Comparison
-            {"greater_than", json::parse(R"([">", 10, 5])"), json(nullptr), json(true)},
-            {"less_than", json::parse(R"(["<", 5, 10])"), json(nullptr), json(true)},
-            {"equal", json::parse(R"(["==", 5, 5])"), json(nullptr), json(true)},
+            {"greater_than", jsom::parse_document(R"([">", 10, 5])"), json(nullptr), json(true)},
+            {"less_than", jsom::parse_document(R"(["<", 5, 10])"), json(nullptr), json(true)},
+            {"equal", jsom::parse_document(R"(["==", 5, 5])"), json(nullptr), json(true)},
 
             // Logical
-            {"logical_and", json::parse(R"(["and", true, true])"), json(nullptr), json(true)},
-            {"logical_or", json::parse(R"(["or", false, true])"), json(nullptr), json(true)},
-            {"logical_not", json::parse(R"(["not", false])"), json(nullptr), json(true)},
+            {"logical_and", jsom::parse_document(R"(["and", true, true])"), json(nullptr), json(true)},
+            {"logical_or", jsom::parse_document(R"(["or", false, true])"), json(nullptr), json(true)},
+            {"logical_not", jsom::parse_document(R"(["not", false])"), json(nullptr), json(true)},
 
             // Data Access
-            {"input_access", json::parse(R"(["$input"])"), json(42), json(42)},
-            {"variable", json::parse(R"(["let", [["x", 100]], ["$", "/x"]])"), json(nullptr),
+            {"input_access", jsom::parse_document(R"(["$input"])"), json(42), json(42)},
+            {"variable", jsom::parse_document(R"(["let", [["x", 100]], ["$", "/x"]])"), json(nullptr),
              json(100)},
 
             // Control Flow
-            {"if_true", json::parse(R"(["if", true, "yes", "no"])"), json(nullptr), json("yes")},
-            {"if_false", json::parse(R"(["if", false, "yes", "no"])"), json(nullptr), json("no")},
+            {"if_true", jsom::parse_document(R"(["if", true, "yes", "no"])"), json(nullptr), json("yes")},
+            {"if_false", jsom::parse_document(R"(["if", false, "yes", "no"])"), json(nullptr), json("no")},
         };
 
         thread_safety_utils::ThreadSafeResultCollector<std::pair<std::string, bool>> collector;
@@ -484,8 +484,8 @@ TEST_F(ThreadSafetyTest, AllOperatorThreadSafety) {
 
                         if (!success) {
                             throw std::runtime_error("Operator " + test.name + " failed: expected "
-                                                     + test.expected.dump() + ", got "
-                                                     + result.dump());
+                                                     + test.expected.to_json() + ", got "
+                                                     + result.to_json());
                         }
                     }
                 } catch (...) {
@@ -519,7 +519,7 @@ TEST_F(ThreadSafetyTest, MemoryAllocationSafety) {
         thread_safety_utils::ThreadBarrier barrier(thread_count);
 
         // Script that creates and manipulates large data structures
-        json script = json::parse(R"([
+        json script = jsom::parse_document(R"([
             "let",
             [
                 ["large_array", {"array": ["$input"]}],
@@ -537,7 +537,7 @@ TEST_F(ThreadSafetyTest, MemoryAllocationSafety) {
                     barrier.wait();
 
                     // Create large input arrays
-                    json large_input = json::array();
+                    json large_input = json::make_array();
                     for (int j = 0; j < 1000; ++j) {
                         large_input.push_back(static_cast<int>(i * 1000 + j));
                     }
@@ -574,7 +574,7 @@ TEST_F(ThreadSafetyTest, VariableScopeIsolation) {
         thread_safety_utils::ThreadBarrier barrier(thread_count);
 
         // Script with simple nested computation - no complex variable references
-        json script = json::parse(R"([
+        json script = jsom::parse_document(R"([
             "+", 
             ["*", ["$input"], 10], 
             5
@@ -633,9 +633,9 @@ TEST_F(ThreadSafetyTest, HighConcurrencyStressTest) {
 
     // Mix of different operation types
     std::vector<json> scripts = {
-        json::parse(R"(["+", 1, 2, 3])"),      json::parse(R"(["*", 4, 5])"),
-        json::parse(R"([">", 10, 5])"),        json::parse(R"(["and", true, false])"),
-        json::parse(R"(["if", true, 42, 0])"), json::parse(R"(["let", [["x", 100]], ["$", "/x"]])"),
+        jsom::parse_document(R"(["+", 1, 2, 3])"),      jsom::parse_document(R"(["*", 4, 5])"),
+        jsom::parse_document(R"([">", 10, 5])"),        jsom::parse_document(R"(["and", true, false])"),
+        jsom::parse_document(R"(["if", true, 42, 0])"), jsom::parse_document(R"(["let", [["x", 100]], ["$", "/x"]])"),
     };
 
     std::vector<json> expected_results = {6, 20, true, false, 42, 100};
@@ -716,10 +716,10 @@ TEST_F(ThreadSafetyTest, ExceptionHandlingThreadSafety) {
 
         // Scripts that should throw exceptions
         std::vector<json> error_scripts = {
-            json::parse(R"(["/", 10, 0])"),         // Division by zero
-            json::parse(R"(["invalid_op", 1, 2])"), // Invalid operator
-            json::parse(R"(["%", 10, 0])"),         // Modulo by zero
-            json::parse(R"([])"),                   // Empty array
+            jsom::parse_document(R"(["/", 10, 0])"),         // Division by zero
+            jsom::parse_document(R"(["invalid_op", 1, 2])"), // Invalid operator
+            jsom::parse_document(R"(["%", 10, 0])"),         // Modulo by zero
+            jsom::parse_document(R"([])"),                   // Empty array
         };
 
         std::vector<std::thread> threads;
@@ -848,7 +848,7 @@ TEST_F(ThreadSafetyTest, PerformanceUnderThreadLoad) {
     };
 
     std::vector<PerformanceResult> results;
-    json test_script = json::parse(R"(["+", ["*", 2, 3], ["/", 20, 4]])");
+    json test_script = jsom::parse_document(R"(["+", ["*", 2, 3], ["/", 20, 4]])");
     constexpr size_t PERF_ITERATIONS = 1000;
 
     for (size_t thread_count : {1, 2, 4, 8, 16, 32}) {

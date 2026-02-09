@@ -5,7 +5,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
-#include <nlohmann/json.hpp>
+#include <jsom/jsom.hpp>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -69,11 +69,11 @@ enum class DebugAction : std::uint8_t {
 struct DebugStep {
     std::string operation;                           // Current operator/expression
     std::string location;                            // Current execution path
-    std::map<std::string, nlohmann::json> variables; // Current scope variables
-    nlohmann::json expression;                       // Current expression being evaluated
+    std::map<std::string, jsom::JsonDocument> variables; // Current scope variables
+    jsom::JsonDocument expression;                       // Current expression being evaluated
 
     DebugStep(std::string operation_name, std::string location_name,
-              std::map<std::string, nlohmann::json> vars, nlohmann::json expr)
+              std::map<std::string, jsom::JsonDocument> vars, jsom::JsonDocument expr)
         : operation(std::move(operation_name)), location(std::move(location_name)),
           variables(std::move(vars)), expression(std::move(expr)) {}
 };
@@ -110,8 +110,8 @@ public:
 
     // Execution tracking
     void record_step(const std::string& operation, const std::string& location,
-                     const std::map<std::string, nlohmann::json>& variables,
-                     const nlohmann::json& expression);
+                     const std::map<std::string, jsom::JsonDocument>& variables,
+                     const jsom::JsonDocument& expression);
     [[nodiscard]] auto get_execution_trace() const -> const std::vector<DebugStep>&;
     [[nodiscard]] auto get_current_location() const -> std::string;
 
@@ -128,28 +128,28 @@ public:
 
 class ExecutionContext {
 private:
-    std::shared_ptr<const nlohmann::json> input_ptr_;
-    std::shared_ptr<const std::vector<nlohmann::json>> inputs_ptr_;
-    static const nlohmann::json null_input_;
+    std::shared_ptr<const jsom::JsonDocument> input_ptr_;
+    std::shared_ptr<const std::vector<jsom::JsonDocument>> inputs_ptr_;
+    static const jsom::JsonDocument null_input_;
 
 public:
-    std::map<std::string, nlohmann::json> variables;
+    std::map<std::string, jsom::JsonDocument> variables;
     std::vector<std::string> path;
     std::string array_key; // Custom array wrapper key
 
     // Single input constructor
-    explicit ExecutionContext(const nlohmann::json& input, std::string array_key = "array");
+    explicit ExecutionContext(const jsom::JsonDocument& input, std::string array_key = "array");
 
     // Multiple inputs constructor
-    explicit ExecutionContext(const std::vector<nlohmann::json>& inputs,
+    explicit ExecutionContext(const std::vector<jsom::JsonDocument>& inputs,
                               std::string array_key = "array");
 
     // Accessors
-    [[nodiscard]] auto input() const -> const nlohmann::json& { return *input_ptr_; }
-    [[nodiscard]] auto inputs() const -> const std::vector<nlohmann::json>& { return *inputs_ptr_; }
+    [[nodiscard]] auto input() const -> const jsom::JsonDocument& { return *input_ptr_; }
+    [[nodiscard]] auto inputs() const -> const std::vector<jsom::JsonDocument>& { return *inputs_ptr_; }
 
     // Thread-safe context creation for scoping
-    [[nodiscard]] auto with_variables(const std::map<std::string, nlohmann::json>& vars) const
+    [[nodiscard]] auto with_variables(const std::map<std::string, jsom::JsonDocument>& vars) const
         -> ExecutionContext;
     [[nodiscard]] auto with_path(const std::string& segment) const -> ExecutionContext;
 
@@ -160,31 +160,31 @@ public:
 
 // Continuation for tail call optimization
 struct TailCall {
-    nlohmann::json expression;
+    jsom::JsonDocument expression;
     ExecutionContext context;
 
-    TailCall(nlohmann::json expr, ExecutionContext ctx)
+    TailCall(jsom::JsonDocument expr, ExecutionContext ctx)
         : expression(std::move(expr)), context(std::move(ctx)) {}
 };
 
 // Result type for trampoline pattern
 struct EvaluationResult {
-    nlohmann::json value;
+    jsom::JsonDocument value;
     bool is_tail_call;
     std::unique_ptr<TailCall> tail_call;
 
     // Constructor for regular result
-    explicit EvaluationResult(nlohmann::json val) : value(std::move(val)), is_tail_call(false) {}
+    explicit EvaluationResult(jsom::JsonDocument val) : value(std::move(val)), is_tail_call(false) {}
 
     // Constructor for tail call
-    EvaluationResult(nlohmann::json expr, ExecutionContext ctx)
+    EvaluationResult(jsom::JsonDocument expr, ExecutionContext ctx)
         : is_tail_call(true),
           tail_call(std::make_unique<TailCall>(std::move(expr), std::move(ctx))) {}
 };
 
 // --- Operator Function Signature ---
 
-using OperatorFunction = std::function<EvaluationResult(const nlohmann::json&, ExecutionContext&)>;
+using OperatorFunction = std::function<EvaluationResult(const jsom::JsonDocument&, ExecutionContext&)>;
 
 // --- Operator Registry ---
 
@@ -207,70 +207,70 @@ public:
 // --- Operator Forward Declarations ---
 
 // Arithmetic Operators
-auto op_addition(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_subtraction(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_multiplication(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_division(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_modulo(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_addition(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_subtraction(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_multiplication(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_division(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_modulo(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 
 // Comparison Operators
-auto op_greater_than(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_less_than(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_greater_equal(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_less_equal(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_equal(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_not_equal(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_greater_than(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_less_than(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_greater_equal(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_less_equal(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_equal(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_not_equal(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 
 // Logical Operators
-auto op_logical_and(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_logical_or(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_logical_not(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_logical_and(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_logical_or(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_logical_not(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 
 // Array Operations
-auto op_map(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_filter(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_reduce(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_count(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_find(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_some(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_every(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_map(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_filter(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_reduce(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_count(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_find(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_some(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_every(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 
 // Functional Programming
-auto op_car(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_cdr(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_cons(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_append(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_car(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_cdr(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_cons(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_append(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 
 // Object Operations
-auto op_obj(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_keys(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_values(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_obj_from_pairs(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_pick(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_omit(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_obj(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_keys(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_values(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_obj_from_pairs(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_pick(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_omit(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 
 // Data Access
-auto op_input(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_inputs(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_variable(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
-auto op_let(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_input(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_inputs(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_variable(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_let(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 
 // Control Flow
-auto op_if(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult;
+auto op_if(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 
 // --- Core Evaluation ---
 
-auto evaluate_internal(const nlohmann::json& expr, const ExecutionContext& ctx,
+auto evaluate_internal(const jsom::JsonDocument& expr, const ExecutionContext& ctx,
                        DebugContext* debug_ctx = nullptr) -> EvaluationResult;
-auto evaluate(const nlohmann::json& expr, const ExecutionContext& ctx,
-              DebugContext* debug_ctx = nullptr) -> nlohmann::json;
+auto evaluate(const jsom::JsonDocument& expr, const ExecutionContext& ctx,
+              DebugContext* debug_ctx = nullptr) -> jsom::JsonDocument;
 
 // --- Public API ---
 
 // Unified execution function - inputs vector can be empty, single element, or
 // multiple elements
-auto execute(const nlohmann::json& script, const std::vector<nlohmann::json>& inputs = {},
+auto execute(const jsom::JsonDocument& script, const std::vector<jsom::JsonDocument>& inputs = {},
              DebugContext* debug_context = nullptr, std::string array_key = "array")
-    -> nlohmann::json;
+    -> jsom::JsonDocument;
 
 } // namespace computo

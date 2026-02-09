@@ -17,7 +17,7 @@ namespace computo::operators {
 // lexicographic sorting.
 
 // NOLINTBEGIN(readability-function-size)
-auto join_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto join_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() != 2) {
         throw InvalidArgumentException("'join' requires exactly 2 arguments (array, delimiter)",
                                        ctx.get_path_string());
@@ -33,7 +33,7 @@ auto join_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
 
     auto array_data = extract_array_data(array_input, "join", ctx.get_path_string(), ctx.array_key);
 
-    std::string delimiter = delim_val.get<std::string>();
+    std::string delimiter = delim_val.as<std::string>();
     std::string result;
 
     for (size_t i = 0; i < array_data.size(); ++i) {
@@ -43,15 +43,15 @@ auto join_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
 
         // Convert element to string
         if (array_data[i].is_string()) {
-            result += array_data[i].get<std::string>();
-        } else if (array_data[i].is_boolean()) {
-            result += array_data[i].get<bool>() ? "true" : "false";
+            result += array_data[i].as<std::string>();
+        } else if (array_data[i].is_bool()) {
+            result += array_data[i].as<bool>() ? "true" : "false";
         } else if (array_data[i].is_null()) {
             result += "null";
         } else {
 
             // numbers and unknown types
-            result += array_data[i].dump();
+            result += array_data[i].to_json();
         }
     }
 
@@ -59,7 +59,7 @@ auto join_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
 }
 // NOLINTEND(readability-function-size)
 
-auto strConcat_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto strConcat_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.empty()) {
         throw InvalidArgumentException("'strConcat' requires at least 1 argument",
                                        ctx.get_path_string());
@@ -71,15 +71,15 @@ auto strConcat_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Ev
         auto arg = evaluate(arg_expr, ctx);
 
         if (arg.is_string()) {
-            result += arg.get<std::string>();
-        } else if (arg.is_boolean()) {
-            result += arg.get<bool>() ? "true" : "false";
+            result += arg.as<std::string>();
+        } else if (arg.is_bool()) {
+            result += arg.as<bool>() ? "true" : "false";
         } else if (arg.is_null()) {
             result += "null";
         } else {
 
             // numbers and unknown types
-            result += arg.dump();
+            result += arg.to_json();
         }
     }
 
@@ -89,7 +89,7 @@ auto strConcat_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Ev
 // --- Sort Operator Implementation ---
 
 // The new, clean main operator
-auto sort_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto sort_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.empty()) {
         throw InvalidArgumentException("'sort' requires at least 1 argument",
                                        ctx.get_path_string());
@@ -108,7 +108,7 @@ auto sort_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
     }
 
     // Make a copy to sort
-    nlohmann::json result = array_data;
+    jsom::JsonDocument result = array_data;
 
     // 2. Dispatch to the correct helper
     if (config.is_simple_array) {
@@ -117,10 +117,10 @@ auto sort_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluat
         sort_object_array(result, config);
     }
 
-    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
+    return EvaluationResult(jsom::JsonDocument{{ctx.array_key, result}});
 }
 
-auto reverse_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto reverse_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() != 1) {
         throw InvalidArgumentException("'reverse' requires exactly 1 argument",
                                        ctx.get_path_string());
@@ -130,17 +130,17 @@ auto reverse_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Eval
     auto array_data
         = extract_array_data(array_input, "reverse", ctx.get_path_string(), ctx.array_key);
 
-    nlohmann::json result = nlohmann::json::array();
+    jsom::JsonDocument result = jsom::JsonDocument::make_array();
 
     // Add elements in reverse order
-    for (auto it = array_data.rbegin(); it != array_data.rend(); ++it) {
-        result.push_back(*it);
+    for (size_t i = array_data.size(); i > 0; --i) {
+        result.push_back(array_data[i - 1]);
     }
 
-    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
+    return EvaluationResult(jsom::JsonDocument{{ctx.array_key, result}});
 }
 
-auto unique_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto unique_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() != 1) {
         throw InvalidArgumentException("'unique' requires exactly 1 argument",
                                        ctx.get_path_string());
@@ -150,8 +150,8 @@ auto unique_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
     auto array_data
         = extract_array_data(array_input, "unique", ctx.get_path_string(), ctx.array_key);
 
-    nlohmann::json result = nlohmann::json::array();
-    std::set<nlohmann::json> seen;
+    jsom::JsonDocument result = jsom::JsonDocument::make_array();
+    std::set<jsom::JsonDocument> seen;
 
     for (const auto& item : array_data) {
         if (seen.find(item) == seen.end()) {
@@ -160,7 +160,7 @@ auto unique_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
         }
     }
 
-    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
+    return EvaluationResult(jsom::JsonDocument{{ctx.array_key, result}});
 }
 
 // --- uniqueSorted operator implementation ---
@@ -170,20 +170,20 @@ struct UniqueSortedConfig {
     std::string mode;          // "firsts", "lasts", "singles", "multiples"
 };
 
-auto extract_field_value(const nlohmann::json& obj, const std::string& pointer) -> nlohmann::json {
+auto extract_field_value(const jsom::JsonDocument& obj, const std::string& pointer) -> jsom::JsonDocument {
     if (pointer.empty()) {
         return obj;
     }
 
     try {
-        return obj.at(nlohmann::json::json_pointer(pointer));
+        return obj.at(pointer);
     } catch (const std::exception&) {
-        return nlohmann::json{}; // Field not found, return null
+        return jsom::JsonDocument{}; // Field not found, return null
     }
 }
 
-auto extract_unique_key(const nlohmann::json& element, const std::string& field_pointer)
-    -> nlohmann::json {
+auto extract_unique_key(const jsom::JsonDocument& element, const std::string& field_pointer)
+    -> jsom::JsonDocument {
     if (field_pointer.empty()) {
         return element; // Simple value uniqueness
     }
@@ -192,7 +192,7 @@ auto extract_unique_key(const nlohmann::json& element, const std::string& field_
 }
 
 // NOLINTBEGIN(readability-function-size)
-auto parse_unique_sorted_config(const nlohmann::json& args) -> UniqueSortedConfig {
+auto parse_unique_sorted_config(const jsom::JsonDocument& args) -> UniqueSortedConfig {
     UniqueSortedConfig config;
     config.mode = "firsts"; // Default mode
 
@@ -201,7 +201,7 @@ auto parse_unique_sorted_config(const nlohmann::json& args) -> UniqueSortedConfi
         config.mode = "firsts";
     } else if (args.size() == 2) {
         // ["uniqueSorted", array, mode_or_field]
-        std::string second_arg = args[1].get<std::string>();
+        std::string second_arg = args[1].as<std::string>();
         if (second_arg == "firsts" || second_arg == "lasts" || second_arg == "multiples"
             || second_arg == "singles") {
             config.mode = second_arg;
@@ -217,8 +217,8 @@ auto parse_unique_sorted_config(const nlohmann::json& args) -> UniqueSortedConfi
         }
     } else if (args.size() == 3) {
         // ["uniqueSorted", array, field, mode]
-        config.field_pointer = args[1].get<std::string>();
-        config.mode = args[2].get<std::string>();
+        config.field_pointer = args[1].as<std::string>();
+        config.mode = args[2].as<std::string>();
 
         // Validate mode
         if (config.mode != "firsts" && config.mode != "lasts" && config.mode != "multiples"
@@ -237,7 +237,7 @@ auto parse_unique_sorted_config(const nlohmann::json& args) -> UniqueSortedConfi
 // NOLINTEND(readability-function-size)
 
 // NOLINTBEGIN(readability-function-size)
-auto unique_sorted_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto unique_sorted_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.empty() || args.size() > 3) {
         throw InvalidArgumentException("'uniqueSorted' requires 1-3 arguments",
                                        ctx.get_path_string());
@@ -255,11 +255,11 @@ auto unique_sorted_operator(const nlohmann::json& args, ExecutionContext& ctx) -
         throw InvalidArgumentException(e.what(), ctx.get_path_string());
     }
 
-    nlohmann::json result = nlohmann::json::array();
+    jsom::JsonDocument result = jsom::JsonDocument::make_array();
 
     // Handle empty array
     if (array_data.empty()) {
-        return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
+        return EvaluationResult(jsom::JsonDocument{{ctx.array_key, result}});
     }
 
     // Sliding window algorithm with two booleans
@@ -296,11 +296,11 @@ auto unique_sorted_operator(const nlohmann::json& args, ExecutionContext& ctx) -
         left = right;
     }
 
-    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
+    return EvaluationResult(jsom::JsonDocument{{ctx.array_key, result}});
 }
 // NOLINTEND(readability-function-size)
 
-auto zip_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto zip_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() != 2) {
         throw InvalidArgumentException("'zip' requires exactly 2 arguments", ctx.get_path_string());
     }
@@ -313,20 +313,20 @@ auto zip_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evaluati
     auto array2_data
         = extract_array_data(array2_input, "zip", ctx.get_path_string(), ctx.array_key);
 
-    nlohmann::json result = nlohmann::json::array();
+    jsom::JsonDocument result = jsom::JsonDocument::make_array();
 
     size_t min_size = std::min(array1_data.size(), array2_data.size());
     for (size_t i = 0; i < min_size; ++i) {
-        nlohmann::json pair = nlohmann::json::array();
+        jsom::JsonDocument pair = jsom::JsonDocument::make_array();
         pair.push_back(array1_data[i]);
         pair.push_back(array2_data[i]);
         result.push_back(pair);
     }
 
-    return EvaluationResult(nlohmann::json{{ctx.array_key, result}});
+    return EvaluationResult(jsom::JsonDocument{{ctx.array_key, result}});
 }
 
-auto approx_operator(const nlohmann::json& args, ExecutionContext& ctx) -> EvaluationResult {
+auto approx_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     if (args.size() != 3) {
         throw InvalidArgumentException("'approx' requires exactly 3 arguments (a, b, tolerance)",
                                        ctx.get_path_string());
@@ -341,9 +341,9 @@ auto approx_operator(const nlohmann::json& args, ExecutionContext& ctx) -> Evalu
                                        ctx.get_path_string());
     }
 
-    double first_value = a_val.get<double>();
-    double second_value = b_val.get<double>();
-    double tolerance = tolerance_val.get<double>();
+    double first_value = a_val.as<double>();
+    double second_value = b_val.as<double>();
+    double tolerance = tolerance_val.as<double>();
 
     if (tolerance < 0) {
         throw InvalidArgumentException("'approx' requires non-negative tolerance",

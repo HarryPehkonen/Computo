@@ -91,7 +91,7 @@ TEST_F(CLIIntegrationTest, BasicScriptExecution) {
     auto result = execute_command(computo_binary + " --script " + script_file.string());
 
     EXPECT_EQ(result.exit_code, 0);
-    EXPECT_EQ(result.stdout_output, "6.0\n");
+    EXPECT_EQ(result.stdout_output, "6\n");
     EXPECT_TRUE(result.stderr_output.empty());
 }
 
@@ -126,7 +126,7 @@ TEST_F(CLIIntegrationTest, MultipleInputFiles) {
                                   + input1_file.string() + " " + input2_file.string());
 
     EXPECT_EQ(result.exit_code, 0);
-    EXPECT_EQ(result.stdout_output, "30.0\n");
+    EXPECT_EQ(result.stdout_output, "30\n");
     EXPECT_TRUE(result.stderr_output.empty());
 }
 
@@ -299,7 +299,7 @@ TEST_F(CLIIntegrationTest, JSONCommentSupport) {
         = execute_command(computo_binary + " --script " + script_file.string() + " --comments");
 
     EXPECT_EQ(result.exit_code, 0);
-    EXPECT_EQ(result.stdout_output, "3.0\n");
+    EXPECT_EQ(result.stdout_output, "3\n");
     EXPECT_TRUE(result.stderr_output.empty());
 }
 
@@ -333,7 +333,7 @@ TEST_F(CLIIntegrationTest, PathHandling) {
     auto result = execute_command(computo_binary + " --script " + script_file.string());
 
     EXPECT_EQ(result.exit_code, 0);
-    EXPECT_EQ(result.stdout_output, "2.0\n");
+    EXPECT_EQ(result.stdout_output, "2\n");
 }
 
 // Test REPL operator breakpoint functionality
