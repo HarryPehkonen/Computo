@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include "json_colorizer.hpp"
+
 namespace computo {
 
 struct ComputoArgs {
@@ -18,6 +20,7 @@ struct ComputoArgs {
     bool show_version = false;
     bool list_operators = false;
     std::string array_key = "array"; // Custom array wrapper key (default: "array")
+    ColorMode color_mode = ColorMode::Auto;
 };
 
 class ArgumentError : public std::runtime_error {

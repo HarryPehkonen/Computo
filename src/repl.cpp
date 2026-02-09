@@ -1,12 +1,13 @@
 #include "repl.hpp"
+#include "json_colorizer.hpp"
 #include <computo.hpp>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <string>
-#include <vector>
-#include <map>
 #include <unordered_map>
+#include <vector>
 
 #ifdef COMPUTO_USE_READLINE
 #include <readline/history.h>
@@ -151,6 +152,7 @@ struct ReplState {
     computo::DebugContext debug_context;
     std::vector<std::string> command_history;
     bool in_debug_mode = false;
+    bool use_color = false;
     std::map<std::string, jsom::JsonDocument> repl_variables;
     const ComputoArgs* args;
 };
@@ -218,25 +220,30 @@ Debug Mode (when at breakpoint):
 )";
 }
 
+// Helper to conditionally colorize JSON output
+static auto maybe_colorize(const std::string& json, bool use_color) -> std::string {
+    return use_color ? JsonColorizer::colorize(json) : json;
+}
+
 void handle_vars_command(const ReplCommand& /*cmd*/, ReplState& state) {
     std::cout << "Variables in current scope:\n";
-    
+
     // Show REPL persistent variables
     if (!state.repl_variables.empty()) {
         std::cout << "  REPL variables:\n";
         for (const auto& [name, value] : state.repl_variables) {
-            std::cout << "    " << name << ": " << value.to_json() << "\n";
+            std::cout << "    " << name << ": " << maybe_colorize(value.to_json(), state.use_color) << "\n";
         }
     }
-    
+
     // Always show input variables
     std::cout << "  Input variables:\n";
     if (!state.inputs.empty()) {
-        std::cout << "    $input: " << state.inputs[0].to_json() << "\n";
+        std::cout << "    $input: " << maybe_colorize(state.inputs[0].to_json(), state.use_color) << "\n";
         if (state.inputs.size() > 1) {
             std::cout << "    $inputs: array of " << state.inputs.size() << " elements\n";
             for (size_t i = 0; i < state.inputs.size(); ++i) {
-                std::cout << "      $inputs[" << i << "]: " << state.inputs[i].to_json() << "\n";
+                std::cout << "      $inputs[" << i << "]: " << maybe_colorize(state.inputs[i].to_json(), state.use_color) << "\n";
             }
         }
     } else {
@@ -260,7 +267,7 @@ void handle_vars_command(const ReplCommand& /*cmd*/, ReplState& state) {
             if (step_with_vars) {
                 std::cout << "  Local variables from recent execution:\n";
                 for (const auto& [name, value] : step_with_vars->variables) {
-                    std::cout << "    " << name << ": " << value.to_json() << "\n";
+                    std::cout << "    " << name << ": " << maybe_colorize(value.to_json(), state.use_color) << "\n";
                 }
                 std::cout << "    (from step: " << step_with_vars->operation 
                          << " at " << step_with_vars->location << ")\n";
@@ -365,8 +372,8 @@ void handle_run_command(const ReplCommand& cmd, ReplState& state) {
             computo::ExecutionContext ctx(state.inputs, state.args->array_key);
             auto ctx_with_vars = ctx.with_variables(state.repl_variables);
             auto result = computo::evaluate(script, ctx_with_vars, &state.debug_context);
-            
-            std::cout << result.to_json(true) << "\n";
+
+            std::cout << maybe_colorize(result.to_json(true), state.use_color) << "\n";
         } catch (const computo::DebugBreakException& e) {
             std::cout << "\nBreakpoint hit: " << e.get_reason() << "\n";
             std::cout << "Location: " << e.get_location() << "\n";
@@ -390,8 +397,8 @@ void handle_json_script(const ReplCommand& cmd, ReplState& state) {
         computo::ExecutionContext ctx(state.inputs, state.args->array_key);
         auto ctx_with_vars = ctx.with_variables(state.repl_variables);
         auto result = computo::evaluate(script, ctx_with_vars, &state.debug_context);
-        
-        std::cout << result.to_json(true) << "\n";
+
+        std::cout << maybe_colorize(result.to_json(true), state.use_color) << "\n";
     } catch (const computo::DebugBreakException& e) {
         std::cout << "\nBreakpoint hit: " << e.get_reason() << "\n";
         std::cout << "Location: " << e.get_location() << "\n";
@@ -425,7 +432,7 @@ void handle_set_command(const ReplCommand& cmd, ReplState& state) {
         try {
             auto value = jsom::parse_document(json_str);
             state.repl_variables[var_name] = value;
-            std::cout << "Set " << var_name << " = " << value.to_json() << "\n";
+            std::cout << "Set " << var_name << " = " << maybe_colorize(value.to_json(), state.use_color) << "\n";
         } catch (const std::runtime_error& e) {
             std::cerr << "JSON parse error: " << e.what() << "\n";
             std::cout << "Try: set " << var_name << " \"" << json_str << "\" (for strings)\n";
@@ -483,7 +490,8 @@ auto run_repl_mode(const ComputoArgs& args) -> int {
         // Initialize state
         ReplState state;
         state.args = &args;
-        
+        state.use_color = resolve_color_mode(args.color_mode);
+
         // Load input files if provided
         state.inputs = load_input_files(args.input_files, args.enable_comments);
         if (!args.input_files.empty()) {

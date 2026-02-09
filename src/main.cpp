@@ -1,4 +1,5 @@
 #include "cli_args.hpp"
+#include "json_colorizer.hpp"
 #include "repl.hpp"
 #include <algorithm>
 #include <computo.hpp>
@@ -17,7 +18,7 @@ auto load_input_files(const std::vector<std::string>& filenames, bool enable_com
 
 // --- Script Execution Mode ---
 
-auto run_script_mode(const ComputoArgs& args) -> int {
+auto run_script_mode(const ComputoArgs& args, bool use_color) -> int {
     try {
         // Load script
         auto script = load_json_file(args.script_file, args.enable_comments);
@@ -27,7 +28,8 @@ auto run_script_mode(const ComputoArgs& args) -> int {
         auto result = computo::execute(script, inputs, nullptr, args.array_key);
 
         // Output result
-        std::cout << result.to_json(true) << "\n";
+        auto json = result.to_json(true);
+        std::cout << (use_color ? JsonColorizer::colorize(json) : json) << "\n";
         return 0;
 
     } catch (const std::exception& e) {
@@ -55,6 +57,8 @@ auto main(int argc, char* argv[]) -> int {
             return 0;
         }
 
+        bool use_color = computo::resolve_color_mode(args.color_mode);
+
         if (args.list_operators) {
             auto& registry = computo::OperatorRegistry::get_instance();
             auto operators = registry.get_operator_names();
@@ -67,13 +71,14 @@ auto main(int argc, char* argv[]) -> int {
             for (const auto& operator_name : operators) {
                 output.push_back(operator_name);
             }
-            std::cout << output.to_json() << "\n";
+            auto json = output.to_json();
+            std::cout << (use_color ? computo::JsonColorizer::colorize(json) : json) << "\n";
             return 0;
         }
 
         switch (args.mode) {
         case computo::ComputoArgs::Mode::SCRIPT:
-            return computo::run_script_mode(args);
+            return computo::run_script_mode(args, use_color);
         case computo::ComputoArgs::Mode::REPL:
             return computo::run_repl_mode(args);
         }

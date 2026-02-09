@@ -44,6 +44,10 @@ auto ArgumentParser::parse(int argc, char* const argv[]) -> ComputoArgs {
         } else if (strcmp(argv[i], "--list-operators") == 0) {
             args.list_operators = true;
             return args;
+        } else if (strcmp(argv[i], "--color") == 0) {
+            args.color_mode = ColorMode::Always;
+        } else if (strcmp(argv[i], "--no-color") == 0) {
+            args.color_mode = ColorMode::Never;
         } else if (strncmp(argv[i], "--array=", 8) == 0) {
             args.array_key = std::string(argv[i] + 8);
             if (args.array_key.empty()) {
@@ -79,6 +83,8 @@ OPTIONS:
     --comments         Enable JSON comment parsing
     --debug            Enable debugging features (REPL only)
     --array=<key>      Use custom array wrapper key (default: "array")
+    --color            Force colored JSON output
+    --no-color         Disable colored JSON output
     --list-operators   Output JSON array of all available operators
     --help, -h         Show this help message
     --version, -v      Show version information
