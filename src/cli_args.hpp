@@ -14,11 +14,15 @@ struct ComputoArgs {
     Mode mode;
     std::string script_file; // Only valid in SCRIPT mode
     std::vector<std::string> input_files;
+    std::string highlight_file; // Only valid when highlight_script is true
+    std::string format_file;    // Only valid when format_script is true
     bool enable_comments = false;
     bool debug_mode = false;
     bool show_help = false;
     bool show_version = false;
     bool list_operators = false;
+    bool highlight_script = false;
+    bool format_script = false;
     std::string array_key = "array"; // Custom array wrapper key (default: "array")
     ColorMode color_mode = ColorMode::Auto;
 };

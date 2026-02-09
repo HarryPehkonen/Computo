@@ -44,6 +44,18 @@ auto ArgumentParser::parse(int argc, char* const argv[]) -> ComputoArgs {
         } else if (strcmp(argv[i], "--list-operators") == 0) {
             args.list_operators = true;
             return args;
+        } else if (strcmp(argv[i], "--highlight") == 0) {
+            args.highlight_script = true;
+            if (++i >= argc) {
+                throw ArgumentError("--highlight requires a script file argument");
+            }
+            args.highlight_file = argv[i];
+        } else if (strcmp(argv[i], "--format") == 0) {
+            args.format_script = true;
+            if (++i >= argc) {
+                throw ArgumentError("--format requires a script file argument");
+            }
+            args.format_file = argv[i];
         } else if (strcmp(argv[i], "--color") == 0) {
             args.color_mode = ColorMode::Always;
         } else if (strcmp(argv[i], "--no-color") == 0) {
@@ -61,7 +73,7 @@ auto ArgumentParser::parse(int argc, char* const argv[]) -> ComputoArgs {
         }
     }
 
-    if (!script_mode && !repl_mode) {
+    if (!script_mode && !repl_mode && !args.highlight_script && !args.format_script) {
         throw ArgumentError("Must specify either --script or --repl mode");
     }
 
@@ -83,8 +95,10 @@ OPTIONS:
     --comments         Enable JSON comment parsing
     --debug            Enable debugging features (REPL only)
     --array=<key>      Use custom array wrapper key (default: "array")
-    --color            Force colored JSON output
-    --no-color         Disable colored JSON output
+    --format <file>    Reformat script with semantic indentation
+    --highlight <file> Display script with syntax highlighting
+    --color            Force colored output (with --highlight)
+    --no-color         Disable colored output (with --highlight)
     --list-operators   Output JSON array of all available operators
     --help, -h         Show this help message
     --version, -v      Show version information
@@ -95,6 +109,8 @@ EXAMPLES:
     computo --script transform.json data.json --array="@data"
     computo --repl --comments users.json orders.json
     computo --repl --debug
+    computo --format script.json
+    computo --highlight script.json
 )";
 }
 

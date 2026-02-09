@@ -18,7 +18,7 @@ auto load_input_files(const std::vector<std::string>& filenames, bool enable_com
 
 // --- Script Execution Mode ---
 
-auto run_script_mode(const ComputoArgs& args, bool use_color) -> int {
+auto run_script_mode(const ComputoArgs& args) -> int {
     try {
         // Load script
         auto script = load_json_file(args.script_file, args.enable_comments);
@@ -28,8 +28,7 @@ auto run_script_mode(const ComputoArgs& args, bool use_color) -> int {
         auto result = computo::execute(script, inputs, nullptr, args.array_key);
 
         // Output result
-        auto json = result.to_json(true);
-        std::cout << (use_color ? JsonColorizer::colorize(json) : json) << "\n";
+        std::cout << result.to_json(true) << "\n";
         return 0;
 
     } catch (const std::exception& e) {
@@ -57,8 +56,6 @@ auto main(int argc, char* argv[]) -> int {
             return 0;
         }
 
-        bool use_color = computo::resolve_color_mode(args.color_mode);
-
         if (args.list_operators) {
             auto& registry = computo::OperatorRegistry::get_instance();
             auto operators = registry.get_operator_names();
@@ -71,14 +68,29 @@ auto main(int argc, char* argv[]) -> int {
             for (const auto& operator_name : operators) {
                 output.push_back(operator_name);
             }
-            auto json = output.to_json();
-            std::cout << (use_color ? computo::JsonColorizer::colorize(json) : json) << "\n";
+            std::cout << output.to_json() << "\n";
+            return 0;
+        }
+
+        if (args.highlight_script) {
+            auto script = computo::load_json_file(args.highlight_file, args.enable_comments);
+            bool use_color = computo::resolve_color_mode(args.color_mode);
+            auto theme = use_color ? computo::ScriptColorTheme::default_theme()
+                                   : computo::ScriptColorTheme::no_color();
+            std::cout << computo::ScriptColorizer::colorize(script, theme, args.array_key) << "\n";
+            return 0;
+        }
+
+        if (args.format_script) {
+            auto script = computo::load_json_file(args.format_file, args.enable_comments);
+            std::cout << computo::ScriptColorizer::colorize(script,
+                computo::ScriptColorTheme::no_color(), args.array_key) << "\n";
             return 0;
         }
 
         switch (args.mode) {
         case computo::ComputoArgs::Mode::SCRIPT:
-            return computo::run_script_mode(args, use_color);
+            return computo::run_script_mode(args);
         case computo::ComputoArgs::Mode::REPL:
             return computo::run_repl_mode(args);
         }
