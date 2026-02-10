@@ -17,18 +17,27 @@ All documentation is automatically validated against the live Computo engine wit
 
 Computo consists of:
 - **libcomputo**: A minimal, thread-safe C++ library for JSON transformations.
-- **computo**: A unified CLI tool with script execution mode and interactive REPL with comprehensive debugging features.
+- **computo**: A unified CLI tool with script execution mode, interactive REPL, and comprehensive debugging features.
+
+Scripts can be written in either **JSON syntax** (native format) or **sugar syntax** (human-friendly alternative with infix operators, arrow lambdas, and path access). The CLI auto-detects the format and can convert between them.
 
 ## Quick Start
 
 ### Basic Usage
 
 ```bash
-# Execute a script
+# Execute a JSON script
 computo --script script.json
+
+# Execute a sugar syntax script (auto-detected)
+computo --script script.computo
 
 # Execute with input data
 computo --script script.json input.json
+
+# Convert between formats
+computo --tocomputo script.json    # JSON -> sugar
+computo --tojson script.computo    # sugar -> JSON
 
 # Interactive REPL with debugging
 computo --repl
@@ -41,12 +50,21 @@ computo --repl script.json
 
 ```bash
 # Execution modes
---script <file>       Execute JSON script from file
+--script <file>       Execute script from file (auto-detects JSON or sugar syntax)
 --repl               Start interactive REPL
 
-# Data options  
+# Syntax conversion
+--tocomputo <file>   Convert JSON script to sugar syntax
+--tojson <file>      Convert sugar syntax to JSON
+
+# Data options
 --comments           Enable JSON comment parsing
 --array=<key>        Use custom array wrapper key (default: "array")
+
+# Output options
+--format <file>      Pretty-print script with semantic formatting
+--highlight <file>   Syntax-highlighted output
+--color / --no-color Force color output on/off
 
 # Debug options
 --debug              Enable debugging features (REPL only)
@@ -118,11 +136,18 @@ computo --script script.json input1.json input2.json
 
 ## Language Syntax
 
-All Computo scripts are valid JSON. The basic syntax for an operation is a JSON array where the first element is a string representing the operator.
+Computo scripts can be written in two formats:
+
+1. **JSON syntax** - The native format where all scripts are valid JSON
+2. **Sugar syntax** - A human-friendly alternative that transpiles bidirectionally to/from JSON
+
+### JSON Syntax
+
+The basic syntax for an operation is a JSON array where the first element is a string representing the operator.
 
 `["operator", arg1, arg2, ...]`
 
-### Literals
+#### Literals
 
 - **Numbers**: `42`, `3.14`
 - **Strings**: `"hello"`
@@ -130,6 +155,85 @@ All Computo scripts are valid JSON. The basic syntax for an operation is a JSON 
 - **Null**: `null`
 - **Arrays**: To represent a literal array and distinguish it from an operator expression, wrap it in an object with the key `"array"`: `{"array": [1, 2, 3]}`.
 - **Objects**: Standard JSON objects: `{"key": "value"}`.
+
+### Sugar Syntax
+
+Sugar syntax provides a more readable way to write Computo scripts. The CLI auto-detects the format, or you can explicitly convert between them.
+
+#### Quick Comparison
+
+| JSON Syntax | Sugar Syntax |
+|-------------|--------------|
+| `["+", 1, ["*", 2, 3]]` | `1 + 2 * 3` |
+| `["$", "/x"]` | `x` |
+| `["$input", "/users"]` | `$input/users` |
+| `["lambda", ["x"], ["+", ["$", "/x"], 1]]` | `(x) => x + 1` |
+| `["let", [["x", 10]], ["$", "/x"]]` | `let x = 10 in x` |
+| `["if", true, 1, 0]` | `if true then 1 else 0` |
+| `{"array": [1, 2, 3]}` | `[1, 2, 3]` |
+
+#### Sugar Syntax Features
+
+- **Infix operators**: `a + b`, `x * 2`, `count > 0`
+- **Arrow lambdas**: `(x) => x * 2`, `(a, b) => a + b`
+- **Path access with slash**: `user/name` instead of `["$", "/user/name"]`
+- **Input access**: `$input/users/0/name`
+- **Let bindings**: `let x = 10, y = 20 in x + y`
+- **Conditionals**: `if condition then yes else no`
+- **Line comments**: `-- this is a comment`
+- **Array literals**: `[1, 2, 3]` (no wrapper needed)
+
+#### Conversion Examples
+
+```bash
+# Convert JSON to sugar syntax
+computo --tocomputo script.json
+
+# Convert sugar to JSON
+computo --tojson script.computo
+
+# Execute sugar syntax directly (auto-detected)
+computo --script script.computo data.json
+```
+
+#### Full Example
+
+**Sugar syntax:**
+```
+-- Calculate total spending for active users
+let
+  active = filter($input/users, (u) => count(u/orders) > 0)
+  totals = map(active, (u) =>
+    reduce(u/orders, (a, o) => a + o/total, 0)
+  )
+in
+  totals
+```
+
+**Equivalent JSON:**
+```json
+["let", [
+  ["active", ["filter", ["$input", "/users"],
+    ["lambda", ["u"], [">", ["count", ["$", "/u/orders"]], 0]]
+  ]],
+  ["totals", ["map", ["$", "/active"],
+    ["lambda", ["u"],
+      ["reduce", ["$", "/u/orders"],
+        ["lambda", ["a", "o"], ["+", ["$", "/a"], ["$", "/o/total"]]],
+        0
+      ]
+    ]
+  ]]
+], ["$", "/totals"]]
+```
+
+#### Slash Disambiguation
+
+The `/` character serves dual purposes:
+- **Division**: requires spaces on both sides: `a / b`
+- **Path access**: no spaces: `user/name`
+
+Asymmetric spacing (e.g., `a /b` or `a/ b`) is a syntax error to prevent ambiguity.
 
 ## Operators Reference
 

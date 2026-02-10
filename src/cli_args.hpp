@@ -16,6 +16,8 @@ struct ComputoArgs {
     std::vector<std::string> input_files;
     std::string highlight_file; // Only valid when highlight_script is true
     std::string format_file;    // Only valid when format_script is true
+    std::string to_computo_file; // --tocomputo: convert JSON to sugar syntax
+    std::string to_json_file;    // --tojson: convert sugar to JSON
     bool enable_comments = false;
     bool debug_mode = false;
     bool show_help = false;
@@ -23,6 +25,8 @@ struct ComputoArgs {
     bool list_operators = false;
     bool highlight_script = false;
     bool format_script = false;
+    bool to_computo = false;
+    bool to_json = false;
     std::string array_key = "array"; // Custom array wrapper key (default: "array")
     ColorMode color_mode = ColorMode::Auto;
 };

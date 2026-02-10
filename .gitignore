@@ -30,6 +30,7 @@ test_computo
 *.swp
 *.swo
 *~
+.cache/
 
 # OS files
 .DS_Store
