@@ -27,25 +27,40 @@ static auto read_file_text(const std::string& filename) -> std::string {
     return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 }
 
-// Auto-detect format and load script: try JSON first, fallback to sugar syntax
+// Auto-detect format and load script based on extension or content
 static auto load_script_file(const std::string& filename, bool enable_comments,
                              const std::string& array_key) -> jsom::JsonDocument {
     auto content = read_file_text(filename);
 
-    // Try JSON parse first
-    try {
-        if (enable_comments) {
-            return jsom::parse_document(content, jsom::ParsePresets::Comments);
+    // Check file extension: .computo files are always sugar syntax
+    bool force_sugar = filename.size() >= 8
+                       && filename.substr(filename.size() - 8) == ".computo";
+
+    if (!force_sugar) {
+        // Try JSON parse first
+        try {
+            if (enable_comments) {
+                return jsom::parse_document(content, jsom::ParsePresets::Comments);
+            }
+            return jsom::parse_document(content);
+        } catch (const std::exception&) {
+            // JSON parse failed, try sugar syntax
         }
-        return jsom::parse_document(content);
-    } catch (const std::exception&) {
-        // JSON parse failed, try sugar syntax
     }
 
-    // Try sugar parse
+    // Parse as sugar
     SugarParseOptions opts;
     opts.array_key = array_key;
     return SugarParser::parse(content, opts);
+}
+
+// Unwrap array wrapper for output: {"array": [...]} -> [...]
+static auto unwrap_for_output(const jsom::JsonDocument& result,
+                              const std::string& array_key) -> jsom::JsonDocument {
+    if (result.is_object() && result.size() == 1 && result.contains(array_key)) {
+        return result[array_key];
+    }
+    return result;
 }
 
 // --- Script Execution Mode ---
@@ -59,8 +74,9 @@ auto run_script_mode(const ComputoArgs& args) -> int {
         auto inputs = load_input_files(args.input_files, args.enable_comments);
         auto result = computo::execute(script, inputs, nullptr, args.array_key);
 
-        // Output result
-        std::cout << result.to_json(true) << "\n";
+        // Output result (unwrap array wrapper for clean output)
+        auto output = unwrap_for_output(result, args.array_key);
+        std::cout << output.to_json(true) << "\n";
         return 0;
 
     } catch (const std::exception& e) {

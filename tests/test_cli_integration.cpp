@@ -153,9 +153,9 @@ TEST_F(CLIIntegrationTest, ComplexTransformation) {
 
     EXPECT_EQ(result.exit_code, 0);
     // Check for the expected JSON content (formatted output)
+    // Output is unwrapped: ["Alice", "Bob"] not {"array": [...]}
     EXPECT_TRUE(result.stdout_output.find("\"Alice\"") != std::string::npos);
     EXPECT_TRUE(result.stdout_output.find("\"Bob\"") != std::string::npos);
-    EXPECT_TRUE(result.stdout_output.find("\"array\"") != std::string::npos);
     // Note: stderr may contain warnings, which is acceptable
 }
 

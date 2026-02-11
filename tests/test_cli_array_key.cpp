@@ -62,8 +62,7 @@ TEST_F(CLIArrayKeyTest, DefaultArrayKeyViaCLI) {
     std::string cmd = binary_path + " --script " + test_script_default + " " + test_input;
     std::string output = exec_command(cmd);
 
-    // Should contain "array" key in output
-    EXPECT_NE(output.find("\"array\""), std::string::npos);
+    // Output is unwrapped: [2, 4, 6] not {"array": [...]}
     EXPECT_NE(output.find("["), std::string::npos);
     EXPECT_NE(output.find("2"), std::string::npos);
     EXPECT_NE(output.find("4"), std::string::npos);
@@ -75,9 +74,8 @@ TEST_F(CLIArrayKeyTest, CustomArrayKeyViaCLI) {
         = binary_path + " --script " + test_script_custom + " " + test_input + " --array=@test";
     std::string output = exec_command(cmd);
 
-    // Should contain "@test" key in output, not "array"
-    EXPECT_NE(output.find("\"@test\""), std::string::npos);
-    EXPECT_EQ(output.find("\"array\""), std::string::npos);
+    // Output is unwrapped: [2, 4, 6] - array key is internal
+    EXPECT_NE(output.find("["), std::string::npos);
     EXPECT_NE(output.find("2"), std::string::npos);
     EXPECT_NE(output.find("4"), std::string::npos);
     EXPECT_NE(output.find("6"), std::string::npos);

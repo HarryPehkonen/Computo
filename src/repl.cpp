@@ -48,6 +48,15 @@ auto load_input_files(const std::vector<std::string>& filenames, bool enable_com
     return inputs;
 }
 
+// Unwrap array wrapper for output: {"array": [...]} -> [...]
+static auto unwrap_for_output(const jsom::JsonDocument& result,
+                              const std::string& array_key) -> jsom::JsonDocument {
+    if (result.is_object() && result.size() == 1 && result.contains(array_key)) {
+        return result[array_key];
+    }
+    return result;
+}
+
 // --- REPL Command Structure ---
 
 enum class ReplCommandType {
@@ -366,7 +375,8 @@ void handle_run_command(const ReplCommand& cmd, ReplState& state) {
             auto ctx_with_vars = ctx.with_variables(state.repl_variables);
             auto result = computo::evaluate(script, ctx_with_vars, &state.debug_context);
 
-            std::cout << result.to_json(true) << "\n";
+            auto output = unwrap_for_output(result, state.args->array_key);
+            std::cout << output.to_json(true) << "\n";
         } catch (const computo::DebugBreakException& e) {
             std::cout << "\nBreakpoint hit: " << e.get_reason() << "\n";
             std::cout << "Location: " << e.get_location() << "\n";
@@ -391,7 +401,8 @@ void handle_json_script(const ReplCommand& cmd, ReplState& state) {
         auto ctx_with_vars = ctx.with_variables(state.repl_variables);
         auto result = computo::evaluate(script, ctx_with_vars, &state.debug_context);
 
-        std::cout << result.to_json(true) << "\n";
+        auto output = unwrap_for_output(result, state.args->array_key);
+        std::cout << output.to_json(true) << "\n";
     } catch (const computo::DebugBreakException& e) {
         std::cout << "\nBreakpoint hit: " << e.get_reason() << "\n";
         std::cout << "Location: " << e.get_location() << "\n";
