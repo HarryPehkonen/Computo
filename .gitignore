@@ -60,7 +60,6 @@ conanfile.py
 
 .claude
 
-CLAUDE.md
 
 docs/implemented-operators.json
 docs/documented-operators.json
