@@ -229,7 +229,7 @@ void OperatorRegistry::initialize_operators() {
 
 // Handles {"array": [...]} syntax (with custom array key support)
 auto evaluate_array_object(const jsom::JsonDocument& expr, const ExecutionContext& ctx,
-                           DebugContext* debug_ctx) -> EvaluationResult {
+                           DebugContext* /*debug_ctx*/) -> EvaluationResult {
     if (!expr[ctx.array_key].is_array()) {
         throw InvalidArgumentException("Array object must contain an array", ctx.get_path_string());
     }

@@ -348,3 +348,13 @@ message(STATUS "Version: ${CMAKE_PROJECT_VERSION}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "C++ standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "Install prefix: ${CMAKE_INSTALL_PREFIX}")
+
+
+# --- CODING_STANDARDS.md: warnings as errors for Computo's own targets ---
+# (Fetched deps — JSOM, gtest — keep their own flags.)
+foreach(computo_target computo computo_unified test_computo test_memory_safety
+                      test_thread_safety test_performance)
+    if(TARGET ${computo_target})
+        target_compile_options(${computo_target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    endif()
+endforeach()

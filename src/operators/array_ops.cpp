@@ -5,7 +5,7 @@ namespace computo::operators {
 auto map_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
 
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-    auto processor = [](const jsom::JsonDocument& item, const jsom::JsonDocument& lambda_result,
+    auto processor = [](const jsom::JsonDocument& /*item*/, const jsom::JsonDocument& lambda_result,
                         jsom::JsonDocument& final_result) -> bool {
         if (!final_result.is_array()) {
             final_result = jsom::JsonDocument::make_array();
@@ -112,7 +112,7 @@ auto find_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> Eva
 
 auto some_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-    auto processor = [](const jsom::JsonDocument& item, const jsom::JsonDocument& lambda_result,
+    auto processor = [](const jsom::JsonDocument& /*item*/, const jsom::JsonDocument& lambda_result,
                         jsom::JsonDocument& final_result) -> bool {
         if (is_truthy(lambda_result)) {
             final_result = true;
@@ -131,7 +131,7 @@ auto some_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> Eva
 
 auto every_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-    auto processor = [](const jsom::JsonDocument& item, const jsom::JsonDocument& lambda_result,
+    auto processor = [](const jsom::JsonDocument& /*item*/, const jsom::JsonDocument& lambda_result,
                         jsom::JsonDocument& final_result) -> bool {
         if (!is_truthy(lambda_result)) {
             final_result = false;
