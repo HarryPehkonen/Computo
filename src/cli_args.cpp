@@ -1,4 +1,5 @@
 #include "cli_args.hpp"
+#include "version.hpp"
 #include <cstring>
 #include <iostream>
 
@@ -85,8 +86,8 @@ auto ArgumentParser::parse(int argc, char* const argv[]) -> ComputoArgs {
         }
     }
 
-    if (!script_mode && !repl_mode && !args.highlight_script && !args.format_script &&
-        !args.to_computo && !args.to_json) {
+    if (!script_mode && !repl_mode && !args.highlight_script && !args.format_script
+        && !args.to_computo && !args.to_json) {
         throw ArgumentError("Must specify either --script or --repl mode");
     }
 
@@ -133,8 +134,6 @@ EXAMPLES:
 )";
 }
 
-void ArgumentParser::print_version() {
-    std::cout << "Computo v1.0.0\n";
-}
+void ArgumentParser::print_version() { std::cout << "Computo v" COMPUTO_VERSION "\n"; }
 
 } // namespace computo

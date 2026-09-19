@@ -6,6 +6,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# --- Version header (the artifact-identity invariant) ---
+# project(Computo VERSION ...) on line 2 is the ONE place the version is written. This
+# generates the second copy the code compiles against; tools/ci.sh's `version` stage
+# fails when the two disagree, and when `computo --version` reports something else.
+configure_file(cmake/version.hpp.in "${CMAKE_BINARY_DIR}/generated/version.hpp" @ONLY)
+
 # --- Code Quality Integration ---
 option(ENABLE_CLANG_TIDY "Enable clang-tidy static analysis" OFF)
 option(ENABLE_CLANG_FORMAT "Enable clang-format code formatting" OFF)
@@ -116,6 +122,9 @@ endif()
 # Unified CLI (computo) - supports both script execution and REPL modes
 add_executable(computo_unified src/main.cpp src/cli_args.cpp src/repl.cpp src/json_colorizer.cpp src/sugar_parser.cpp src/sugar_writer.cpp)
 target_link_libraries(computo_unified PRIVATE computo)
+# The generated version header (see configure_file above): cli_args.cpp and repl.cpp
+# print the version, and they must print the one CMakeLists.txt declares.
+target_include_directories(computo_unified PRIVATE "${CMAKE_BINARY_DIR}/generated")
 if(READLINE_LIB)
     target_link_libraries(computo_unified PRIVATE ${READLINE_LIB})
     target_compile_definitions(computo_unified PRIVATE COMPUTO_USE_READLINE)

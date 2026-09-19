@@ -63,3 +63,7 @@ conanfile.py
 
 docs/implemented-operators.json
 docs/documented-operators.json
+
+# --- the gate's own footprint (tools/ci.sh) ---
+.ci-logs/
+.ci.env
