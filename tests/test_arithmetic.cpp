@@ -11,17 +11,20 @@ TEST(ArithmeticOperators, AdditionBasic) {
 
 TEST(ArithmeticOperators, AdditionNary) {
     EXPECT_EQ(computo::execute(jsom::parse_document(R"(["+", 1, 2, 3, 4])"), {json(nullptr)}), 10);
-    EXPECT_EQ(computo::execute(jsom::parse_document(R"(["+", 1.1, 2.2, 3.3])"), {json(nullptr)}), 6.6);
+    EXPECT_EQ(computo::execute(jsom::parse_document(R"(["+", 1.1, 2.2, 3.3])"), {json(nullptr)}),
+              6.6);
     EXPECT_EQ(computo::execute(jsom::parse_document(R"(["+", 42])"), {json(nullptr)}), 42);
 }
 
 TEST(ArithmeticOperators, AdditionErrors) {
     EXPECT_THROW(computo::execute(jsom::parse_document(R"(["+"])"), {json(nullptr)}),
                  computo::InvalidArgumentException);
-    EXPECT_THROW(computo::execute(jsom::parse_document(R"(["+", "not_a_number"])"), {json(nullptr)}),
-                 computo::InvalidArgumentException);
-    EXPECT_THROW(computo::execute(jsom::parse_document(R"(["+", 1, "not_a_number"])"), {json(nullptr)}),
-                 computo::InvalidArgumentException);
+    EXPECT_THROW(
+        computo::execute(jsom::parse_document(R"(["+", "not_a_number"])"), {json(nullptr)}),
+        computo::InvalidArgumentException);
+    EXPECT_THROW(
+        computo::execute(jsom::parse_document(R"(["+", 1, "not_a_number"])"), {json(nullptr)}),
+        computo::InvalidArgumentException);
 }
 
 TEST(ArithmeticOperators, SubtractionBasic) {
@@ -33,14 +36,16 @@ TEST(ArithmeticOperators, SubtractionBasic) {
 
 TEST(ArithmeticOperators, SubtractionNary) {
     EXPECT_EQ(computo::execute(jsom::parse_document(R"(["-", 10, 2, 3])"), {json(nullptr)}), 5);
-    EXPECT_EQ(computo::execute(jsom::parse_document(R"(["-", 20.5, 5.5, 10])"), {json(nullptr)}), 5.0);
+    EXPECT_EQ(computo::execute(jsom::parse_document(R"(["-", 20.5, 5.5, 10])"), {json(nullptr)}),
+              5.0);
 }
 
 TEST(ArithmeticOperators, SubtractionErrors) {
     EXPECT_THROW(computo::execute(jsom::parse_document(R"(["-"])"), {json(nullptr)}),
                  computo::InvalidArgumentException);
-    EXPECT_THROW(computo::execute(jsom::parse_document(R"(["-", "not_a_number"])"), {json(nullptr)}),
-                 computo::InvalidArgumentException);
+    EXPECT_THROW(
+        computo::execute(jsom::parse_document(R"(["-", "not_a_number"])"), {json(nullptr)}),
+        computo::InvalidArgumentException);
 }
 
 TEST(ArithmeticOperators, MultiplicationBasic) {
@@ -57,8 +62,9 @@ TEST(ArithmeticOperators, MultiplicationNary) {
 TEST(ArithmeticOperators, MultiplicationErrors) {
     EXPECT_THROW(computo::execute(jsom::parse_document(R"(["*"])"), {json(nullptr)}),
                  computo::InvalidArgumentException);
-    EXPECT_THROW(computo::execute(jsom::parse_document(R"(["*", "not_a_number"])"), {json(nullptr)}),
-                 computo::InvalidArgumentException);
+    EXPECT_THROW(
+        computo::execute(jsom::parse_document(R"(["*", "not_a_number"])"), {json(nullptr)}),
+        computo::InvalidArgumentException);
 }
 
 TEST(ArithmeticOperators, DivisionBasic) {
@@ -80,8 +86,9 @@ TEST(ArithmeticOperators, DivisionErrors) {
                  computo::InvalidArgumentException);
     EXPECT_THROW(computo::execute(jsom::parse_document(R"(["/", 10, 0])"), {json(nullptr)}),
                  computo::InvalidArgumentException);
-    EXPECT_THROW(computo::execute(jsom::parse_document(R"(["/", "not_a_number"])"), {json(nullptr)}),
-                 computo::InvalidArgumentException);
+    EXPECT_THROW(
+        computo::execute(jsom::parse_document(R"(["/", "not_a_number"])"), {json(nullptr)}),
+        computo::InvalidArgumentException);
 }
 
 TEST(ArithmeticOperators, ModuloBasic) {
@@ -101,6 +108,7 @@ TEST(ArithmeticOperators, ModuloErrors) {
                  computo::InvalidArgumentException);
     EXPECT_THROW(computo::execute(jsom::parse_document(R"(["%", 10, 0])"), {json(nullptr)}),
                  computo::InvalidArgumentException);
-    EXPECT_THROW(computo::execute(jsom::parse_document(R"(["%", "not_a_number"])"), {json(nullptr)}),
-                 computo::InvalidArgumentException);
+    EXPECT_THROW(
+        computo::execute(jsom::parse_document(R"(["%", "not_a_number"])"), {json(nullptr)}),
+        computo::InvalidArgumentException);
 }

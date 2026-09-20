@@ -345,7 +345,8 @@ TEST_F(ThreadSafetyTest, ExecutionContextThreadLocalSafety) {
                         collector.add_result(result);
                     } else {
                         throw std::runtime_error("Variable isolation failed: expected "
-                                                 + expected.to_json() + ", got " + result.to_json());
+                                                 + expected.to_json() + ", got "
+                                                 + result.to_json());
                     }
                 } catch (...) {
                     collector.add_exception(std::current_exception());
@@ -451,18 +452,22 @@ TEST_F(ThreadSafetyTest, AllOperatorThreadSafety) {
             {"equal", jsom::parse_document(R"(["==", 5, 5])"), json(nullptr), json(true)},
 
             // Logical
-            {"logical_and", jsom::parse_document(R"(["and", true, true])"), json(nullptr), json(true)},
-            {"logical_or", jsom::parse_document(R"(["or", false, true])"), json(nullptr), json(true)},
+            {"logical_and", jsom::parse_document(R"(["and", true, true])"), json(nullptr),
+             json(true)},
+            {"logical_or", jsom::parse_document(R"(["or", false, true])"), json(nullptr),
+             json(true)},
             {"logical_not", jsom::parse_document(R"(["not", false])"), json(nullptr), json(true)},
 
             // Data Access
             {"input_access", jsom::parse_document(R"(["$input"])"), json(42), json(42)},
-            {"variable", jsom::parse_document(R"(["let", [["x", 100]], ["$", "/x"]])"), json(nullptr),
-             json(100)},
+            {"variable", jsom::parse_document(R"(["let", [["x", 100]], ["$", "/x"]])"),
+             json(nullptr), json(100)},
 
             // Control Flow
-            {"if_true", jsom::parse_document(R"(["if", true, "yes", "no"])"), json(nullptr), json("yes")},
-            {"if_false", jsom::parse_document(R"(["if", false, "yes", "no"])"), json(nullptr), json("no")},
+            {"if_true", jsom::parse_document(R"(["if", true, "yes", "no"])"), json(nullptr),
+             json("yes")},
+            {"if_false", jsom::parse_document(R"(["if", false, "yes", "no"])"), json(nullptr),
+             json("no")},
         };
 
         thread_safety_utils::ThreadSafeResultCollector<std::pair<std::string, bool>> collector;
@@ -633,9 +638,12 @@ TEST_F(ThreadSafetyTest, HighConcurrencyStressTest) {
 
     // Mix of different operation types
     std::vector<json> scripts = {
-        jsom::parse_document(R"(["+", 1, 2, 3])"),      jsom::parse_document(R"(["*", 4, 5])"),
-        jsom::parse_document(R"([">", 10, 5])"),        jsom::parse_document(R"(["and", true, false])"),
-        jsom::parse_document(R"(["if", true, 42, 0])"), jsom::parse_document(R"(["let", [["x", 100]], ["$", "/x"]])"),
+        jsom::parse_document(R"(["+", 1, 2, 3])"),
+        jsom::parse_document(R"(["*", 4, 5])"),
+        jsom::parse_document(R"([">", 10, 5])"),
+        jsom::parse_document(R"(["and", true, false])"),
+        jsom::parse_document(R"(["if", true, 42, 0])"),
+        jsom::parse_document(R"(["let", [["x", 100]], ["$", "/x"]])"),
     };
 
     std::vector<json> expected_results = {6, 20, true, false, 42, 100};

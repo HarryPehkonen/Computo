@@ -42,7 +42,8 @@ protected:
     std::string exec_command(const std::string& cmd) {
         std::array<char, 128> buffer;
         std::string result;
-        auto close_pipe = [](FILE* f) { pclose(f); };  // lambda deleter: avoids -Wignored-attributes on pclose
+        auto close_pipe
+            = [](FILE* f) { pclose(f); }; // lambda deleter: avoids -Wignored-attributes on pclose
         std::unique_ptr<FILE, decltype(close_pipe)> pipe(popen(cmd.c_str(), "r"), close_pipe);
         if (!pipe) {
             return "";

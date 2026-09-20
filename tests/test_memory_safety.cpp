@@ -132,7 +132,8 @@ TEST_F(MemorySafetyTest, LargeArrayMapOperation) {
 
     // Test map operation on large array - add 1 to each element
     // Input array format: {"array": [0, 1, 2, ...]}
-    json script = jsom::parse_document(R"(["map", ["$input"], ["lambda", ["x"], ["+", ["$", "/x"], 1]]])");
+    json script
+        = jsom::parse_document(R"(["map", ["$input"], ["lambda", ["x"], ["+", ["$", "/x"], 1]]])");
 
     memory_monitor_.update_peak_memory();
     json result = computo::execute(script, {large_array});
@@ -251,7 +252,8 @@ TEST_F(MemorySafetyTest, VariableMemoryManagement) {
 
     // Test variable creation and access with let operator
     for (size_t i = 0; i < LOOP_COUNT; ++i) {
-        json script = jsom::parse_document(R"(["let", [["x", 42], ["y", "hello"]], ["+", ["$", "/x"], 1]])");
+        json script = jsom::parse_document(
+            R"(["let", [["x", 42], ["y", "hello"]], ["+", ["$", "/x"], 1]])");
         json result = computo::execute(script, {json(nullptr)});
         EXPECT_EQ(result, 43);
 
@@ -335,7 +337,8 @@ TEST_F(MemorySafetyTest, LargeObjectOperations) {
     memory_monitor_.update_peak_memory();
 
     // Test simple object access using JSON Pointer syntax
-    json access_script = jsom::parse_document(R"(["let", {"obj": ["$input"]}, ["$", "/obj/key1"]])");
+    json access_script
+        = jsom::parse_document(R"(["let", {"obj": ["$input"]}, ["$", "/obj/key1"]])");
     json access_result = computo::execute(access_script, {large_object});
     EXPECT_EQ(access_result, 1);
 
@@ -355,7 +358,8 @@ TEST_F(MemorySafetyTest, NestedStructureOperations) {
     memory_monitor_.update_peak_memory();
 
     // Test nested property access using JSON Pointer syntax
-    json script = jsom::parse_document(R"(["let", {"obj": ["$input"]}, ["$", "/obj/level1/level2/value"]])");
+    json script = jsom::parse_document(
+        R"(["let", {"obj": ["$input"]}, ["$", "/obj/level1/level2/value"]])");
 
     json result = computo::execute(script, {nested_obj});
     EXPECT_EQ(result, 42);
@@ -375,10 +379,12 @@ TEST_F(MemorySafetyTest, MemoryStressTestMixedOperations) {
             = computo::execute(jsom::parse_document(R"(["+", 1, 2, 3, 4, 5])"), {json(nullptr)});
         EXPECT_EQ(arith_result, 15);
 
-        json comp_result = computo::execute(jsom::parse_document(R"([">", 10, 5])"), {json(nullptr)});
+        json comp_result
+            = computo::execute(jsom::parse_document(R"([">", 10, 5])"), {json(nullptr)});
         EXPECT_EQ(comp_result, true);
 
-        json input_result = computo::execute(jsom::parse_document(R"(["$input"])"), {static_cast<int>(i)});
+        json input_result
+            = computo::execute(jsom::parse_document(R"(["$input"])"), {static_cast<int>(i)});
         EXPECT_EQ(input_result, static_cast<int>(i));
 
         // Update memory tracking periodically
@@ -399,7 +405,8 @@ TEST_F(MemorySafetyTest, ExecutionContextScopeMemory) {
     // Test creating and destroying execution contexts in a loop
     for (size_t i = 0; i < NUM_ITERATIONS; ++i) {
         // Create contexts with let expressions (automatic cleanup)
-        json script = jsom::parse_document(R"(["let", [["x", 42], ["y", "test"]], ["*", ["$", "/x"], 2]])");
+        json script
+            = jsom::parse_document(R"(["let", [["x", 42], ["y", "test"]], ["*", ["$", "/x"], 2]])");
         json result = computo::execute(script, {json(nullptr)});
         EXPECT_EQ(result, 84);
 

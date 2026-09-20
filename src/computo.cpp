@@ -14,11 +14,12 @@ std::unique_ptr<OperatorRegistry> OperatorRegistry::instance_;
 
 ExecutionContext::ExecutionContext(const jsom::JsonDocument& input, std::string array_key)
     : input_ptr_(std::make_shared<jsom::JsonDocument>(input)),
-      inputs_ptr_(
-          std::make_shared<std::vector<jsom::JsonDocument>>(std::vector<jsom::JsonDocument>{input})),
+      inputs_ptr_(std::make_shared<std::vector<jsom::JsonDocument>>(
+          std::vector<jsom::JsonDocument>{input})),
       array_key(std::move(array_key)) {}
 
-ExecutionContext::ExecutionContext(const std::vector<jsom::JsonDocument>& inputs, std::string array_key)
+ExecutionContext::ExecutionContext(const std::vector<jsom::JsonDocument>& inputs,
+                                   std::string array_key)
     : input_ptr_(inputs.empty() ? std::make_shared<jsom::JsonDocument>(null_input_)
                                 : std::make_shared<jsom::JsonDocument>(inputs[0])),
       inputs_ptr_(std::make_shared<std::vector<jsom::JsonDocument>>(inputs)),
@@ -124,7 +125,8 @@ auto lambda_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> E
 auto obj_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 auto keys_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 auto values_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
-auto objFromPairs_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto objFromPairs_operator(const jsom::JsonDocument& args, ExecutionContext& ctx)
+    -> EvaluationResult;
 auto pick_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 auto omit_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 auto merge_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
@@ -150,7 +152,8 @@ auto strConcat_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -
 auto sort_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 auto reverse_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 auto unique_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
-auto unique_sorted_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
+auto unique_sorted_operator(const jsom::JsonDocument& args, ExecutionContext& ctx)
+    -> EvaluationResult;
 auto zip_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 auto approx_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult;
 } // namespace operators
@@ -238,7 +241,8 @@ auto evaluate_array_object(const jsom::JsonDocument& expr, const ExecutionContex
 }
 
 static auto handle_debug_integration(const std::string& operator_name, const ExecutionContext& ctx,
-                                     const jsom::JsonDocument& expr, DebugContext* debug_ctx) -> void {
+                                     const jsom::JsonDocument& expr, DebugContext* debug_ctx)
+    -> void {
     if (debug_ctx == nullptr || !debug_ctx->is_debug_enabled()) {
         return;
     }

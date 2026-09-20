@@ -52,8 +52,8 @@ auto resolve_color_mode(ColorMode mode) -> bool {
 
 // Context passed during recursive colorization
 enum class NodeContext : std::uint8_t {
-    Expression,    // Normal expression context
-    LambdaParams,  // Inside lambda parameter list
+    Expression,   // Normal expression context
+    LambdaParams, // Inside lambda parameter list
 };
 
 // Escape a string value for JSON output (add quotes and escape special chars)
@@ -61,13 +61,27 @@ static void append_json_string(std::string& out, const std::string& str) {
     out += '"';
     for (char chr : str) {
         switch (chr) {
-        case '"': out += "\\\""; break;
-        case '\\': out += "\\\\"; break;
-        case '\b': out += "\\b"; break;
-        case '\f': out += "\\f"; break;
-        case '\n': out += "\\n"; break;
-        case '\r': out += "\\r"; break;
-        case '\t': out += "\\t"; break;
+        case '"':
+            out += "\\\"";
+            break;
+        case '\\':
+            out += "\\\\";
+            break;
+        case '\b':
+            out += "\\b";
+            break;
+        case '\f':
+            out += "\\f";
+            break;
+        case '\n':
+            out += "\\n";
+            break;
+        case '\r':
+            out += "\\r";
+            break;
+        case '\t':
+            out += "\\t";
+            break;
         default:
             if (static_cast<unsigned char>(chr) < 0x20) {
                 char buf[8];
@@ -86,9 +100,9 @@ static auto is_var_access_op(const std::string& name) -> bool {
     return name == "$" || name == "$input" || name == "$inputs";
 }
 
-static void colorize_node(const jsom::JsonDocument& node, NodeContext ctx,
-                          int indent, const ScriptColorTheme& theme,
-                          const std::string& array_key, std::string& out);
+static void colorize_node(const jsom::JsonDocument& node, NodeContext ctx, int indent,
+                          const ScriptColorTheme& theme, const std::string& array_key,
+                          std::string& out);
 
 static void append_indent(std::string& out, int indent) {
     for (int idx = 0; idx < indent; ++idx) {
@@ -116,9 +130,9 @@ static void emit_op_name(const std::string& op_name, const ScriptColorTheme& the
 }
 
 // Emit a colorized argument (handles JSON pointer special case for $ operators)
-static void emit_arg(const jsom::JsonDocument& child, const std::string& op_name,
-                     size_t arg_idx, int indent, const ScriptColorTheme& theme,
-                     const std::string& array_key, std::string& out) {
+static void emit_arg(const jsom::JsonDocument& child, const std::string& op_name, size_t arg_idx,
+                     int indent, const ScriptColorTheme& theme, const std::string& array_key,
+                     std::string& out) {
     if (op_name == "lambda" && arg_idx == 1 && child.is_array()) {
         colorize_node(child, NodeContext::LambdaParams, indent, theme, array_key, out);
     } else if (is_var_access_op(op_name) && child.is_string()) {
@@ -156,16 +170,15 @@ static void emit_close_bracket(const ScriptColorTheme& theme, std::string& out) 
 // Check if a node is a lambda expression
 static auto is_lambda(const jsom::JsonDocument& node) -> bool {
     return node.is_array() && !node.empty() && node[0].is_string()
-        && node[0].as<std::string>() == "lambda";
+           && node[0].as<std::string>() == "lambda";
 }
 
 // --- Semantic formatters for specific operators ---
 
 // let: ["let", [[name, val], ...], body]
 // Bindings array opens on next line, each binding on its own line, body at end
-static void format_let(const jsom::JsonDocument& node, int indent,
-                       const ScriptColorTheme& theme, const std::string& array_key,
-                       std::string& out) {
+static void format_let(const jsom::JsonDocument& node, int indent, const ScriptColorTheme& theme,
+                       const std::string& array_key, std::string& out) {
     emit_open_bracket(theme, out);
     emit_op_name("let", theme, out);
     emit_comma(theme, out);
@@ -196,7 +209,8 @@ static void format_let(const jsom::JsonDocument& node, int indent,
                     append_indent(out, indent + 2);
                     emit_close_bracket(theme, out);
                 } else {
-                    colorize_node(binding, NodeContext::Expression, indent + 2, theme, array_key, out);
+                    colorize_node(binding, NodeContext::Expression, indent + 2, theme, array_key,
+                                  out);
                 }
             }
             out += '\n';
@@ -222,9 +236,8 @@ static void format_let(const jsom::JsonDocument& node, int indent,
 
 // lambda: ["lambda", [params], body]
 // Short bodies stay inline, long ones wrap
-static void format_lambda(const jsom::JsonDocument& node, int indent,
-                          const ScriptColorTheme& theme, const std::string& array_key,
-                          std::string& out) {
+static void format_lambda(const jsom::JsonDocument& node, int indent, const ScriptColorTheme& theme,
+                          const std::string& array_key, std::string& out) {
     bool fits_inline = compact_length(node) <= 60;
 
     emit_open_bracket(theme, out);
@@ -256,9 +269,8 @@ static void format_lambda(const jsom::JsonDocument& node, int indent,
 
 // if: ["if", cond, then, else]
 // All on one line if short, otherwise each branch on its own line
-static void format_if(const jsom::JsonDocument& node, int indent,
-                      const ScriptColorTheme& theme, const std::string& array_key,
-                      std::string& out) {
+static void format_if(const jsom::JsonDocument& node, int indent, const ScriptColorTheme& theme,
+                      const std::string& array_key, std::string& out) {
     bool fits_inline = compact_length(node) <= 60;
 
     emit_open_bracket(theme, out);
@@ -363,9 +375,9 @@ static void format_generic_op(const jsom::JsonDocument& node, const std::string&
 
 // --- Main array dispatcher ---
 
-static void colorize_array(const jsom::JsonDocument& node, NodeContext ctx,
-                           int indent, const ScriptColorTheme& theme,
-                           const std::string& array_key, std::string& out) {
+static void colorize_array(const jsom::JsonDocument& node, NodeContext ctx, int indent,
+                           const ScriptColorTheme& theme, const std::string& array_key,
+                           std::string& out) {
     if (node.empty()) {
         emit_open_bracket(theme, out);
         emit_close_bracket(theme, out);
@@ -418,8 +430,8 @@ static void colorize_array(const jsom::JsonDocument& node, NodeContext ctx,
 // --- Object formatter ---
 
 static void colorize_object(const jsom::JsonDocument& node, int indent,
-                             const ScriptColorTheme& theme,
-                             const std::string& array_key, std::string& out) {
+                            const ScriptColorTheme& theme, const std::string& array_key,
+                            std::string& out) {
     if (node.empty()) {
         out += theme.structural;
         out += "{}";
@@ -474,9 +486,9 @@ static void colorize_object(const jsom::JsonDocument& node, int indent,
 
 // --- Top-level node dispatcher ---
 
-static void colorize_node(const jsom::JsonDocument& node, NodeContext ctx,
-                          int indent, const ScriptColorTheme& theme,
-                          const std::string& array_key, std::string& out) {
+static void colorize_node(const jsom::JsonDocument& node, NodeContext ctx, int indent,
+                          const ScriptColorTheme& theme, const std::string& array_key,
+                          std::string& out) {
     if (node.is_null()) {
         out += theme.bool_null;
         out += "null";
@@ -511,7 +523,8 @@ static void colorize_node(const jsom::JsonDocument& node, NodeContext ctx,
                     out += ", ";
                     out += theme.reset;
                 }
-                colorize_node(node[idx], NodeContext::LambdaParams, indent + 1, theme, array_key, out);
+                colorize_node(node[idx], NodeContext::LambdaParams, indent + 1, theme, array_key,
+                              out);
             }
             emit_close_bracket(theme, out);
         } else {
@@ -522,9 +535,8 @@ static void colorize_node(const jsom::JsonDocument& node, NodeContext ctx,
     }
 }
 
-auto ScriptColorizer::colorize(const jsom::JsonDocument& doc,
-                                const ScriptColorTheme& theme,
-                                const std::string& array_key) -> std::string {
+auto ScriptColorizer::colorize(const jsom::JsonDocument& doc, const ScriptColorTheme& theme,
+                               const std::string& array_key) -> std::string {
     std::string out;
     out.reserve(256);
     colorize_node(doc, NodeContext::Expression, 0, theme, array_key, out);

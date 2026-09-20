@@ -49,8 +49,8 @@ auto load_input_files(const std::vector<std::string>& filenames, bool enable_com
 }
 
 // Unwrap array wrapper for output: {"array": [...]} -> [...]
-static auto unwrap_for_output(const jsom::JsonDocument& result,
-                              const std::string& array_key) -> jsom::JsonDocument {
+static auto unwrap_for_output(const jsom::JsonDocument& result, const std::string& array_key)
+    -> jsom::JsonDocument {
     if (result.is_object() && result.size() == 1 && result.contains(array_key)) {
         return result[array_key];
     }
@@ -128,29 +128,28 @@ public:
 };
 
 // Static command mapping table
-const std::unordered_map<std::string, ReplCommandType> ReplCommandParser::command_map = {
-    {"help", ReplCommandType::HELP},
-    {"vars", ReplCommandType::VARS},
-    {"debug", ReplCommandType::DEBUG_TOGGLE},
-    {"trace", ReplCommandType::TRACE_TOGGLE},
-    {"history", ReplCommandType::HISTORY},
-    {"clear", ReplCommandType::CLEAR},
-    {"quit", ReplCommandType::QUIT},
-    {"exit", ReplCommandType::QUIT},
-    {"break", ReplCommandType::BREAK},
-    {"nobreak", ReplCommandType::NOBREAK},
-    {"breaks", ReplCommandType::BREAKS},
-    {"run", ReplCommandType::RUN},
-    {"set", ReplCommandType::SET},
-    {"step", ReplCommandType::STEP},
-    {"s", ReplCommandType::STEP},
-    {"continue", ReplCommandType::CONTINUE},
-    {"c", ReplCommandType::CONTINUE},
-    {"finish", ReplCommandType::FINISH},
-    {"f", ReplCommandType::FINISH},
-    {"where", ReplCommandType::WHERE},
-    {"w", ReplCommandType::WHERE}
-};
+const std::unordered_map<std::string, ReplCommandType> ReplCommandParser::command_map
+    = {{"help", ReplCommandType::HELP},
+       {"vars", ReplCommandType::VARS},
+       {"debug", ReplCommandType::DEBUG_TOGGLE},
+       {"trace", ReplCommandType::TRACE_TOGGLE},
+       {"history", ReplCommandType::HISTORY},
+       {"clear", ReplCommandType::CLEAR},
+       {"quit", ReplCommandType::QUIT},
+       {"exit", ReplCommandType::QUIT},
+       {"break", ReplCommandType::BREAK},
+       {"nobreak", ReplCommandType::NOBREAK},
+       {"breaks", ReplCommandType::BREAKS},
+       {"run", ReplCommandType::RUN},
+       {"set", ReplCommandType::SET},
+       {"step", ReplCommandType::STEP},
+       {"s", ReplCommandType::STEP},
+       {"continue", ReplCommandType::CONTINUE},
+       {"c", ReplCommandType::CONTINUE},
+       {"finish", ReplCommandType::FINISH},
+       {"f", ReplCommandType::FINISH},
+       {"where", ReplCommandType::WHERE},
+       {"w", ReplCommandType::WHERE}};
 
 // --- REPL Implementation ---
 
@@ -173,7 +172,7 @@ auto get_input_line(bool in_debug_mode, std::vector<std::string>& command_histor
 #ifdef COMPUTO_USE_READLINE
     char* line_c_str = readline(prompt);
     if (line_c_str == nullptr) { // EOF or Ctrl-D
-        return ""; // Signal EOF
+        return "";               // Signal EOF
     }
     line_str = line_c_str;
     if (!line_str.empty()) {
@@ -252,7 +251,7 @@ void handle_vars_command(const ReplCommand& /*cmd*/, ReplState& state) {
         std::cout << "    $input: null (no input files loaded)\n";
         std::cout << "    $inputs: [] (empty array)\n";
     }
-    
+
     // Show debug trace variables if available
     if (state.debug_context.is_debug_enabled() && state.debug_context.is_trace_enabled()) {
         auto trace = state.debug_context.get_execution_trace();
@@ -265,23 +264,24 @@ void handle_vars_command(const ReplCommand& /*cmd*/, ReplState& state) {
                     break;
                 }
             }
-            
+
             if (step_with_vars) {
                 std::cout << "  Local variables from recent execution:\n";
                 for (const auto& [name, value] : step_with_vars->variables) {
                     std::cout << "    " << name << ": " << value.to_json() << "\n";
                 }
-                std::cout << "    (from step: " << step_with_vars->operation 
-                         << " at " << step_with_vars->location << ")\n";
+                std::cout << "    (from step: " << step_with_vars->operation << " at "
+                          << step_with_vars->location << ")\n";
             } else {
                 std::cout << "  Local variables: (none in recent execution)\n";
             }
         }
     }
-    
+
     // Show status message if debug/trace not enabled
     if (!state.debug_context.is_debug_enabled()) {
-        std::cout << "  Note: Enable debug mode ('debug on') and trace mode ('trace on') to see execution variables\n";
+        std::cout << "  Note: Enable debug mode ('debug on') and trace mode ('trace on') to see "
+                     "execution variables\n";
     } else if (!state.debug_context.is_trace_enabled()) {
         std::cout << "  Note: Enable trace mode ('trace on') to see execution variables\n";
     }
@@ -289,14 +289,14 @@ void handle_vars_command(const ReplCommand& /*cmd*/, ReplState& state) {
 
 void handle_debug_toggle_command(const ReplCommand& /*cmd*/, ReplState& state) {
     state.debug_context.set_debug_enabled(!state.debug_context.is_debug_enabled());
-    std::cout << "Debug mode "
-              << (state.debug_context.is_debug_enabled() ? "enabled" : "disabled") << "\n";
+    std::cout << "Debug mode " << (state.debug_context.is_debug_enabled() ? "enabled" : "disabled")
+              << "\n";
 }
 
 void handle_trace_toggle_command(const ReplCommand& /*cmd*/, ReplState& state) {
     state.debug_context.set_trace_enabled(!state.debug_context.is_trace_enabled());
-    std::cout << "Trace mode "
-              << (state.debug_context.is_trace_enabled() ? "enabled" : "disabled") << "\n";
+    std::cout << "Trace mode " << (state.debug_context.is_trace_enabled() ? "enabled" : "disabled")
+              << "\n";
 }
 
 void handle_history_command(const ReplCommand& /*cmd*/, ReplState& state) {
@@ -369,7 +369,7 @@ void handle_run_command(const ReplCommand& cmd, ReplState& state) {
     } else {
         try {
             auto script = load_json_file(cmd.args[0], state.args->enable_comments);
-            
+
             // Create execution context with REPL variables
             computo::ExecutionContext ctx(state.inputs, state.args->array_key);
             auto ctx_with_vars = ctx.with_variables(state.repl_variables);
@@ -425,14 +425,15 @@ void handle_set_command(const ReplCommand& cmd, ReplState& state) {
         std::cout << "Examples: set x 10, set name \"Alice\", set data {\"key\": \"value\"}\n";
     } else {
         const auto& var_name = cmd.args[0];
-        
+
         // Join remaining args as JSON value
         std::string json_str;
         for (size_t i = 1; i < cmd.args.size(); ++i) {
-            if (i > 1) json_str += " ";
+            if (i > 1)
+                json_str += " ";
             json_str += cmd.args[i];
         }
-        
+
         try {
             auto value = jsom::parse_document(json_str);
             state.repl_variables[var_name] = value;
@@ -476,8 +477,7 @@ void handle_finish_command(const ReplCommand& /*cmd*/, ReplState& state) {
 
 void handle_where_command(const ReplCommand& /*cmd*/, ReplState& state) {
     if (state.in_debug_mode) {
-        std::cout << "Current location: " << state.debug_context.get_current_location()
-                  << "\n";
+        std::cout << "Current location: " << state.debug_context.get_current_location() << "\n";
     } else {
         std::cout << "Not in debug mode.\n";
     }
@@ -522,24 +522,58 @@ auto run_repl_mode(const ComputoArgs& args) -> int {
             case ReplCommandType::QUIT:
                 std::cout << "\nGoodbye!\n";
                 return 0;
-            case ReplCommandType::HELP:         handle_help_command(cmd, state); break;
-            case ReplCommandType::VARS:         handle_vars_command(cmd, state); break;
-            case ReplCommandType::DEBUG_TOGGLE: handle_debug_toggle_command(cmd, state); break;
-            case ReplCommandType::TRACE_TOGGLE: handle_trace_toggle_command(cmd, state); break;
-            case ReplCommandType::HISTORY:      handle_history_command(cmd, state); break;
-            case ReplCommandType::CLEAR:        handle_clear_command(cmd, state); break;
-            case ReplCommandType::BREAK:        handle_break_command(cmd, state); break;
-            case ReplCommandType::NOBREAK:      handle_nobreak_command(cmd, state); break;
-            case ReplCommandType::BREAKS:       handle_breaks_command(cmd, state); break;
-            case ReplCommandType::RUN:          handle_run_command(cmd, state); break;
-            case ReplCommandType::JSON_SCRIPT:  handle_json_script(cmd, state); break;
-            case ReplCommandType::SET:          handle_set_command(cmd, state); break;
-            case ReplCommandType::STEP:         handle_step_command(cmd, state); break;
-            case ReplCommandType::CONTINUE:     handle_continue_command(cmd, state); break;
-            case ReplCommandType::FINISH:       handle_finish_command(cmd, state); break;
-            case ReplCommandType::WHERE:        handle_where_command(cmd, state); break;
+            case ReplCommandType::HELP:
+                handle_help_command(cmd, state);
+                break;
+            case ReplCommandType::VARS:
+                handle_vars_command(cmd, state);
+                break;
+            case ReplCommandType::DEBUG_TOGGLE:
+                handle_debug_toggle_command(cmd, state);
+                break;
+            case ReplCommandType::TRACE_TOGGLE:
+                handle_trace_toggle_command(cmd, state);
+                break;
+            case ReplCommandType::HISTORY:
+                handle_history_command(cmd, state);
+                break;
+            case ReplCommandType::CLEAR:
+                handle_clear_command(cmd, state);
+                break;
+            case ReplCommandType::BREAK:
+                handle_break_command(cmd, state);
+                break;
+            case ReplCommandType::NOBREAK:
+                handle_nobreak_command(cmd, state);
+                break;
+            case ReplCommandType::BREAKS:
+                handle_breaks_command(cmd, state);
+                break;
+            case ReplCommandType::RUN:
+                handle_run_command(cmd, state);
+                break;
+            case ReplCommandType::JSON_SCRIPT:
+                handle_json_script(cmd, state);
+                break;
+            case ReplCommandType::SET:
+                handle_set_command(cmd, state);
+                break;
+            case ReplCommandType::STEP:
+                handle_step_command(cmd, state);
+                break;
+            case ReplCommandType::CONTINUE:
+                handle_continue_command(cmd, state);
+                break;
+            case ReplCommandType::FINISH:
+                handle_finish_command(cmd, state);
+                break;
+            case ReplCommandType::WHERE:
+                handle_where_command(cmd, state);
+                break;
             case ReplCommandType::UNKNOWN:
-            default:                            handle_unknown_command(cmd, state); break;
+            default:
+                handle_unknown_command(cmd, state);
+                break;
             }
         }
 
@@ -547,7 +581,7 @@ auto run_repl_mode(const ComputoArgs& args) -> int {
         std::cerr << "Error: " << e.what() << "\n";
         return 1;
     }
-    
+
     return 0; // Should not reach here, but prevents compiler warning
 }
 

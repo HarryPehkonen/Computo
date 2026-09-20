@@ -170,7 +170,8 @@ struct UniqueSortedConfig {
     std::string mode;          // "firsts", "lasts", "singles", "multiples"
 };
 
-auto extract_field_value(const jsom::JsonDocument& obj, const std::string& pointer) -> jsom::JsonDocument {
+auto extract_field_value(const jsom::JsonDocument& obj, const std::string& pointer)
+    -> jsom::JsonDocument {
     if (pointer.empty()) {
         return obj;
     }
@@ -237,7 +238,8 @@ auto parse_unique_sorted_config(const jsom::JsonDocument& args) -> UniqueSortedC
 // NOLINTEND(readability-function-size)
 
 // NOLINTBEGIN(readability-function-size)
-auto unique_sorted_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
+auto unique_sorted_operator(const jsom::JsonDocument& args, ExecutionContext& ctx)
+    -> EvaluationResult {
     if (args.empty() || args.size() > 3) {
         throw InvalidArgumentException("'uniqueSorted' requires 1-3 arguments",
                                        ctx.get_path_string());

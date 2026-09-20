@@ -5,8 +5,8 @@
 #include <string>
 
 using computo::ColorMode;
-using computo::ScriptColorTheme;
 using computo::ScriptColorizer;
+using computo::ScriptColorTheme;
 
 // Helper: strip all ANSI escape codes from a string
 static auto strip_ansi(const std::string& input) -> std::string {
@@ -16,7 +16,7 @@ static auto strip_ansi(const std::string& input) -> std::string {
 
 // Helper: check if a substring is wrapped with expected ANSI code
 static auto contains_colored(const std::string& output, const char* ansi_code,
-                              const std::string& text) -> bool {
+                             const std::string& text) -> bool {
     std::string pattern = std::string(ansi_code) + text + "\033[0m";
     return output.find(pattern) != std::string::npos;
 }
@@ -203,7 +203,8 @@ TEST_F(ScriptColorizerTest, RoundtripComplexScript) {
 }
 
 TEST_F(ScriptColorizerTest, RoundtripWithObject) {
-    auto doc = jsom::parse_document(R"(["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]])");
+    auto doc = jsom::parse_document(
+        R"(["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]])");
     auto result = ScriptColorizer::colorize(doc, theme);
     auto stripped = strip_ansi(result);
     auto reparsed = jsom::parse_document(stripped);
@@ -222,15 +223,17 @@ protected:
     }
 
     // Check that a line at the given indentation level contains the expected text
-    static auto has_line(const std::string& output, int indent_level,
-                         const std::string& content) -> bool {
+    static auto has_line(const std::string& output, int indent_level, const std::string& content)
+        -> bool {
         std::string prefix;
         for (int idx = 0; idx < indent_level; ++idx) {
             prefix += "  ";
         }
         std::string target = prefix + content;
         // Check for the line at start or after a newline
-        if (output.find(target) == 0) { return true; }
+        if (output.find(target) == 0) {
+            return true;
+        }
         return output.find("\n" + target) != std::string::npos;
     }
 };
@@ -268,17 +271,14 @@ TEST_F(FormattingTest, LambdaShortBodyInline) {
 TEST_F(FormattingTest, LambdaLongBodyWraps) {
     // Make a body long enough to trigger wrapping
     auto result = format(
-        R"(["lambda", ["x"], ["+", ["*", ["$", "/x"], ["$", "/x"]], ["*", ["$", "/x"], 100]]])"
-    );
+        R"(["lambda", ["x"], ["+", ["*", ["$", "/x"], ["$", "/x"]], ["*", ["$", "/x"], 100]]])");
     EXPECT_NE(result.find('\n'), std::string::npos) << "Long lambda body should wrap";
-    EXPECT_TRUE(has_line(result, 0, "[\"lambda\", [\"x\"],"))
-        << "lambda + params on first line";
+    EXPECT_TRUE(has_line(result, 0, "[\"lambda\", [\"x\"],")) << "lambda + params on first line";
 }
 
 TEST_F(FormattingTest, MapPutsLambdaOnIndentedLine) {
-    auto result = format(
-        R"(["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]])"
-    );
+    auto result
+        = format(R"(["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]])");
     EXPECT_NE(result.find('\n'), std::string::npos) << "Should be multiline";
     EXPECT_TRUE(has_line(result, 0, "[\"map\",")) << "map on first line";
     EXPECT_TRUE(has_line(result, 1, "[\"lambda\"")) << "lambda indented on own line";
@@ -286,24 +286,21 @@ TEST_F(FormattingTest, MapPutsLambdaOnIndentedLine) {
 
 TEST_F(FormattingTest, FilterPutsLambdaOnIndentedLine) {
     auto result = format(
-        R"(["filter", {"array": [1, 2, 3, 4, 5]}, ["lambda", ["x"], [">", ["$", "/x"], 2]]])"
-    );
+        R"(["filter", {"array": [1, 2, 3, 4, 5]}, ["lambda", ["x"], [">", ["$", "/x"], 2]]])");
     EXPECT_TRUE(has_line(result, 0, "[\"filter\",")) << "filter on first line";
     EXPECT_TRUE(has_line(result, 1, "[\"lambda\"")) << "lambda indented on own line";
 }
 
 TEST_F(FormattingTest, ReduceInitialValueOnOwnLine) {
     auto result = format(
-        R"(["reduce", {"array": [1, 2, 3]}, ["lambda", ["acc", "x"], ["+", ["$", "/acc"], ["$", "/x"]]], 0])"
-    );
+        R"(["reduce", {"array": [1, 2, 3]}, ["lambda", ["acc", "x"], ["+", ["$", "/acc"], ["$", "/x"]]], 0])");
     EXPECT_TRUE(has_line(result, 1, "[\"lambda\"")) << "lambda indented";
     EXPECT_TRUE(has_line(result, 1, "0")) << "initial value on own indented line";
 }
 
 TEST_F(FormattingTest, IfBranchesOnSeparateLines) {
-    auto result = format(
-        R"(["if", [">", ["$", "/x"], 0], ["*", ["$", "/x"], 2], ["*", ["$", "/x"], -1]])"
-    );
+    auto result
+        = format(R"(["if", [">", ["$", "/x"], 0], ["*", ["$", "/x"], 2], ["*", ["$", "/x"], -1]])");
     EXPECT_NE(result.find('\n'), std::string::npos) << "Should be multiline";
     EXPECT_TRUE(has_line(result, 0, "[\"if\",")) << "if on first line";
 }
@@ -314,9 +311,8 @@ TEST_F(FormattingTest, IfShortStaysInline) {
 }
 
 TEST_F(FormattingTest, ClosingBracketsAligned) {
-    auto result = format(
-        R"(["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]])"
-    );
+    auto result
+        = format(R"(["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]])");
     // The closing ] of the map should be at indent 0
     EXPECT_TRUE(result.back() == ']' || result.substr(result.size() - 1) == "]");
     EXPECT_TRUE(has_line(result, 0, "]")) << "Closing bracket at indent 0";
@@ -324,7 +320,8 @@ TEST_F(FormattingTest, ClosingBracketsAligned) {
 
 TEST_F(FormattingTest, FormattedOutputIsValidJson) {
     // The proposal's example script
-    std::string json = R"(["let",[["active",["filter",["$input","/users"],["lambda",["u"],[">",["count",["$","/u/orders"]],0]]]],["totals",["map",["$","/active"],["lambda",["u"],["reduce",["$","/u/orders"],["lambda",["a","o"],["+",["$","/a"],["$","/o/total"]]],0]]]]],["$","/totals"]])";
+    std::string json
+        = R"(["let",[["active",["filter",["$input","/users"],["lambda",["u"],[">",["count",["$","/u/orders"]],0]]]],["totals",["map",["$","/active"],["lambda",["u"],["reduce",["$","/u/orders"],["lambda",["a","o"],["+",["$","/a"],["$","/o/total"]]],0]]]]],["$","/totals"]])";
     auto result = format(json);
     // Must parse back as valid JSON
     auto reparsed = jsom::parse_document(result);

@@ -12,8 +12,8 @@ struct SugarWriterOptions {
 
 class SugarWriter {
 public:
-    static auto write(const jsom::JsonDocument& doc,
-                      const SugarWriterOptions& options = {}) -> std::string;
+    static auto write(const jsom::JsonDocument& doc, const SugarWriterOptions& options = {})
+        -> std::string;
 };
 
 } // namespace computo

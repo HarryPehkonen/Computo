@@ -188,8 +188,10 @@ public:
             results_json.push_back(result_json);
         }
 
-        json output = {{"timestamp", static_cast<int>(std::chrono::system_clock::now().time_since_epoch().count())},
-                       {"results", results_json}};
+        json output
+            = {{"timestamp",
+                static_cast<int>(std::chrono::system_clock::now().time_since_epoch().count())},
+               {"results", results_json}};
 
         std::ofstream file(filename);
         file << output.to_json(true);
@@ -944,7 +946,8 @@ TEST_F(PerformanceBenchmarkTest, DebugOverheadBenchmark) {
             debug_ctx.set_debug_enabled(true);
             debug_ctx.set_trace_enabled(true);
 
-            auto script = jsom::parse_document(R"(["map", ["$input"], [["x"], ["*", ["$", "/x"], 2]]])");
+            auto script
+                = jsom::parse_document(R"(["map", ["$input"], [["x"], ["*", ["$", "/x"], 2]]])");
             computo::execute(script, {test_data}, &debug_ctx);
         },
         1000);

@@ -79,8 +79,8 @@ auto evaluate_lambda(const jsom::JsonDocument& lambda_expr,
 // NOLINTEND(readability-function-size)
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-auto to_numeric(const jsom::JsonDocument& value, const std::string& op_name, const std::string& path)
-    -> double {
+auto to_numeric(const jsom::JsonDocument& value, const std::string& op_name,
+                const std::string& path) -> double {
     if (!value.is_number()) {
         std::ostringstream oss;
         oss << op_name << " requires numeric argument, got " << get_type_name(value);
@@ -113,7 +113,8 @@ auto get_type_name(const jsom::JsonDocument& value) -> std::string {
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
 auto extract_array_data(const jsom::JsonDocument& array_input, const std::string& op_name,
-                        const std::string& path, const std::string& array_key) -> jsom::JsonDocument {
+                        const std::string& path, const std::string& array_key)
+    -> jsom::JsonDocument {
     // NOLINTEND(bugprone-easily-swappable-parameters)
     // Handle both {array_key: [...]} format and direct array format
     if (array_input.is_object() && array_input.contains(array_key)
@@ -203,7 +204,8 @@ auto suggest_similar_names(const std::string& target, const std::vector<std::str
 // NOLINTBEGIN(readability-function-size)
 auto process_array_with_lambda(
     const jsom::JsonDocument& args, ExecutionContext& ctx, const std::string& op_name,
-    const std::function<bool(const jsom::JsonDocument& item, const jsom::JsonDocument& lambda_result,
+    const std::function<bool(const jsom::JsonDocument& item,
+                             const jsom::JsonDocument& lambda_result,
                              jsom::JsonDocument& final_result)>& processor) -> jsom::JsonDocument {
     if (args.size() != 2) {
         throw InvalidArgumentException("'" + op_name

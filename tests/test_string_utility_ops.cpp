@@ -324,7 +324,8 @@ TEST_F(StringUtilityOpsTest, ZipOperatorUnequalLengths) {
 TEST_F(StringUtilityOpsTest, ZipOperatorComplexElements) {
     auto result = execute_script(
         R"(["zip", {"array": [{"name": "alice"}, {"name": "bob"}]}, {"array": [25, 30]}])");
-    auto expected = jsom::parse_document(R"({"array": [[{"name": "alice"}, 25], [{"name": "bob"}, 30]]})");
+    auto expected
+        = jsom::parse_document(R"({"array": [[{"name": "alice"}, 25], [{"name": "bob"}, 30]]})");
     EXPECT_EQ(result, expected);
 }
 

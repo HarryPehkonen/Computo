@@ -12,16 +12,45 @@ namespace computo {
 
 enum class TokenType {
     // Literals
-    Number, String, True, False, Null,
+    Number,
+    String,
+    True,
+    False,
+    Null,
     // Identifiers & keywords
-    Identifier, DollarInput, DollarInputs,
-    Let, In, If, Then, Else, And, Or, Not,
+    Identifier,
+    DollarInput,
+    DollarInputs,
+    Let,
+    In,
+    If,
+    Then,
+    Else,
+    And,
+    Or,
+    Not,
     // Operators
-    Plus, Minus, Star, Percent,
-    Greater, Less, GreaterEq, LessEq, EqualEq, BangEq,
+    Plus,
+    Minus,
+    Star,
+    Percent,
+    Greater,
+    Less,
+    GreaterEq,
+    LessEq,
+    EqualEq,
+    BangEq,
     // Delimiters
-    LParen, RParen, LBracket, RBracket, LBrace, RBrace,
-    Comma, Colon, Equals, Arrow,
+    LParen,
+    RParen,
+    LBracket,
+    RBracket,
+    LBrace,
+    RBrace,
+    Comma,
+    Colon,
+    Equals,
+    Arrow,
     // Slash (tracked for whitespace sensitivity)
     Slash,
     // End
@@ -43,9 +72,7 @@ struct Token {
 
 class Tokenizer {
 public:
-    Tokenizer(const std::string& source) : src_(source) {
-        skip_shebang();
-    }
+    Tokenizer(const std::string& source) : src_(source) { skip_shebang(); }
 
     struct State {
         size_t pos;
@@ -54,9 +81,7 @@ public:
         bool had_whitespace;
     };
 
-    auto save_state() const -> State {
-        return {pos_, line_, col_, had_whitespace_};
-    }
+    auto save_state() const -> State { return {pos_, line_, col_, had_whitespace_}; }
 
     void restore_state(const State& state) {
         pos_ = state.pos;
@@ -78,12 +103,13 @@ public:
         char ch = src_[pos_];
 
         // String literal
-        if (ch == '"') return lex_string(tok_line, tok_col, had_space);
+        if (ch == '"')
+            return lex_string(tok_line, tok_col, had_space);
 
         // Number literal
-        if (std::isdigit(static_cast<unsigned char>(ch)) ||
-            (ch == '.' && pos_ + 1 < src_.size() &&
-             std::isdigit(static_cast<unsigned char>(src_[pos_ + 1])))) {
+        if (std::isdigit(static_cast<unsigned char>(ch))
+            || (ch == '.' && pos_ + 1 < src_.size()
+                && std::isdigit(static_cast<unsigned char>(src_[pos_ + 1])))) {
             return lex_number(tok_line, tok_col, had_space);
         }
 
@@ -100,40 +126,76 @@ public:
         // Two-char operators
         if (pos_ + 1 < src_.size()) {
             char next = src_[pos_ + 1];
-            if (ch == '=' && next == '>') { advance(); advance(); return {TokenType::Arrow, "=>", tok_line, tok_col, had_space, false}; }
-            if (ch == '=' && next == '=') { advance(); advance(); return {TokenType::EqualEq, "==", tok_line, tok_col, had_space, false}; }
-            if (ch == '!' && next == '=') { advance(); advance(); return {TokenType::BangEq, "!=", tok_line, tok_col, had_space, false}; }
-            if (ch == '>' && next == '=') { advance(); advance(); return {TokenType::GreaterEq, ">=", tok_line, tok_col, had_space, false}; }
-            if (ch == '<' && next == '=') { advance(); advance(); return {TokenType::LessEq, "<=", tok_line, tok_col, had_space, false}; }
+            if (ch == '=' && next == '>') {
+                advance();
+                advance();
+                return {TokenType::Arrow, "=>", tok_line, tok_col, had_space, false};
+            }
+            if (ch == '=' && next == '=') {
+                advance();
+                advance();
+                return {TokenType::EqualEq, "==", tok_line, tok_col, had_space, false};
+            }
+            if (ch == '!' && next == '=') {
+                advance();
+                advance();
+                return {TokenType::BangEq, "!=", tok_line, tok_col, had_space, false};
+            }
+            if (ch == '>' && next == '=') {
+                advance();
+                advance();
+                return {TokenType::GreaterEq, ">=", tok_line, tok_col, had_space, false};
+            }
+            if (ch == '<' && next == '=') {
+                advance();
+                advance();
+                return {TokenType::LessEq, "<=", tok_line, tok_col, had_space, false};
+            }
         }
 
         // Single-char tokens
         advance();
         switch (ch) {
-        case '+': return {TokenType::Plus, "+", tok_line, tok_col, had_space, false};
-        case '-': return {TokenType::Minus, "-", tok_line, tok_col, had_space, false};
-        case '*': return {TokenType::Star, "*", tok_line, tok_col, had_space, false};
+        case '+':
+            return {TokenType::Plus, "+", tok_line, tok_col, had_space, false};
+        case '-':
+            return {TokenType::Minus, "-", tok_line, tok_col, had_space, false};
+        case '*':
+            return {TokenType::Star, "*", tok_line, tok_col, had_space, false};
         case '/': {
             // For slash, check if there's whitespace after (for ` / ` vs `/` distinction)
-            bool has_space_after = pos_ < src_.size() &&
-                (src_[pos_] == ' ' || src_[pos_] == '\t' || src_[pos_] == '\n' || src_[pos_] == '\r');
+            bool has_space_after = pos_ < src_.size()
+                                   && (src_[pos_] == ' ' || src_[pos_] == '\t' || src_[pos_] == '\n'
+                                       || src_[pos_] == '\r');
             return {TokenType::Slash, "/", tok_line, tok_col, had_space, has_space_after};
         }
-        case '%': return {TokenType::Percent, "%", tok_line, tok_col, had_space, false};
-        case '>': return {TokenType::Greater, ">", tok_line, tok_col, had_space, false};
-        case '<': return {TokenType::Less, "<", tok_line, tok_col, had_space, false};
-        case '(': return {TokenType::LParen, "(", tok_line, tok_col, had_space, false};
-        case ')': return {TokenType::RParen, ")", tok_line, tok_col, had_space, false};
-        case '[': return {TokenType::LBracket, "[", tok_line, tok_col, had_space, false};
-        case ']': return {TokenType::RBracket, "]", tok_line, tok_col, had_space, false};
-        case '{': return {TokenType::LBrace, "{", tok_line, tok_col, had_space, false};
-        case '}': return {TokenType::RBrace, "}", tok_line, tok_col, had_space, false};
-        case ',': return {TokenType::Comma, ",", tok_line, tok_col, had_space, false};
-        case ':': return {TokenType::Colon, ":", tok_line, tok_col, had_space, false};
-        case '=': return {TokenType::Equals, "=", tok_line, tok_col, had_space, false};
+        case '%':
+            return {TokenType::Percent, "%", tok_line, tok_col, had_space, false};
+        case '>':
+            return {TokenType::Greater, ">", tok_line, tok_col, had_space, false};
+        case '<':
+            return {TokenType::Less, "<", tok_line, tok_col, had_space, false};
+        case '(':
+            return {TokenType::LParen, "(", tok_line, tok_col, had_space, false};
+        case ')':
+            return {TokenType::RParen, ")", tok_line, tok_col, had_space, false};
+        case '[':
+            return {TokenType::LBracket, "[", tok_line, tok_col, had_space, false};
+        case ']':
+            return {TokenType::RBracket, "]", tok_line, tok_col, had_space, false};
+        case '{':
+            return {TokenType::LBrace, "{", tok_line, tok_col, had_space, false};
+        case '}':
+            return {TokenType::RBrace, "}", tok_line, tok_col, had_space, false};
+        case ',':
+            return {TokenType::Comma, ",", tok_line, tok_col, had_space, false};
+        case ':':
+            return {TokenType::Colon, ":", tok_line, tok_col, had_space, false};
+        case '=':
+            return {TokenType::Equals, "=", tok_line, tok_col, had_space, false};
         default:
-            throw SugarParseError(std::string("Unexpected character '") + ch + "'",
-                                  tok_line, tok_col);
+            throw SugarParseError(std::string("Unexpected character '") + ch + "'", tok_line,
+                                  tok_col);
         }
     }
 
@@ -156,16 +218,15 @@ private:
         }
     }
 
-    char peek() const {
-        return pos_ < src_.size() ? src_[pos_] : '\0';
-    }
+    char peek() const { return pos_ < src_.size() ? src_[pos_] : '\0'; }
 
     void skip_shebang() {
         if (pos_ + 1 < src_.size() && src_[pos_] == '#' && src_[pos_ + 1] == '!') {
             while (pos_ < src_.size() && src_[pos_] != '\n') {
                 advance();
             }
-            if (pos_ < src_.size()) advance(); // consume newline
+            if (pos_ < src_.size())
+                advance(); // consume newline
         }
     }
 
@@ -194,16 +255,33 @@ private:
         while (pos_ < src_.size() && src_[pos_] != '"') {
             if (src_[pos_] == '\\') {
                 advance();
-                if (pos_ >= src_.size()) break;
+                if (pos_ >= src_.size())
+                    break;
                 switch (src_[pos_]) {
-                case '"': value += '"'; break;
-                case '\\': value += '\\'; break;
-                case '/': value += '/'; break;
-                case 'b': value += '\b'; break;
-                case 'f': value += '\f'; break;
-                case 'n': value += '\n'; break;
-                case 'r': value += '\r'; break;
-                case 't': value += '\t'; break;
+                case '"':
+                    value += '"';
+                    break;
+                case '\\':
+                    value += '\\';
+                    break;
+                case '/':
+                    value += '/';
+                    break;
+                case 'b':
+                    value += '\b';
+                    break;
+                case 'f':
+                    value += '\f';
+                    break;
+                case 'n':
+                    value += '\n';
+                    break;
+                case 'r':
+                    value += '\r';
+                    break;
+                case 't':
+                    value += '\t';
+                    break;
                 case 'u': {
                     // Parse 4 hex digits
                     advance();
@@ -215,9 +293,12 @@ private:
                     unsigned int codepoint = 0;
                     for (char hc : hex) {
                         codepoint <<= 4;
-                        if (hc >= '0' && hc <= '9') codepoint |= (hc - '0');
-                        else if (hc >= 'a' && hc <= 'f') codepoint |= (hc - 'a' + 10);
-                        else if (hc >= 'A' && hc <= 'F') codepoint |= (hc - 'A' + 10);
+                        if (hc >= '0' && hc <= '9')
+                            codepoint |= (hc - '0');
+                        else if (hc >= 'a' && hc <= 'f')
+                            codepoint |= (hc - 'a' + 10);
+                        else if (hc >= 'A' && hc <= 'F')
+                            codepoint |= (hc - 'A' + 10);
                     }
                     // UTF-8 encode
                     if (codepoint < 0x80) {
@@ -232,20 +313,24 @@ private:
                     }
                     continue; // already advanced past the hex digits
                 }
-                default: value += src_[pos_]; break;
+                default:
+                    value += src_[pos_];
+                    break;
                 }
             } else {
                 value += src_[pos_];
             }
             advance();
         }
-        if (pos_ < src_.size()) advance(); // skip closing "
+        if (pos_ < src_.size())
+            advance(); // skip closing "
         return {TokenType::String, value, tok_line, tok_col, had_space, false};
     }
 
     auto lex_number(int tok_line, int tok_col, bool had_space) -> Token {
         std::string num;
-        while (pos_ < src_.size() && (std::isdigit(static_cast<unsigned char>(src_[pos_])) || src_[pos_] == '.')) {
+        while (pos_ < src_.size()
+               && (std::isdigit(static_cast<unsigned char>(src_[pos_])) || src_[pos_] == '.')) {
             num += src_[pos_];
             advance();
         }
@@ -268,37 +353,50 @@ private:
     auto lex_dollar(int tok_line, int tok_col, bool had_space) -> Token {
         advance(); // skip $
         std::string word;
-        while (pos_ < src_.size() &&
-               (std::isalnum(static_cast<unsigned char>(src_[pos_])) || src_[pos_] == '_')) {
+        while (pos_ < src_.size()
+               && (std::isalnum(static_cast<unsigned char>(src_[pos_])) || src_[pos_] == '_')) {
             word += src_[pos_];
             advance();
         }
-        if (word == "input") return {TokenType::DollarInput, "$input", tok_line, tok_col, had_space, false};
-        if (word == "inputs") return {TokenType::DollarInputs, "$inputs", tok_line, tok_col, had_space, false};
+        if (word == "input")
+            return {TokenType::DollarInput, "$input", tok_line, tok_col, had_space, false};
+        if (word == "inputs")
+            return {TokenType::DollarInputs, "$inputs", tok_line, tok_col, had_space, false};
         // Unknown $ identifier - treat as an identifier named "$" + word
         throw SugarParseError("Unknown $ variable: $" + word, tok_line, tok_col);
     }
 
     auto lex_identifier(int tok_line, int tok_col, bool had_space) -> Token {
         std::string word;
-        while (pos_ < src_.size() &&
-               (std::isalnum(static_cast<unsigned char>(src_[pos_])) || src_[pos_] == '_')) {
+        while (pos_ < src_.size()
+               && (std::isalnum(static_cast<unsigned char>(src_[pos_])) || src_[pos_] == '_')) {
             word += src_[pos_];
             advance();
         }
 
         // Keywords
-        if (word == "let") return {TokenType::Let, word, tok_line, tok_col, had_space, false};
-        if (word == "in") return {TokenType::In, word, tok_line, tok_col, had_space, false};
-        if (word == "if") return {TokenType::If, word, tok_line, tok_col, had_space, false};
-        if (word == "then") return {TokenType::Then, word, tok_line, tok_col, had_space, false};
-        if (word == "else") return {TokenType::Else, word, tok_line, tok_col, had_space, false};
-        if (word == "and") return {TokenType::And, word, tok_line, tok_col, had_space, false};
-        if (word == "or") return {TokenType::Or, word, tok_line, tok_col, had_space, false};
-        if (word == "not") return {TokenType::Not, word, tok_line, tok_col, had_space, false};
-        if (word == "true") return {TokenType::True, word, tok_line, tok_col, had_space, false};
-        if (word == "false") return {TokenType::False, word, tok_line, tok_col, had_space, false};
-        if (word == "null") return {TokenType::Null, word, tok_line, tok_col, had_space, false};
+        if (word == "let")
+            return {TokenType::Let, word, tok_line, tok_col, had_space, false};
+        if (word == "in")
+            return {TokenType::In, word, tok_line, tok_col, had_space, false};
+        if (word == "if")
+            return {TokenType::If, word, tok_line, tok_col, had_space, false};
+        if (word == "then")
+            return {TokenType::Then, word, tok_line, tok_col, had_space, false};
+        if (word == "else")
+            return {TokenType::Else, word, tok_line, tok_col, had_space, false};
+        if (word == "and")
+            return {TokenType::And, word, tok_line, tok_col, had_space, false};
+        if (word == "or")
+            return {TokenType::Or, word, tok_line, tok_col, had_space, false};
+        if (word == "not")
+            return {TokenType::Not, word, tok_line, tok_col, had_space, false};
+        if (word == "true")
+            return {TokenType::True, word, tok_line, tok_col, had_space, false};
+        if (word == "false")
+            return {TokenType::False, word, tok_line, tok_col, had_space, false};
+        if (word == "null")
+            return {TokenType::Null, word, tok_line, tok_col, had_space, false};
 
         return {TokenType::Identifier, word, tok_line, tok_col, had_space, false};
     }
@@ -311,50 +409,72 @@ private:
 // Precedence levels for infix operators
 static auto infix_precedence(TokenType type) -> int {
     switch (type) {
-    case TokenType::Or: return 2;
-    case TokenType::And: return 3;
-    case TokenType::Greater: case TokenType::Less:
-    case TokenType::GreaterEq: case TokenType::LessEq:
-    case TokenType::EqualEq: case TokenType::BangEq:
+    case TokenType::Or:
+        return 2;
+    case TokenType::And:
+        return 3;
+    case TokenType::Greater:
+    case TokenType::Less:
+    case TokenType::GreaterEq:
+    case TokenType::LessEq:
+    case TokenType::EqualEq:
+    case TokenType::BangEq:
         return 5;
-    case TokenType::Plus: case TokenType::Minus:
+    case TokenType::Plus:
+    case TokenType::Minus:
         return 6;
-    case TokenType::Star: case TokenType::Percent:
+    case TokenType::Star:
+    case TokenType::Percent:
         return 7;
     case TokenType::Slash:
         return 7; // division (only when space_before)
-    default: return 0;
+    default:
+        return 0;
     }
 }
 
 static auto token_to_op_name(TokenType type) -> std::string {
     switch (type) {
-    case TokenType::Plus: return "+";
-    case TokenType::Minus: return "-";
-    case TokenType::Star: return "*";
-    case TokenType::Slash: return "/";
-    case TokenType::Percent: return "%";
-    case TokenType::Greater: return ">";
-    case TokenType::Less: return "<";
-    case TokenType::GreaterEq: return ">=";
-    case TokenType::LessEq: return "<=";
-    case TokenType::EqualEq: return "==";
-    case TokenType::BangEq: return "!=";
-    case TokenType::And: return "and";
-    case TokenType::Or: return "or";
-    default: return "";
+    case TokenType::Plus:
+        return "+";
+    case TokenType::Minus:
+        return "-";
+    case TokenType::Star:
+        return "*";
+    case TokenType::Slash:
+        return "/";
+    case TokenType::Percent:
+        return "%";
+    case TokenType::Greater:
+        return ">";
+    case TokenType::Less:
+        return "<";
+    case TokenType::GreaterEq:
+        return ">=";
+    case TokenType::LessEq:
+        return "<=";
+    case TokenType::EqualEq:
+        return "==";
+    case TokenType::BangEq:
+        return "!=";
+    case TokenType::And:
+        return "and";
+    case TokenType::Or:
+        return "or";
+    default:
+        return "";
     }
 }
 
 static auto is_comparison_op(TokenType type) -> bool {
-    return type == TokenType::Greater || type == TokenType::Less ||
-           type == TokenType::GreaterEq || type == TokenType::LessEq ||
-           type == TokenType::EqualEq || type == TokenType::BangEq;
+    return type == TokenType::Greater || type == TokenType::Less || type == TokenType::GreaterEq
+           || type == TokenType::LessEq || type == TokenType::EqualEq || type == TokenType::BangEq;
 }
 
 // Check if slash has valid spacing: either both sides or neither
 static void validate_slash_spacing(const Token& tok) {
-    if (tok.type != TokenType::Slash) return;
+    if (tok.type != TokenType::Slash)
+        return;
     bool left = tok.space_before;
     bool right = tok.space_after;
     if (left != right) {
@@ -366,12 +486,18 @@ static void validate_slash_spacing(const Token& tok) {
 
 static auto is_infix_token(const Token& tok) -> bool {
     switch (tok.type) {
-    case TokenType::Plus: case TokenType::Minus:
-    case TokenType::Star: case TokenType::Percent:
-    case TokenType::Greater: case TokenType::Less:
-    case TokenType::GreaterEq: case TokenType::LessEq:
-    case TokenType::EqualEq: case TokenType::BangEq:
-    case TokenType::And: case TokenType::Or:
+    case TokenType::Plus:
+    case TokenType::Minus:
+    case TokenType::Star:
+    case TokenType::Percent:
+    case TokenType::Greater:
+    case TokenType::Less:
+    case TokenType::GreaterEq:
+    case TokenType::LessEq:
+    case TokenType::EqualEq:
+    case TokenType::BangEq:
+    case TokenType::And:
+    case TokenType::Or:
         return true;
     case TokenType::Slash:
         // Division requires spaces on both sides
@@ -391,8 +517,8 @@ public:
     auto parse_program() -> jsom::JsonDocument {
         auto result = parse_expression(0);
         if (current_.type != TokenType::Eof) {
-            throw SugarParseError("Unexpected token '" + current_.text + "'",
-                                  current_.line, current_.col);
+            throw SugarParseError("Unexpected token '" + current_.text + "'", current_.line,
+                                  current_.col);
         }
         return result;
     }
@@ -402,9 +528,7 @@ private:
     SugarParseOptions opts_;
     Token current_{};
 
-    void advance() {
-        current_ = tokenizer_.next();
-    }
+    void advance() { current_ = tokenizer_.next(); }
 
     void expect(TokenType type, const std::string& what) {
         if (current_.type != type) {
@@ -496,10 +620,12 @@ private:
                 continue;
             }
 
-            if (!is_infix_token(current_)) break;
+            if (!is_infix_token(current_))
+                break;
 
             int prec = infix_precedence(current_.type);
-            if (prec < min_prec) break;
+            if (prec < min_prec)
+                break;
 
             TokenType op_type = current_.type;
             std::string op_name = token_to_op_name(op_type);
@@ -510,17 +636,16 @@ private:
 
             // Variadic flattening: if same operator appears consecutively,
             // extend the array instead of nesting
-            if (left.is_array() && !left.empty() && left[0].is_string() &&
-                left[0].as<std::string>() == op_name) {
+            if (left.is_array() && !left.empty() && left[0].is_string()
+                && left[0].as<std::string>() == op_name) {
                 left.push_back(std::move(right));
             }
             // For comparison chaining: a > b > c -> [">", a, b, c]
-            else if (is_comparison_op(op_type) && left.is_array() && !left.empty() &&
-                     left[0].is_string() && is_comparison_op_name(left[0].as<std::string>()) &&
-                     left[0].as<std::string>() == op_name) {
+            else if (is_comparison_op(op_type) && left.is_array() && !left.empty()
+                     && left[0].is_string() && is_comparison_op_name(left[0].as<std::string>())
+                     && left[0].as<std::string>() == op_name) {
                 left.push_back(std::move(right));
-            }
-            else {
+            } else {
                 auto node = jsom::JsonDocument::make_array();
                 node.push_back(jsom::JsonDocument(op_name));
                 node.push_back(std::move(left));
@@ -533,8 +658,8 @@ private:
     }
 
     static auto is_comparison_op_name(const std::string& name) -> bool {
-        return name == ">" || name == "<" || name == ">=" || name == "<=" ||
-               name == "==" || name == "!=";
+        return name == ">" || name == "<" || name == ">=" || name == "<=" || name == "=="
+               || name == "!=";
     }
 
     // ---------------------------------------------------------------
@@ -543,24 +668,45 @@ private:
 
     auto parse_prefix() -> jsom::JsonDocument {
         switch (current_.type) {
-        case TokenType::Number: return parse_number();
-        case TokenType::String: return parse_string();
-        case TokenType::True: { advance(); return jsom::JsonDocument(true); }
-        case TokenType::False: { advance(); return jsom::JsonDocument(false); }
-        case TokenType::Null: { advance(); return jsom::JsonDocument(nullptr); }
-        case TokenType::Not: return parse_not();
-        case TokenType::Minus: return parse_unary_minus();
-        case TokenType::Let: return parse_let();
-        case TokenType::If: return parse_if();
-        case TokenType::LParen: return parse_paren_or_lambda();
-        case TokenType::LBracket: return parse_array_literal();
-        case TokenType::LBrace: return parse_object_literal();
-        case TokenType::DollarInput: return parse_dollar_input();
-        case TokenType::DollarInputs: return parse_dollar_inputs();
-        case TokenType::Identifier: return parse_identifier();
+        case TokenType::Number:
+            return parse_number();
+        case TokenType::String:
+            return parse_string();
+        case TokenType::True: {
+            advance();
+            return jsom::JsonDocument(true);
+        }
+        case TokenType::False: {
+            advance();
+            return jsom::JsonDocument(false);
+        }
+        case TokenType::Null: {
+            advance();
+            return jsom::JsonDocument(nullptr);
+        }
+        case TokenType::Not:
+            return parse_not();
+        case TokenType::Minus:
+            return parse_unary_minus();
+        case TokenType::Let:
+            return parse_let();
+        case TokenType::If:
+            return parse_if();
+        case TokenType::LParen:
+            return parse_paren_or_lambda();
+        case TokenType::LBracket:
+            return parse_array_literal();
+        case TokenType::LBrace:
+            return parse_object_literal();
+        case TokenType::DollarInput:
+            return parse_dollar_input();
+        case TokenType::DollarInputs:
+            return parse_dollar_inputs();
+        case TokenType::Identifier:
+            return parse_identifier();
         default:
-            throw SugarParseError("Unexpected token '" + current_.text + "'",
-                                  current_.line, current_.col);
+            throw SugarParseError("Unexpected token '" + current_.text + "'", current_.line,
+                                  current_.col);
         }
     }
 
@@ -568,8 +714,8 @@ private:
         std::string text = current_.text;
         advance();
         // Integer or float?
-        if (text.find('.') != std::string::npos || text.find('e') != std::string::npos ||
-            text.find('E') != std::string::npos) {
+        if (text.find('.') != std::string::npos || text.find('e') != std::string::npos
+            || text.find('E') != std::string::npos) {
             return jsom::JsonDocument(std::stod(text));
         }
         // Try integer
@@ -587,7 +733,7 @@ private:
     }
 
     auto parse_not() -> jsom::JsonDocument {
-        advance(); // consume 'not'
+        advance();                          // consume 'not'
         auto operand = parse_expression(5); // bind tighter than comparison
         auto node = jsom::JsonDocument::make_array();
         node.push_back(jsom::JsonDocument("not"));
@@ -596,7 +742,7 @@ private:
     }
 
     auto parse_unary_minus() -> jsom::JsonDocument {
-        advance(); // consume '-'
+        advance();                          // consume '-'
         auto operand = parse_expression(8); // unary neg binds very tight
         auto node = jsom::JsonDocument::make_array();
         node.push_back(jsom::JsonDocument("-"));
@@ -682,8 +828,7 @@ private:
             while (current_.type == TokenType::Comma) {
                 advance(); // consume ','
                 if (current_.type != TokenType::Identifier) {
-                    throw SugarParseError("Expected parameter name",
-                                          current_.line, current_.col);
+                    throw SugarParseError("Expected parameter name", current_.line, current_.col);
                 }
                 params.push_back(current_.text);
                 advance();
@@ -714,7 +859,8 @@ private:
             arr.push_back(parse_expression(0));
             while (current_.type == TokenType::Comma) {
                 advance();
-                if (current_.type == TokenType::RBracket) break; // trailing comma
+                if (current_.type == TokenType::RBracket)
+                    break; // trailing comma
                 arr.push_back(parse_expression(0));
             }
         }
@@ -731,7 +877,8 @@ private:
             parse_object_entry(obj);
             while (current_.type == TokenType::Comma) {
                 advance();
-                if (current_.type == TokenType::RBrace) break; // trailing comma
+                if (current_.type == TokenType::RBrace)
+                    break; // trailing comma
                 parse_object_entry(obj);
             }
         }
@@ -797,7 +944,7 @@ private:
         // Check for path access: name/path
         if (current_.type == TokenType::Slash && !current_.space_before) {
             validate_slash_spacing(current_); // Ensure symmetric: no spaces on either side
-            advance(); // consume '/'
+            advance();                        // consume '/'
             std::string path = "/" + name + "/" + parse_path_segments();
             auto node = jsom::JsonDocument::make_array();
             node.push_back(jsom::JsonDocument("$"));
@@ -817,7 +964,8 @@ private:
             node.push_back(parse_expression(0));
             while (current_.type == TokenType::Comma) {
                 advance();
-                if (current_.type == TokenType::RParen) break; // trailing comma
+                if (current_.type == TokenType::RParen)
+                    break; // trailing comma
                 node.push_back(parse_expression(0));
             }
         }
@@ -852,8 +1000,8 @@ private:
                 path += current_.text;
                 advance();
             } else {
-                throw SugarParseError("Expected path segment after '/'",
-                                      current_.line, current_.col);
+                throw SugarParseError("Expected path segment after '/'", current_.line,
+                                      current_.col);
             }
         }
         return path;
@@ -891,16 +1039,16 @@ private:
 
         // Can't extend path on non-variable expression — treat as division
         // Actually, by this point we already consumed the /, so let's make it an error
-        throw SugarParseError("Path access on non-variable expression",
-                              current_.line, current_.col);
+        throw SugarParseError("Path access on non-variable expression", current_.line,
+                              current_.col);
     }
 
     auto parse_call(jsom::JsonDocument left) -> jsom::JsonDocument {
         // left is the function expression (should be a variable reference to function name)
         // Extract the function name from the variable access
         std::string func_name;
-        if (left.is_array() && left.size() == 2 && left[0].is_string() &&
-            left[0].as<std::string>() == "$" && left[1].is_string()) {
+        if (left.is_array() && left.size() == 2 && left[0].is_string()
+            && left[0].as<std::string>() == "$" && left[1].is_string()) {
             const auto& path = left[1].as<std::string>();
             // "/funcname" -> "funcname"
             if (!path.empty() && path[0] == '/' && path.find('/', 1) == std::string::npos) {
@@ -909,8 +1057,8 @@ private:
         }
 
         if (func_name.empty()) {
-            throw SugarParseError("Function call on non-identifier expression",
-                                  current_.line, current_.col);
+            throw SugarParseError("Function call on non-identifier expression", current_.line,
+                                  current_.col);
         }
 
         return parse_function_call(func_name);
@@ -921,8 +1069,8 @@ private:
 // Public API
 // ============================================================================
 
-auto SugarParser::parse(const std::string& source,
-                        const SugarParseOptions& options) -> jsom::JsonDocument {
+auto SugarParser::parse(const std::string& source, const SugarParseOptions& options)
+    -> jsom::JsonDocument {
     Parser parser(source, options);
     return parser.parse_program();
 }

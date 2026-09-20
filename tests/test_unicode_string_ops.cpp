@@ -108,7 +108,8 @@ TEST_F(UnicodeCompatibilityTest, StrConcatCJK) {
 // Tests that 'sort' operator handles Unicode strings (lexicographic byte ordering)
 
 TEST_F(UnicodeCompatibilityTest, SortUnicodeStrings) {
-    json unicode_array = json{{"array", json(std::vector<json>{"café", "naïve", "résumé", "apple", "zebra"})}};
+    json unicode_array
+        = json{{"array", json(std::vector<json>{"café", "naïve", "résumé", "apple", "zebra"})}};
     auto result = execute_script(R"(["sort", ["$input"]])", unicode_array);
     debug_result("SortUnicodeStrings", result);
 
@@ -131,7 +132,8 @@ TEST_F(UnicodeCompatibilityTest, SortEmoji) {
 }
 
 TEST_F(UnicodeCompatibilityTest, SortMixedScripts) {
-    json mixed_array = json{{"array", json(std::vector<json>{"Hello", "世界", "café", "Мир", "🌍"})}};
+    json mixed_array
+        = json{{"array", json(std::vector<json>{"Hello", "世界", "café", "Мир", "🌍"})}};
     auto result = execute_script(R"(["sort", ["$input"]])", mixed_array);
     debug_result("SortMixedScripts", result);
 

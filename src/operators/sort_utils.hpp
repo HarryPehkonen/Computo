@@ -1,9 +1,9 @@
 #pragma once
 
 #include <computo.hpp>
-#include <vector>
-#include <string>
 #include <functional>
+#include <string>
+#include <vector>
 
 namespace computo::operators {
 
@@ -66,7 +66,8 @@ auto type_aware_compare(const jsom::JsonDocument& first, const jsom::JsonDocumen
  * Extract a field value from a JSON object using JSON Pointer
  * Returns null if the field is not found
  */
-auto extract_sort_field_value(const jsom::JsonDocument& obj, const std::string& pointer) -> jsom::JsonDocument;
+auto extract_sort_field_value(const jsom::JsonDocument& obj, const std::string& pointer)
+    -> jsom::JsonDocument;
 
 /**
  * Parse a field descriptor from various input formats
@@ -113,13 +114,15 @@ auto sort_simple_array(jsom::JsonDocument& array_data, const SortConfig& config)
  * Sort object arrays using single-field optimized DSU pattern
  * Reduced memory overhead for single field sorting
  */
-auto sort_object_array_single_field(jsom::JsonDocument& array_data, const FieldDescriptor& field) -> void;
+auto sort_object_array_single_field(jsom::JsonDocument& array_data, const FieldDescriptor& field)
+    -> void;
 
 /**
  * Sort object arrays using full multi-field DSU pattern
  * Pre-extracts all sort keys for O(n) key extraction vs O(n log n)
  */
-auto sort_object_array_multi_field(jsom::JsonDocument& array_data, const std::vector<FieldDescriptor>& fields) -> void;
+auto sort_object_array_multi_field(jsom::JsonDocument& array_data,
+                                   const std::vector<FieldDescriptor>& fields) -> void;
 
 /**
  * Dispatch between single and multi-field object array sorting

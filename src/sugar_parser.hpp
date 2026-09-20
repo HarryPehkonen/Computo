@@ -15,15 +15,15 @@ public:
     int line;
     int column;
     SugarParseError(const std::string& msg, int line, int column)
-        : std::runtime_error(msg + " at line " + std::to_string(line)
-                             + ", column " + std::to_string(column)),
+        : std::runtime_error(msg + " at line " + std::to_string(line) + ", column "
+                             + std::to_string(column)),
           line(line), column(column) {}
 };
 
 class SugarParser {
 public:
-    static auto parse(const std::string& source,
-                      const SugarParseOptions& options = {}) -> jsom::JsonDocument;
+    static auto parse(const std::string& source, const SugarParseOptions& options = {})
+        -> jsom::JsonDocument;
 };
 
 } // namespace computo

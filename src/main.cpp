@@ -33,8 +33,7 @@ static auto load_script_file(const std::string& filename, bool enable_comments,
     auto content = read_file_text(filename);
 
     // Check file extension: .computo files are always sugar syntax
-    bool force_sugar = filename.size() >= 8
-                       && filename.substr(filename.size() - 8) == ".computo";
+    bool force_sugar = filename.size() >= 8 && filename.substr(filename.size() - 8) == ".computo";
 
     if (!force_sugar) {
         // Try JSON parse first
@@ -55,8 +54,8 @@ static auto load_script_file(const std::string& filename, bool enable_comments,
 }
 
 // Unwrap array wrapper for output: {"array": [...]} -> [...]
-static auto unwrap_for_output(const jsom::JsonDocument& result,
-                              const std::string& array_key) -> jsom::JsonDocument {
+static auto unwrap_for_output(const jsom::JsonDocument& result, const std::string& array_key)
+    -> jsom::JsonDocument {
     if (result.is_object() && result.size() == 1 && result.contains(array_key)) {
         return result[array_key];
     }
@@ -139,7 +138,7 @@ auto main(int argc, char* argv[]) -> int {
 
         if (args.highlight_script) {
             auto script = computo::load_script_file(args.highlight_file, args.enable_comments,
-                                                     args.array_key);
+                                                    args.array_key);
             bool use_color = computo::resolve_color_mode(args.color_mode);
             auto theme = use_color ? computo::ScriptColorTheme::default_theme()
                                    : computo::ScriptColorTheme::no_color();
@@ -148,10 +147,11 @@ auto main(int argc, char* argv[]) -> int {
         }
 
         if (args.format_script) {
-            auto script = computo::load_script_file(args.format_file, args.enable_comments,
-                                                     args.array_key);
-            std::cout << computo::ScriptColorizer::colorize(script,
-                computo::ScriptColorTheme::no_color(), args.array_key) << "\n";
+            auto script
+                = computo::load_script_file(args.format_file, args.enable_comments, args.array_key);
+            std::cout << computo::ScriptColorizer::colorize(
+                script, computo::ScriptColorTheme::no_color(), args.array_key)
+                      << "\n";
             return 0;
         }
 

@@ -65,7 +65,8 @@ auto values_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> E
     return EvaluationResult(jsom::JsonDocument{{ctx.array_key, result}});
 }
 
-auto objFromPairs_operator(const jsom::JsonDocument& args, ExecutionContext& ctx) -> EvaluationResult {
+auto objFromPairs_operator(const jsom::JsonDocument& args, ExecutionContext& ctx)
+    -> EvaluationResult {
     if (args.size() != 1) {
         throw InvalidArgumentException("'objFromPairs' requires exactly 1 argument",
                                        ctx.get_path_string());

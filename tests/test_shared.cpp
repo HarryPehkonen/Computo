@@ -93,7 +93,8 @@ TEST_F(SharedUtilitiesTest, ValidateNumericArgsFailureString) {
 
 TEST_F(SharedUtilitiesTest, ValidateNumericArgsFailureArray) {
     const std::vector<int> TEST_ARRAY_VALUES = {2, 3};
-    json args = json(std::vector<json>{1, json(std::vector<json>{TEST_ARRAY_VALUES[0], TEST_ARRAY_VALUES[1]})});
+    json args = json(
+        std::vector<json>{1, json(std::vector<json>{TEST_ARRAY_VALUES[0], TEST_ARRAY_VALUES[1]})});
     EXPECT_THROW(
         {
             try {
@@ -128,7 +129,8 @@ TEST_F(SharedUtilitiesTest, ValidateNumericArgsFailureNull) {
 
 TEST_F(SharedUtilitiesTest, EvaluateLambdaSimple) {
     // Lambda: [["x"], ["$", "/x"]]
-    json lambda = json(std::vector<json>{json(std::vector<json>{"x"}), json(std::vector<json>{"$", "/x"})});
+    json lambda
+        = json(std::vector<json>{json(std::vector<json>{"x"}), json(std::vector<json>{"$", "/x"})});
 
     const int TEST_VALUE = 42;
     std::vector<json> args = {json(TEST_VALUE)};
@@ -147,7 +149,8 @@ TEST_F(SharedUtilitiesTest, EvaluateLambdaMultipleParams) {
     // Lambda: [["x", "y"], ["+", ["$", "/x"], ["$", "/y"]]]
     json lambda
         = json(std::vector<json>{json(std::vector<json>{"x", "y"}),
-                       json(std::vector<json>{"+", json(std::vector<json>{"$", "/x"}), json(std::vector<json>{"$", "/y"})})});
+                                 json(std::vector<json>{"+", json(std::vector<json>{"$", "/x"}),
+                                                        json(std::vector<json>{"$", "/y"})})});
 
     const int FIRST_VALUE = 10;
     const int SECOND_VALUE = 20;
@@ -205,7 +208,8 @@ TEST_F(SharedUtilitiesTest, EvaluateLambdaWrongSize) {
     // Too many elements
     const int BODY_VALUE = 42;
     const int EXTRA_VALUE = 43;
-    json lambda = json(std::vector<json>{json(std::vector<json>{"x"}), json(BODY_VALUE), json(EXTRA_VALUE)});
+    json lambda = json(
+        std::vector<json>{json(std::vector<json>{"x"}), json(BODY_VALUE), json(EXTRA_VALUE)});
     const int FIRST_VALUE = 10;
     std::vector<json> args = {json(FIRST_VALUE)};
 
@@ -313,8 +317,8 @@ TEST_F(SharedUtilitiesTest, ToNumericFailure) {
     EXPECT_THROW(
         {
             try {
-                to_numeric(json(std::vector<json>{TEST_ARRAY_VALUES[0], TEST_ARRAY_VALUES[1]}), "test_op",
-                           "test_path");
+                to_numeric(json(std::vector<json>{TEST_ARRAY_VALUES[0], TEST_ARRAY_VALUES[1]}),
+                           "test_op", "test_path");
             } catch (const InvalidArgumentException& e) {
                 EXPECT_STREQ("Invalid argument: test_op requires numeric "
                              "argument, got array at test_path",
@@ -347,7 +351,9 @@ TEST_F(SharedUtilitiesTest, LambdaWithComplexExpression) {
     // 0]]
     json lambda = json(std::vector<json>{
         json(std::vector<json>{"x"}),
-        json(std::vector<json>{"==", json(std::vector<json>{"%", json(std::vector<json>{"$", "/x"}), json(2)}), json(0)})});
+        json(std::vector<json>{
+            "==", json(std::vector<json>{"%", json(std::vector<json>{"$", "/x"}), json(2)}),
+            json(0)})});
 
     // Test with even number
     const int EVEN_VALUE = 4;
@@ -384,7 +390,8 @@ TEST_F(SharedUtilitiesTest, LambdaVariableShadowing) {
 
     // Lambda: [["x"], ["$", "/x"]] - should use lambda parameter, not outer
     // variable
-    json lambda = json(std::vector<json>{json(std::vector<json>{"x"}), json(std::vector<json>{"$", "/x"})});
+    json lambda
+        = json(std::vector<json>{json(std::vector<json>{"x"}), json(std::vector<json>{"$", "/x"})});
 
     const int TEST_VALUE = 42;
     std::vector<json> args = {json(TEST_VALUE)};
@@ -509,8 +516,9 @@ TEST_F(SharedUtilitiesTest, SuggestSimilarNamesVariableExamples) {
 TEST_F(SharedUtilitiesTest, OperatorSuggestionIntegration) {
     // Test invalid operator throws exception with suggestion
     try {
-        computo::execute(jsom::parse_document(R"(["mpa", [1, 2, 3], ["x"], ["*", ["$", "/x"], 2]])"),
-                         {json(nullptr)});
+        computo::execute(
+            jsom::parse_document(R"(["mpa", [1, 2, 3], ["x"], ["*", ["$", "/x"], 2]])"),
+            {json(nullptr)});
         FAIL() << "Expected InvalidOperatorException";
     } catch (const computo::InvalidOperatorException& e) {
         std::string error_msg(e.what());

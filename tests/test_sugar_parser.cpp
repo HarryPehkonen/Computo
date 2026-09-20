@@ -2,45 +2,31 @@
 #include <gtest/gtest.h>
 #include <jsom/jsom.hpp>
 
-using computo::SugarParser;
 using computo::SugarParseError;
 using computo::SugarParseOptions;
+using computo::SugarParser;
 using json = jsom::JsonDocument;
 
 class SugarParserTest : public ::testing::Test {
 protected:
     SugarParseOptions opts;
 
-    auto parse(const std::string& source) -> json {
-        return SugarParser::parse(source, opts);
-    }
+    auto parse(const std::string& source) -> json { return SugarParser::parse(source, opts); }
 };
 
 // --- Literals ---
 
-TEST_F(SugarParserTest, NumberLiteral) {
-    EXPECT_EQ(parse("42"), json(42));
-}
+TEST_F(SugarParserTest, NumberLiteral) { EXPECT_EQ(parse("42"), json(42)); }
 
-TEST_F(SugarParserTest, FloatLiteral) {
-    EXPECT_EQ(parse("3.14"), json(3.14));
-}
+TEST_F(SugarParserTest, FloatLiteral) { EXPECT_EQ(parse("3.14"), json(3.14)); }
 
-TEST_F(SugarParserTest, StringLiteral) {
-    EXPECT_EQ(parse("\"hello\""), json("hello"));
-}
+TEST_F(SugarParserTest, StringLiteral) { EXPECT_EQ(parse("\"hello\""), json("hello")); }
 
-TEST_F(SugarParserTest, TrueLiteral) {
-    EXPECT_EQ(parse("true"), json(true));
-}
+TEST_F(SugarParserTest, TrueLiteral) { EXPECT_EQ(parse("true"), json(true)); }
 
-TEST_F(SugarParserTest, FalseLiteral) {
-    EXPECT_EQ(parse("false"), json(false));
-}
+TEST_F(SugarParserTest, FalseLiteral) { EXPECT_EQ(parse("false"), json(false)); }
 
-TEST_F(SugarParserTest, NullLiteral) {
-    EXPECT_EQ(parse("null"), json(nullptr));
-}
+TEST_F(SugarParserTest, NullLiteral) { EXPECT_EQ(parse("null"), json(nullptr)); }
 
 // --- Variable access ---
 
@@ -192,13 +178,15 @@ TEST_F(SugarParserTest, ComparisonLowerThanArithmetic) {
 
 TEST_F(SugarParserTest, AndLowerThanComparison) {
     auto result = parse("x > 0 and x < 10");
-    auto expected = jsom::parse_document(R"(["and", [">", ["$", "/x"], 0], ["<", ["$", "/x"], 10]])");
+    auto expected
+        = jsom::parse_document(R"(["and", [">", ["$", "/x"], 0], ["<", ["$", "/x"], 10]])");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(SugarParserTest, OrLowerThanAnd) {
     auto result = parse("a and b or c");
-    auto expected = jsom::parse_document(R"(["or", ["and", ["$", "/a"], ["$", "/b"]], ["$", "/c"]])");
+    auto expected
+        = jsom::parse_document(R"(["or", ["and", ["$", "/a"], ["$", "/b"]], ["$", "/c"]])");
     EXPECT_EQ(result, expected);
 }
 
@@ -237,7 +225,8 @@ TEST_F(SugarParserTest, SimpleLambda) {
 
 TEST_F(SugarParserTest, MultiParamLambda) {
     auto result = parse("(a, b) => a + b");
-    auto expected = jsom::parse_document(R"(["lambda", ["a", "b"], ["+", ["$", "/a"], ["$", "/b"]]])");
+    auto expected
+        = jsom::parse_document(R"(["lambda", ["a", "b"], ["+", ["$", "/a"], ["$", "/b"]]])");
     EXPECT_EQ(result, expected);
 }
 
@@ -272,16 +261,14 @@ TEST_F(SugarParserTest, SimpleLetBinding) {
 TEST_F(SugarParserTest, MultipleLetBindings) {
     auto result = parse("let x = 10, y = 20 in x + y");
     auto expected = jsom::parse_document(
-        R"(["let", [["x", 10], ["y", 20]], ["+", ["$", "/x"], ["$", "/y"]]])"
-    );
+        R"(["let", [["x", 10], ["y", 20]], ["+", ["$", "/x"], ["$", "/y"]]])");
     EXPECT_EQ(result, expected);
 }
 
 TEST_F(SugarParserTest, LetWithComplexBody) {
     auto result = parse("let arr = $input/items in count(arr)");
     auto expected = jsom::parse_document(
-        R"(["let", [["arr", ["$input", "/items"]]], ["count", ["$", "/arr"]]])"
-    );
+        R"(["let", [["arr", ["$input", "/items"]]], ["count", ["$", "/arr"]]])");
     EXPECT_EQ(result, expected);
 }
 
@@ -295,9 +282,8 @@ TEST_F(SugarParserTest, SimpleIf) {
 
 TEST_F(SugarParserTest, IfWithExpressions) {
     auto result = parse("if x > 0 then x else -x");
-    auto expected = jsom::parse_document(
-        R"(["if", [">", ["$", "/x"], 0], ["$", "/x"], ["-", ["$", "/x"]]])"
-    );
+    auto expected
+        = jsom::parse_document(R"(["if", [">", ["$", "/x"], 0], ["$", "/x"], ["-", ["$", "/x"]]])");
     EXPECT_EQ(result, expected);
 }
 
@@ -312,8 +298,7 @@ TEST_F(SugarParserTest, SingleArgFunction) {
 TEST_F(SugarParserTest, MultiArgFunction) {
     auto result = parse("filter(arr, (x) => x > 0)");
     auto expected = jsom::parse_document(
-        R"(["filter", ["$", "/arr"], ["lambda", ["x"], [">", ["$", "/x"], 0]]])"
-    );
+        R"(["filter", ["$", "/arr"], ["lambda", ["x"], [">", ["$", "/x"], 0]]])");
     EXPECT_EQ(result, expected);
 }
 
@@ -326,8 +311,7 @@ TEST_F(SugarParserTest, NoArgFunction) {
 TEST_F(SugarParserTest, NestedFunctionCalls) {
     auto result = parse("count(filter(arr, (x) => x > 0))");
     auto expected = jsom::parse_document(
-        R"(["count", ["filter", ["$", "/arr"], ["lambda", ["x"], [">", ["$", "/x"], 0]]]])"
-    );
+        R"(["count", ["filter", ["$", "/arr"], ["lambda", ["x"], [">", ["$", "/x"], 0]]]])");
     EXPECT_EQ(result, expected);
 }
 
@@ -432,21 +416,13 @@ TEST_F(SugarParserTest, SlashAsymmetricSpaceRightError) {
 
 // --- Error cases ---
 
-TEST_F(SugarParserTest, UnexpectedToken) {
-    EXPECT_THROW(parse("@"), SugarParseError);
-}
+TEST_F(SugarParserTest, UnexpectedToken) { EXPECT_THROW(parse("@"), SugarParseError); }
 
-TEST_F(SugarParserTest, MissingThen) {
-    EXPECT_THROW(parse("if true 1 else 0"), SugarParseError);
-}
+TEST_F(SugarParserTest, MissingThen) { EXPECT_THROW(parse("if true 1 else 0"), SugarParseError); }
 
-TEST_F(SugarParserTest, MissingElse) {
-    EXPECT_THROW(parse("if true then 1"), SugarParseError);
-}
+TEST_F(SugarParserTest, MissingElse) { EXPECT_THROW(parse("if true then 1"), SugarParseError); }
 
-TEST_F(SugarParserTest, MissingIn) {
-    EXPECT_THROW(parse("let x = 10 x"), SugarParseError);
-}
+TEST_F(SugarParserTest, MissingIn) { EXPECT_THROW(parse("let x = 10 x"), SugarParseError); }
 
 TEST_F(SugarParserTest, ErrorHasLineAndColumn) {
     try {
@@ -463,8 +439,7 @@ TEST_F(SugarParserTest, ErrorHasLineAndColumn) {
 TEST_F(SugarParserTest, FilterCountExample) {
     auto result = parse("filter($input/users, (u) => count(u/orders) > 0)");
     auto expected = jsom::parse_document(
-        R"(["filter", ["$input", "/users"], ["lambda", ["u"], [">", ["count", ["$", "/u/orders"]], 0]]])"
-    );
+        R"(["filter", ["$input", "/users"], ["lambda", ["u"], [">", ["count", ["$", "/u/orders"]], 0]]])");
     EXPECT_EQ(result, expected);
 }
 

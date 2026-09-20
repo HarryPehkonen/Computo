@@ -2,10 +2,10 @@
 
 #include <cstdint>
 #include <functional>
+#include <jsom/jsom.hpp>
 #include <map>
 #include <memory>
 #include <mutex>
-#include <jsom/jsom.hpp>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -67,8 +67,8 @@ enum class DebugAction : std::uint8_t {
 };
 
 struct DebugStep {
-    std::string operation;                           // Current operator/expression
-    std::string location;                            // Current execution path
+    std::string operation;                               // Current operator/expression
+    std::string location;                                // Current execution path
     std::map<std::string, jsom::JsonDocument> variables; // Current scope variables
     jsom::JsonDocument expression;                       // Current expression being evaluated
 
@@ -146,7 +146,9 @@ public:
 
     // Accessors
     [[nodiscard]] auto input() const -> const jsom::JsonDocument& { return *input_ptr_; }
-    [[nodiscard]] auto inputs() const -> const std::vector<jsom::JsonDocument>& { return *inputs_ptr_; }
+    [[nodiscard]] auto inputs() const -> const std::vector<jsom::JsonDocument>& {
+        return *inputs_ptr_;
+    }
 
     // Thread-safe context creation for scoping
     [[nodiscard]] auto with_variables(const std::map<std::string, jsom::JsonDocument>& vars) const
@@ -174,7 +176,8 @@ struct EvaluationResult {
     std::unique_ptr<TailCall> tail_call;
 
     // Constructor for regular result
-    explicit EvaluationResult(jsom::JsonDocument val) : value(std::move(val)), is_tail_call(false) {}
+    explicit EvaluationResult(jsom::JsonDocument val)
+        : value(std::move(val)), is_tail_call(false) {}
 
     // Constructor for tail call
     EvaluationResult(jsom::JsonDocument expr, ExecutionContext ctx)
@@ -184,7 +187,8 @@ struct EvaluationResult {
 
 // --- Operator Function Signature ---
 
-using OperatorFunction = std::function<EvaluationResult(const jsom::JsonDocument&, ExecutionContext&)>;
+using OperatorFunction
+    = std::function<EvaluationResult(const jsom::JsonDocument&, ExecutionContext&)>;
 
 // --- Operator Registry ---
 

@@ -131,6 +131,7 @@ TEST_F(Rule3ArrayTest, NestedRule3Arrays) {
     // Test nested Rule 3 arrays: [[1, 2], [3, 4]]
     EXPECT_NO_THROW({
         auto result = execute_script("[[1, 2], [3, 4]]");
-        EXPECT_EQ(result, json(std::vector<json>{json(std::vector<json>{1, 2}), json(std::vector<json>{3, 4})}));
+        EXPECT_EQ(result, json(std::vector<json>{json(std::vector<json>{1, 2}),
+                                                 json(std::vector<json>{3, 4})}));
     });
 }

@@ -14,8 +14,8 @@ struct ComputoArgs {
     Mode mode;
     std::string script_file; // Only valid in SCRIPT mode
     std::vector<std::string> input_files;
-    std::string highlight_file; // Only valid when highlight_script is true
-    std::string format_file;    // Only valid when format_script is true
+    std::string highlight_file;  // Only valid when highlight_script is true
+    std::string format_file;     // Only valid when format_script is true
     std::string to_computo_file; // --tocomputo: convert JSON to sugar syntax
     std::string to_json_file;    // --tojson: convert sugar to JSON
     bool enable_comments = false;

@@ -8,63 +8,68 @@ namespace computo {
 // Precedence levels (higher = tighter binding)
 enum class Prec : int {
     None = 0,
-    LetIfLambda = 1,  // let...in, if...then...else, (x) => body
+    LetIfLambda = 1, // let...in, if...then...else, (x) => body
     Or = 2,
     And = 3,
-    Not = 4,          // prefix not
-    Comparison = 5,   // >, <, >=, <=, ==, !=
-    Additive = 6,     // +, -
+    Not = 4,            // prefix not
+    Comparison = 5,     // >, <, >=, <=, ==, !=
+    Additive = 6,       // +, -
     Multiplicative = 7, // *, /, %
-    UnaryNeg = 8,     // unary -
-    Call = 9,         // f(...), x/path
+    UnaryNeg = 8,       // unary -
+    Call = 9,           // f(...), x/path
 };
 
 static auto op_precedence(const std::string& op) -> Prec {
-    if (op == "or") return Prec::Or;
-    if (op == "and") return Prec::And;
-    if (op == "not") return Prec::Not;
+    if (op == "or")
+        return Prec::Or;
+    if (op == "and")
+        return Prec::And;
+    if (op == "not")
+        return Prec::Not;
     if (op == ">" || op == "<" || op == ">=" || op == "<=" || op == "==" || op == "!=")
         return Prec::Comparison;
-    if (op == "+" || op == "-") return Prec::Additive;
-    if (op == "*" || op == "/" || op == "%") return Prec::Multiplicative;
+    if (op == "+" || op == "-")
+        return Prec::Additive;
+    if (op == "*" || op == "/" || op == "%")
+        return Prec::Multiplicative;
     return Prec::None;
 }
 
 static auto is_infix_op(const std::string& op) -> bool {
-    static const std::set<std::string> infix_ops = {
-        "+", "-", "*", "/", "%",
-        ">", "<", ">=", "<=", "==", "!=",
-        "and", "or"
-    };
+    static const std::set<std::string> infix_ops
+        = {"+", "-", "*", "/", "%", ">", "<", ">=", "<=", "==", "!=", "and", "or"};
     return infix_ops.count(op) > 0;
 }
 
 static auto is_valid_identifier(const std::string& s) -> bool {
-    if (s.empty()) return false;
-    if (!std::isalpha(static_cast<unsigned char>(s[0])) && s[0] != '_') return false;
+    if (s.empty())
+        return false;
+    if (!std::isalpha(static_cast<unsigned char>(s[0])) && s[0] != '_')
+        return false;
     for (char c : s) {
-        if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_') return false;
+        if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_')
+            return false;
     }
     // Reserved keywords can still be identifiers in function-call position
     return true;
 }
 
 // Check if a string is a JSON pointer path (starts with /)
-static auto is_json_pointer(const std::string& s) -> bool {
-    return !s.empty() && s[0] == '/';
-}
+static auto is_json_pointer(const std::string& s) -> bool { return !s.empty() && s[0] == '/'; }
 
 // Convert a JSON pointer path to dot-separated sugar path segments
 // "/users/0/name" -> "users/0/name"
 static auto pointer_to_path(const std::string& pointer) -> std::string {
-    if (pointer.empty() || pointer[0] != '/') return pointer;
+    if (pointer.empty() || pointer[0] != '/')
+        return pointer;
     return pointer.substr(1); // strip leading /
 }
 
 // Check if a path segment needs no escaping for sugar syntax
 static auto is_simple_path(const std::string& path) -> bool {
     for (char c : path) {
-        if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_' && c != '/') return false;
+        if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_' && c != '/')
+            return false;
     }
     return !path.empty();
 }
@@ -73,13 +78,27 @@ static void append_escaped_string(std::string& out, const std::string& s) {
     out += '"';
     for (char c : s) {
         switch (c) {
-        case '"': out += "\\\""; break;
-        case '\\': out += "\\\\"; break;
-        case '\b': out += "\\b"; break;
-        case '\f': out += "\\f"; break;
-        case '\n': out += "\\n"; break;
-        case '\r': out += "\\r"; break;
-        case '\t': out += "\\t"; break;
+        case '"':
+            out += "\\\"";
+            break;
+        case '\\':
+            out += "\\\\";
+            break;
+        case '\b':
+            out += "\\b";
+            break;
+        case '\f':
+            out += "\\f";
+            break;
+        case '\n':
+            out += "\\n";
+            break;
+        case '\r':
+            out += "\\r";
+            break;
+        case '\t':
+            out += "\\t";
+            break;
         default:
             if (static_cast<unsigned char>(c) < 0x20) {
                 char buf[8];
@@ -144,12 +163,14 @@ static void write_input_access(const jsom::JsonDocument& node, const std::string
 static void write_lambda(const jsom::JsonDocument& node, Prec parent_prec,
                          const SugarWriterOptions& opts, int indent, std::string& out) {
     bool needs_parens = static_cast<int>(parent_prec) > static_cast<int>(Prec::LetIfLambda);
-    if (needs_parens) out += '(';
+    if (needs_parens)
+        out += '(';
 
     out += '(';
     if (node.size() > 1 && node[1].is_array()) {
         for (size_t i = 0; i < node[1].size(); ++i) {
-            if (i > 0) out += ", ";
+            if (i > 0)
+                out += ", ";
             if (node[1][i].is_string()) {
                 out += node[1][i].as<std::string>();
             }
@@ -161,14 +182,16 @@ static void write_lambda(const jsom::JsonDocument& node, Prec parent_prec,
         write_node(node[2], Prec::LetIfLambda, opts, indent, out);
     }
 
-    if (needs_parens) out += ')';
+    if (needs_parens)
+        out += ')';
 }
 
 // Write let: ["let", [["x", 10], ["y", 20]], body] -> let x = 10, y = 20 in body
 static void write_let(const jsom::JsonDocument& node, Prec parent_prec,
                       const SugarWriterOptions& opts, int indent, std::string& out) {
     bool needs_parens = static_cast<int>(parent_prec) > static_cast<int>(Prec::LetIfLambda);
-    if (needs_parens) out += '(';
+    if (needs_parens)
+        out += '(';
 
     out += "let\n";
     if (node.size() > 1) {
@@ -203,14 +226,16 @@ static void write_let(const jsom::JsonDocument& node, Prec parent_prec,
         write_node(node[2], Prec::LetIfLambda, opts, indent + 1, out);
     }
 
-    if (needs_parens) out += ')';
+    if (needs_parens)
+        out += ')';
 }
 
 // Write if: ["if", cond, then, else] -> if cond then then_expr else else_expr
 static void write_if(const jsom::JsonDocument& node, Prec parent_prec,
                      const SugarWriterOptions& opts, int indent, std::string& out) {
     bool needs_parens = static_cast<int>(parent_prec) > static_cast<int>(Prec::LetIfLambda);
-    if (needs_parens) out += '(';
+    if (needs_parens)
+        out += '(';
 
     out += "if ";
     if (node.size() > 1) {
@@ -225,36 +250,40 @@ static void write_if(const jsom::JsonDocument& node, Prec parent_prec,
         write_node(node[3], Prec::LetIfLambda, opts, indent, out);
     }
 
-    if (needs_parens) out += ')';
+    if (needs_parens)
+        out += ')';
 }
 
 // Write not: ["not", x] -> not x
 static void write_not(const jsom::JsonDocument& node, Prec parent_prec,
                       const SugarWriterOptions& opts, int indent, std::string& out) {
     bool needs_parens = static_cast<int>(parent_prec) > static_cast<int>(Prec::Not);
-    if (needs_parens) out += '(';
+    if (needs_parens)
+        out += '(';
 
     out += "not ";
     if (node.size() > 1) {
         write_node(node[1], Prec::Not, opts, indent, out);
     }
 
-    if (needs_parens) out += ')';
+    if (needs_parens)
+        out += ')';
 }
 
 // Write infix: ["+", a, b, c] -> a + b + c
-static void write_infix(const jsom::JsonDocument& node, const std::string& op,
-                        Prec parent_prec, const SugarWriterOptions& opts,
-                        int indent, std::string& out) {
+static void write_infix(const jsom::JsonDocument& node, const std::string& op, Prec parent_prec,
+                        const SugarWriterOptions& opts, int indent, std::string& out) {
     Prec my_prec = op_precedence(op);
     bool needs_parens = static_cast<int>(parent_prec) > static_cast<int>(my_prec);
-    if (needs_parens) out += '(';
+    if (needs_parens)
+        out += '(';
 
     // Unary minus: ["-", x] -> -x
     if (op == "-" && node.size() == 2) {
         out += '-';
         write_node(node[1], Prec::UnaryNeg, opts, indent, out);
-        if (needs_parens) out += ')';
+        if (needs_parens)
+            out += ')';
         return;
     }
 
@@ -273,7 +302,8 @@ static void write_infix(const jsom::JsonDocument& node, const std::string& op,
         write_node(node[i], child_prec, opts, indent, out);
     }
 
-    if (needs_parens) out += ')';
+    if (needs_parens)
+        out += ')';
 }
 
 // Write function call: ["count", arr] -> count(arr)
@@ -282,30 +312,33 @@ static void write_function_call(const jsom::JsonDocument& node, const std::strin
     out += name;
     out += '(';
     for (size_t i = 1; i < node.size(); ++i) {
-        if (i > 1) out += ", ";
+        if (i > 1)
+            out += ", ";
         write_node(node[i], Prec::None, opts, indent, out);
     }
     out += ')';
 }
 
 // Write array literal: {"array": [1,2,3]} -> [1, 2, 3]
-static void write_array_literal(const jsom::JsonDocument& arr,
-                                const SugarWriterOptions& opts, int indent, std::string& out) {
+static void write_array_literal(const jsom::JsonDocument& arr, const SugarWriterOptions& opts,
+                                int indent, std::string& out) {
     out += '[';
     for (size_t i = 0; i < arr.size(); ++i) {
-        if (i > 0) out += ", ";
+        if (i > 0)
+            out += ", ";
         write_node(arr[i], Prec::None, opts, indent, out);
     }
     out += ']';
 }
 
 // Write object literal: {"name": "x", "age": 5} -> {name: "x", age: 5}
-static void write_object_literal(const jsom::JsonDocument& node,
-                                 const SugarWriterOptions& opts, int indent, std::string& out) {
+static void write_object_literal(const jsom::JsonDocument& node, const SugarWriterOptions& opts,
+                                 int indent, std::string& out) {
     out += '{';
     size_t count = 0;
     for (const auto& [key, value] : node.items()) {
-        if (count > 0) out += ", ";
+        if (count > 0)
+            out += ", ";
         if (is_valid_identifier(key)) {
             out += key;
         } else {
@@ -351,7 +384,8 @@ static void write_node(const jsom::JsonDocument& node, Prec parent_prec,
             // but this is a raw array that's not an op call. Write as bracketed list.
             out += '[';
             for (size_t i = 0; i < node.size(); ++i) {
-                if (i > 0) out += ", ";
+                if (i > 0)
+                    out += ", ";
                 write_node(node[i], Prec::None, opts, indent, out);
             }
             out += ']';
@@ -395,8 +429,8 @@ static void write_node(const jsom::JsonDocument& node, Prec parent_prec,
     }
 }
 
-auto SugarWriter::write(const jsom::JsonDocument& doc,
-                        const SugarWriterOptions& options) -> std::string {
+auto SugarWriter::write(const jsom::JsonDocument& doc, const SugarWriterOptions& options)
+    -> std::string {
     std::string out;
     out.reserve(256);
     write_node(doc, Prec::None, options, 0, out);
