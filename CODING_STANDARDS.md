@@ -61,6 +61,11 @@ in the adaptation notes at the top of the script.
 
 - Warnings: `-Wall -Wextra -Wpedantic -Werror` on Computo's own targets (CMakeLists.txt).
   The `build` stage additionally fails on any `warning:` a target without `-Werror` emitted.
+  One exception, bounded: on GNU < 15 and non-Debug configs only, those targets add
+  `-Wno-maybe-uninitialized`, because gcc 13 and gcc 14 both report that false positive
+  inside libstdc++'s variant machinery at -O2/-O3 (it is what kept the Pages deploy red).
+  The gate builds Debug, where the diagnostic does not exist, so its warning set is
+  unchanged; INCIDENTS.md (2026-09-20) has the measurements and the cost.
 - Tests: `ctest --test-dir build --output-on-failure` (the `tests` stage). Nothing is
   filtered out of it.
 - Sanitizers: the `asan` and `tsan` stages, each in its own build dir. `CMakeLists.txt`

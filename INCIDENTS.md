@@ -14,6 +14,43 @@ arbitrary checks get deleted. The rationale is the load-bearing part.
 
 ---
 
+## 2026-09-20 — the Pages deploy was red for seven months and only CI could see it
+
+What broke:        `Documentation Validation and Deployment` failed on every push from
+                   2026-02-11 onward, so GitHub Pages — the only production target this repo
+                   has — kept serving the 2026-02-10 build. The failing step is `Build Computo`:
+                   the runner's gcc 13.3 raises `-Werror=maybe-uninitialized` at
+                   /usr/include/c++/13/variant:224 while compiling src/operators/control_flow.cpp.
+                   The diagnostic names `jsom::JsonDocument::storage_`, but the code it objects
+                   to is libstdc++'s variant machinery, inlined from json_document.hpp:81
+                   through `TailCall` and `std::make_unique`. Nothing local reproduced it: the
+                   workflow passes no build type, and JSOM's subproject (FetchContent) defaults
+                   `CMAKE_BUILD_TYPE` to Release, so that build is -O3 -DNDEBUG, while every stage
+                   of tools/ci.sh builds CI_BUILD_TYPE=Debug. Measured 2026-09-20: the same
+                   sources trip at -O2/-O3 and are clean at -O0/-O1 under both gcc 13.3 and gcc
+                   14.2, and `./build.sh` (Release) had been broken on this box the whole time
+                   with no stage in a position to notice.
+Check added:       CMakeLists.txt: `-Wno-maybe-uninitialized` for Computo's own targets,
+                   bounded to GNU < 15 and non-Debug configs, declared next to the `-Werror` it
+                   bounds. No stage of tools/ci.sh configures an optimized build, so no *stage*
+                   would have caught this — that missing check is follow-up card `t_45a28893`,
+                   not something this entry can claim.
+Why it must stay:  The scope is what makes an optimized build possible at all on gcc <= 14:
+                   the runner is gcc 13 and this box is gcc 14, so removing it re-reds the Pages
+                   deploy, `./build.sh`, and any consumer building this repo at -O2/-O3, over a
+                   compiler bug — the gcc#101905 false-positive family, fixed in gcc 15+, which
+                   is why the bound is `< 15` and disappears by itself on a newer compiler —
+                   rather than over a defect in this repo's code. What it costs, stated rather
+                   than implied: gcc reports the simple uninitialized-read diagnostics under
+                   `-Wmaybe-uninitialized` too (measured: a definite uninitialized read at -O0
+                   is reported as `[-Wmaybe-uninitialized]` and silent with the flag), so
+                   optimized configurations lose that family. The Debug configuration every
+                   gate stage builds keeps the whole set — the bound is deliberately not
+                   "all configs". Same decision and same compiler bound as JSOM's own
+                   CMakeLists.txt, which scopes the flag to its jsom_tests target.
+
+---
+
 ## 2026-09-20 — the gate printed GATE PASSED with 9 of its 10 stages never run
 
 What broke:        A `git push` re-ran the full tier and printed `all 10 stage(s) passed in 0s`
