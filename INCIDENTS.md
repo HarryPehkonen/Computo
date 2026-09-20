@@ -14,6 +14,54 @@ arbitrary checks get deleted. The rationale is the load-bearing part.
 
 ---
 
+## 2026-09-20 — a pathspec commit failed its own pre-commit gate at `build`, naming a dependency update
+
+What broke:        `git commit -F <msg> -- .ai-dev-starter.json` — the pathspec form, the one this
+                   repo's notes recommend for a shared tree — printed `==> build (-Werror, zero
+                   warnings)  FAIL  build`, `stopped at: build`, `GATE FAILED`. Nothing was wrong
+                   with the code: the same tree passed every stage once the change was staged
+                   first (that workaround is how the record commit 8929cbe landed). The configure
+                   log showed the JSOM FetchContent update step failing:
+                     fatal: unable to read 691e2bdafaf312970644391de042d38c2c5972d8
+                     CMake Error at .../jsom-populate-gitupdate.cmake:186 (message):
+                       Failed to get the status
+                   That hash is a 941-byte blob IN COMPUTO and does not exist in the clone
+                   (`git cat-file -t` there → could not get object info); the clone's own
+                   `git fsck --full` is clean.
+                   MECHANISM, measured: `git commit -- <path>` builds a TEMPORARY index and
+                   exports it to the pre-commit hook as **GIT_INDEX_FILE**
+                   (`.git/next-index-XXXXXX.lock`). Every process the hook starts inherits it, so
+                   cmake's update step — `/usr/bin/git --git-dir=.git status --porcelain`, run
+                   with cwd=`build/_deps/jsom-src` — read COMPUTO's index entries (paths like
+                   `.ai-dev-starter.json`) against the JSOM clone's object store and died on the
+                   first blob that store lacks. Reproduced by hand in that directory: with
+                   `GIT_INDEX_FILE=<Computo>/.git/index` → rc 128, that fatal; without it → rc 0,
+                   clean. Computo is the only one of the seven recorded repos that FetchContents
+                   over the network (CMakeLists.txt:77), which is why only it showed this.
+Check added:       tools/ci.sh: `unset GIT_INDEX_FILE` in the prologue, beside `export NO_COLOR=1`,
+                   with the mechanism and the measurement in the comment above it — plus a
+                   COMPUTO ADAPTATIONS entry, because the kit's templates/cpp/ci.sh has the same
+                   hole and this line is a pending port back to it (card t_0a9a0018). A pathspec
+                   commit now runs the fast tier to `GATE PASSED`, on this checkout and in a
+                   fresh clone of the fixed HEAD.
+Why it must stay:  GIT_INDEX_FILE is git's bookkeeping for the commit in progress, not this
+                   repository: it says nothing about the tree the gate exists to certify, and its
+                   value is meaningless in any OTHER repository the gate happens to run a git
+                   command in (the JSOM clone is a separate repo with a separate object store).
+                   Unsetting it ONCE in the prologue — rather than `env -u` on each of the five
+                   cmake configure lines — is the difference between fixing the instance and the
+                   class: the leak reaches every process the gate runs, `pristine` and a repo's
+                   own kitprobes scripts included. Measured before choosing the place, and the
+                   reason the one line is safe here: on a real pathspec commit, with git's temp
+                   index and with the real one, every input the tree and format stages read is
+                   identical (same dirty files, same untracked file, same source set) and their
+                   OUTPUT is byte-identical — the only differences are views no stage reads
+                   (`git diff --cached HEAD`, and the staged-vs-unstaged letter, where the real
+                   index is the truthful one because the worktree has not been committed yet).
+                   Evidence: gate-evidence/t_9541aa62/.
+
+---
+
 ## 2026-09-20 — the README's own result examples were graded by nothing, and the published page rendered a code block over its closing paragraph
 
 What broke:        Three defects in the same file, found by the audit card t_4a81d75f and fixed here.

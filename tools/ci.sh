@@ -102,6 +102,15 @@
 #     "→ sorted array", shell sessions inside bash blocks, C++ snippets) are listed by line
 #     number on every run rather than skipped quietly, and a floor of 90 graded examples
 #     fails the stage if README's prose ever changes shape enough to shrink the coverage.
+#   * git environment: `unset GIT_INDEX_FILE` in the prologue (2026-09-20, card t_9541aa62).
+#     The kit has no such line, so this is a PENDING PORT BACK to templates/cpp/ci.sh,
+#     tracked as card t_0a9a0018. git exports its TEMPORARY index to the pre-commit hook for
+#     a pathspec commit, and cmake's FetchContent update step in the `build` stage then ran
+#     `git status` inside build/_deps/jsom-src with THIS repo's index, dying on a blob the
+#     JSOM clone does not have — a pathspec commit failed its own gate at `build` with a
+#     message about a dependency update, on a tree that builds fine. Unset once in the
+#     prologue rather than `env -u` per configure line: every process the gate runs inherits
+#     it. INCIDENTS.md carries the mechanism and the measurement.
 #   * no fuzz stage: the repo has no fuzz target yet.
 #
 # Configuration lives in .ci.env (gitignored, optional); every knob has a default here,
@@ -124,6 +133,38 @@ cd "$REPO_ROOT" || exit 1
 # No colour from the tools: this script greps their output (warning:, error:) and ANSI
 # escapes defeat the greps. The escapes this script prints itself are for the human.
 export NO_COLOR=1
+
+# git exports GIT_INDEX_FILE to a hook when the commit is made with a PATHSPEC
+# (`git commit -- <path>`, the form this repo's own notes recommend for a shared tree) — it
+# points at git's TEMPORARY index for the commit in progress, not at this repo's index. Every
+# process the gate runs inherits it, and cmake's FetchContent update step in the `build` stage
+# runs `git --git-dir=.git status --porcelain` inside build/_deps/jsom-src: handed COMPUTO's
+# index, it reads Computo's entries against the JSOM clone's object store and dies on the
+# first blob that clone does not have —
+#     fatal: unable to read 691e2bdafaf312970644391de042d38c2c5972d8
+#     CMake Error at .../jsom-populate-gitupdate.cmake:186 (message): Failed to get the status
+# — so a pathspec commit failed its OWN pre-commit gate at `build`, naming a dependency
+# update, on a tree that builds fine (measured 2026-09-20, card t_9541aa62; the workaround was
+# to stage first, which is not a fix).
+#
+# The variable is git's bookkeeping for one commit, not this repository: it says nothing about
+# the tree the gate exists to certify, and its value is meaningless in any OTHER repository
+# that the gate happens to run a git command in. Unset it once, here, rather than `env -u` on
+# each of the five cmake configure lines — every process the gate starts inherits it, so a
+# per-invocation fix would cover the instance (`build`) and leave the class (the four other
+# configures, the `pristine` checkout, and anything a repo's own `kitprobes` scripts run).
+#
+# Measured before choosing this place, in a throwaway clone, on a real `git commit -- <path>`
+# with the gate's own stages run BOTH ways: nothing the stages read differs. The hook's own
+# GIT_INDEX_FILE showed the mechanism (.git/next-index-XXXXXX.lock), and with it and without
+# it `git status --porcelain --untracked-files=no` names the same files, `git ls-files
+# --others` the same one untracked file, `git diff --name-only HEAD` the same two files, and
+# the source set `format` checks is the same 103 entries — with the `tree` and `format` stage
+# OUTPUTS byte-identical (tree FAIL on that same untracked file, format pass on the same two
+# files). The only differences are views no stage reads: `git diff --cached HEAD` (empty
+# against the real index) and the staged-vs-unstaged letter, and there the real index is the
+# truthful one, because the worktree has not been committed yet.
+unset GIT_INDEX_FILE
 
 # ---------------------------------------------------------------- defaults + config
 CI_JOBS=${CI_JOBS:-$(nproc 2>/dev/null || echo 4)}
