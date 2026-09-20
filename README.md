@@ -77,16 +77,17 @@ computo --repl script.json
 
 #### Array Key Customization
 
-The `--array=<key>` option allows you to customize the array wrapper key, enabling output of literal `{"array": [...]}` objects:
+The `--array=<key>` option customizes which key marks an array. With the default key (`array`) a literal `{"array": [...]}` in a script *is* an array, and the CLI prints the result of an array-valued script as a bare JSON array:
 
 ```bash
-# Default behavior uses "array" key
+# Default behavior uses the "array" key: the wrapper is unwrapped in the output
 computo --script script.json
-# Output: {"array": [1, 2, 3]}
+# Output: [1, 2, 3]            (script.json: {"array": [1, 2, 3]})
 
-# Custom key allows literal "array" objects in output
-computo --script script.json --array="@data" 
-# Can now output: {"data": [1, 2, 3], "array": ["preserved"]}
+# A custom key makes "array" an ordinary object key again, so a literal
+# {"array": [...]} object survives to the output as data
+computo --script script.json --array="@data"
+# Output: {"array": [1, 2, 3]}
 ```
 
 **Example:**
@@ -110,7 +111,7 @@ computo --script script.json --array="@data"
 
 **Result:**
 ```
-6.0
+6
 ```
 
 ### Multiple Inputs Example
@@ -131,7 +132,7 @@ computo --script script.json input1.json input2.json
 
 **Result:**
 ```
-30.0
+30
 ```
 
 ## Language Syntax
@@ -238,13 +239,13 @@ Asymmetric spacing (e.g., `a /b` or `a/ b`) is a syntax error to prevent ambigui
 ## Operators Reference
 
 ### Arithmetic (n-ary)
-- `["+", 1, 2, 3]` → `6.0`
-- `["-", 10, 3, 2]` → `5.0`
-- `["-", 5]` (unary negation) → `-5.0`
-- `["*", 2, 3, 4]` → `24.0`
-- `["/", 20, 2, 2]` → `5.0`
+- `["+", 1, 2, 3]` → `6`
+- `["-", 10, 3, 2]` → `5`
+- `["-", 5]` (unary negation) → `-5`
+- `["*", 2, 3, 4]` → `24`
+- `["/", 20, 2, 2]` → `5`
 - `["/", 4]` (reciprocal) → `0.25`
-- `["%", 20, 6]` → `2.0`
+- `["%", 20, 6]` → `2`
 
 ### Comparison (n-ary with chaining)
 - `[">", 5, 3, 1]` → `true` (evaluates as `5 > 3 && 3 > 1`)
@@ -269,15 +270,15 @@ Asymmetric spacing (e.g., `a /b` or `a/ b`) is a syntax error to prevent ambigui
 - `["$inputs", "/0/users/0/name"]`: Navigate deep into the first input (inputs[0].users[0].name).
 - `["$", "/varname"]`: Access a variable defined with `let`.
 - `["$", "/config/database/connections/primary/host"]`: Navigate deep within variable data.
-- `["let", [["x", 10]], ["+", ["$", "/x"], 5]]`: Bind variables using array syntax. Result: `15.0`.
-- `["let", {"x": 10, "y": 20}, ["+", ["$", "/x"], ["$", "/y"]]]`: Bind variables using object syntax. Result: `30.0`.
+- `["let", [["x", 10]], ["+", ["$", "/x"], 5]]`: Bind variables using array syntax. Result: `15`.
+- `["let", {"x": 10, "y": 20}, ["+", ["$", "/x"], ["$", "/y"]]]`: Bind variables using object syntax. Result: `30`.
 
 ### Object Operations
 - `["obj", "name", "Alice", "age", 30]`: Create an object with static keys. Result: `{"name": "Alice", "age": 30}`.
 - `["obj", ["strConcat", "user_", ["$", "/id"]], "Alice"]`: Create object with dynamic key evaluation. 
 - `["obj", ["$", "/key_name"], ["$", "/value"]]`: Both keys and values are evaluated expressions.
-- `["keys", {"a": 1, "b": 2}]`: Get object keys. Result: `{"array": ["a", "b"]}`.
-- `["values", {"a": 1, "b": 2}]`: Get object values. Result: `{"array": [1, 2]}`.
+- `["keys", {"a": 1, "b": 2}]`: Get object keys. Result: `["a", "b"]`.
+- `["values", {"a": 1, "b": 2}]`: Get object values. Result: `[1, 2]`.
 - `["objFromPairs", {"array": [["a", 1], ["b", 2]]}]`: Create object from key-value pairs. Result: `{"a": 1, "b": 2}`.
 - `["pick", {"a": 1, "b": 2, "c": 3}, {"array": ["a", "c"]}]`: Select specific keys. Result: `{"a": 1, "c": 3}`.
 - `["omit", {"a": 1, "b": 2, "c": 3}, {"array": ["b"]}]`: Remove specific keys. Result: `{"a": 1, "c": 3}`.
@@ -293,9 +294,9 @@ Asymmetric spacing (e.g., `a /b` or `a/ b`) is a syntax error to prevent ambigui
 
 ### Array Operations
 - `["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]]`
-  - Result: `{"array": [2, 4, 6]}`
+  - Result: `[2, 4, 6]`
 - `["filter", {"array": [1, 2, 3, 4, 5]}, ["lambda", ["x"], [">", ["$", "/x"], 2]]]`
-  - Result: `{"array": [3, 4, 5]}`
+  - Result: `[3, 4, 5]`
 - `["reduce", {"array": [1, 2, 3, 4]}, ["lambda", ["acc", "item"], ["+", ["$", "/acc"], ["$", "/item"]]], 0]`
   - Result: `10`
 - `["count", {"array": [1, 2, 3]}]` → `3`
@@ -305,26 +306,26 @@ Asymmetric spacing (e.g., `a /b` or `a/ b`) is a syntax error to prevent ambigui
 
 ### Functional Operations
 - `["car", {"array": [1, 2, 3]}]` (first element) → `1`
-- `["cdr", {"array": [1, 2, 3]}]` (rest of elements) → `{"array": [2, 3]}`
-- `["cons", 0, {"array": [1, 2]}]` (prepend) → `{"array": [0, 1, 2]}`
-- `["append", {"array": [1, 2]}, {"array": [3, 4]}]` → `{"array": [1, 2, 3, 4]}`
+- `["cdr", {"array": [1, 2, 3]}]` (rest of elements) → `[2, 3]`
+- `["cons", 0, {"array": [1, 2]}]` (prepend) → `[0, 1, 2]`
+- `["append", {"array": [1, 2]}, {"array": [3, 4]}]` → `[1, 2, 3, 4]`
 
 ### String Operations
 - `["strConcat", "Hello", " ", "World"]` → `"Hello World"`
 - `["join", {"array": ["hello", "world"]}, " "]` → `"hello world"`
 
 ### Array Manipulation
-- `["sort", {"array": [3, 1, 4, 1, 5]}]` → `{"array": [1, 1, 3, 4, 5]}`
-- `["sort", {"array": [3, 1, 4]}, "desc"]` → `{"array": [4, 3, 1]}`
+- `["sort", {"array": [3, 1, 4, 1, 5]}]` → `[1, 1, 3, 4, 5]`
+- `["sort", {"array": [3, 1, 4]}, "desc"]` → `[4, 3, 1]`
 - `["sort", {"array": [...]}, "/name"]` (sort objects by field) → sorted array
 - `["sort", {"array": [...]}, "/dept", ["/salary", "desc"]]` (multi-field sort)
-- `["reverse", {"array": [1, 2, 3]}]` → `{"array": [3, 2, 1]}`
-- `["unique", {"array": [1, 2, 2, 3, 3, 3]}]` → `{"array": [1, 2, 3]}`
-- `["uniqueSorted", {"array": [1, 1, 2, 2, 3]}]` → `{"array": [1, 2, 3]}` (requires sorted input)
+- `["reverse", {"array": [1, 2, 3]}]` → `[3, 2, 1]`
+- `["unique", {"array": [1, 2, 2, 3, 3, 3]}]` → `[1, 2, 3]`
+- `["uniqueSorted", {"array": [1, 1, 2, 2, 3]}]` → `[1, 2, 3]` (requires sorted input)
 - `["uniqueSorted", {"array": [...]}, "lasts"]` → last occurrence of each unique value
 - `["uniqueSorted", {"array": [...]}, "singles"]` → elements that appear exactly once
 - `["uniqueSorted", {"array": [...]}, "/field", "firsts"]` → field-based uniqueness
-- `["zip", {"array": [1, 2]}, {"array": ["a", "b"]}]` → `{"array": [[1, "a"], [2, "b"]]}`
+- `["zip", {"array": [1, 2]}, {"array": ["a", "b"]}]` → `[[1, "a"], [2, "b"]]`
 
 ### Utilities
 - `["approx", 0.1, 0.10001, 0.001]` (approximate equality) → `true`
@@ -380,7 +381,7 @@ Given this input data:
   ["lambda", ["user"], ["$", "/user/profile/contact/email"]]
 ]
 ```
-Result: `{"array": ["alice@example.com", "bob@example.com"]}`
+Result: `["alice@example.com", "bob@example.com"]`
 
 **Get users with dark theme preference:**
 ```json
@@ -491,7 +492,7 @@ Computo supports first-class lambda functions that can be stored in variables, p
 ["let", [["doubler", ["lambda", ["x"], ["*", ["$", "/x"], 2]]]], 
  ["map", {"array": [1, 2, 3]}, ["$", "/doubler"]]]
 ```
-Result: `{"array": [2, 4, 6]}`
+Result: `[2, 4, 6]`
 
 **Multiple lambda functions:**
 ```json
@@ -504,7 +505,7 @@ Result: `{"array": [2, 4, 6]}`
   ["$", "/mul2"]
 ]]
 ```
-Result: `{"array": [4, 6, 8]}` (first add 1, then multiply by 2)
+Result: `[4, 6, 8]` (first add 1, then multiply by 2)
 
 ### Lambda Functions with Reduce
 
@@ -529,7 +530,7 @@ Result: `10`
   ["$", "/square"]
 ]]
 ```
-Result: `{"array": [4, 16, 36]}` (filter evens: [2,4,6], then square them)
+Result: `[4, 16, 36]` (filter evens: [2,4,6], then square them)
 
 ### Nested Lambda Scope
 
@@ -540,7 +541,7 @@ Result: `{"array": [4, 16, 36]}` (filter evens: [2,4,6], then square them)
   ["lambda", ["x"], ["*", ["$", "/x"], ["$", "/multiplier"]]]
  ]]
 ```
-Result: `{"array": [10, 20, 30]}`
+Result: `[10, 20, 30]`
 
 ### Lambda Function Benefits
 
@@ -724,13 +725,13 @@ All comparison operators support n-ary chaining (e.g., `a > b > c` means `a > b 
 **Syntax**: `["keys", <object>]`  
 **Parameters**: Exactly 1 object  
 **Returns**: `{"array": [key1, key2, ...]}`  
-**Examples**: `["keys", {"a": 1, "b": 2}]` → `{"array": ["a", "b"]}`
+**Examples**: `["keys", {"a": 1, "b": 2}]` → `["a", "b"]`
 
 ### `values` - Object Values
 **Syntax**: `["values", <object>]`  
 **Parameters**: Exactly 1 object  
 **Returns**: `{"array": [value1, value2, ...]}`  
-**Examples**: `["values", {"a": 1, "b": 2}]` → `{"array": [1, 2]}`
+**Examples**: `["values", {"a": 1, "b": 2}]` → `[1, 2]`
 
 ### `objFromPairs` - Object from Key-Value Pairs
 **Syntax**: `["objFromPairs", <array>]`  
@@ -782,13 +783,13 @@ All comparison operators support n-ary chaining (e.g., `a > b > c` means `a > b 
 **Syntax**: `["map", <array>, <lambda>]`  
 **Parameters**: Array, lambda function  
 **Returns**: New array with lambda applied to each element  
-**Examples**: `["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]]` → `{"array": [2, 4, 6]}`
+**Examples**: `["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]]` → `[2, 4, 6]`
 
 ### `filter` - Array Filtering
 **Syntax**: `["filter", <array>, <lambda>]`  
 **Parameters**: Array, lambda function (must return boolean)  
 **Returns**: New array with elements where lambda returns truthy  
-**Examples**: `["filter", {"array": [1, 2, 3, 4]}, ["lambda", ["x"], [">", ["$", "/x"], 2]]]` → `{"array": [3, 4]}`
+**Examples**: `["filter", {"array": [1, 2, 3, 4]}, ["lambda", ["x"], [">", ["$", "/x"], 2]]]` → `[3, 4]`
 
 ### `reduce` - Array Reduction
 **Syntax**: `["reduce", <array>, <lambda>, <initial>]`  
@@ -833,19 +834,19 @@ All comparison operators support n-ary chaining (e.g., `a > b > c` means `a > b 
 **Syntax**: `["cdr", <array>]`  
 **Parameters**: Exactly 1 array  
 **Returns**: Array containing all elements except the first  
-**Examples**: `["cdr", {"array": [1, 2, 3]}]` → `{"array": [2, 3]}`
+**Examples**: `["cdr", {"array": [1, 2, 3]}]` → `[2, 3]`
 
 ### `cons` - Prepend Element
 **Syntax**: `["cons", <element>, <array>]`  
 **Parameters**: Element to prepend, array  
 **Returns**: New array with element prepended  
-**Examples**: `["cons", 0, {"array": [1, 2]}]` → `{"array": [0, 1, 2]}`
+**Examples**: `["cons", 0, {"array": [1, 2]}]` → `[0, 1, 2]`
 
 ### `append` - Concatenate Arrays
 **Syntax**: `["append", <array>, <array>, ...]`  
 **Parameters**: 2 or more arrays  
 **Returns**: New array with all arrays concatenated  
-**Examples**: `["append", {"array": [1, 2]}, {"array": [3, 4]}]` → `{"array": [1, 2, 3, 4]}`
+**Examples**: `["append", {"array": [1, 2]}, {"array": [3, 4]}]` → `[1, 2, 3, 4]`
 
 ## String Operators
 
@@ -873,20 +874,20 @@ All comparison operators support n-ary chaining (e.g., `a > b > c` means `a > b 
 **Returns**: New sorted array  
 **Performance**: Automatically uses DSU optimization for complex sorts  
 **Examples**: 
-- `["sort", {"array": [3, 1, 4]}]` → `{"array": [1, 3, 4]}`
+- `["sort", {"array": [3, 1, 4]}]` → `[1, 3, 4]`
 - `["sort", {"array": [...]}, "/name"]` - Sort objects by name field
 
 ### `reverse` - Array Reversal
 **Syntax**: `["reverse", <array>]`  
 **Parameters**: Exactly 1 array  
 **Returns**: New array with elements in reverse order  
-**Examples**: `["reverse", {"array": [1, 2, 3]}]` → `{"array": [3, 2, 1]}`
+**Examples**: `["reverse", {"array": [1, 2, 3]}]` → `[3, 2, 1]`
 
 ### `unique` - Remove Duplicates
 **Syntax**: `["unique", <array>]`  
 **Parameters**: Exactly 1 array  
 **Returns**: New array with duplicate elements removed (preserves first occurrence)  
-**Examples**: `["unique", {"array": [1, 2, 2, 3, 3, 3]}]` → `{"array": [1, 2, 3]}`
+**Examples**: `["unique", {"array": [1, 2, 2, 3, 3, 3]}]` → `[1, 2, 3]`
 
 ### `uniqueSorted` - Remove Duplicates from Sorted Array
 **Syntax**: 
@@ -896,14 +897,14 @@ All comparison operators support n-ary chaining (e.g., `a > b > c` means `a > b 
 **Parameters**: Sorted array, optional mode and field  
 **Returns**: New array with duplicates removed  
 **Performance**: Optimized for pre-sorted input  
-**Examples**: `["uniqueSorted", {"array": [1, 1, 2, 2, 3]}]` → `{"array": [1, 2, 3]}`
+**Examples**: `["uniqueSorted", {"array": [1, 1, 2, 2, 3]}]` → `[1, 2, 3]`
 
 ### `zip` - Array Pairing
 **Syntax**: `["zip", <array1>, <array2>, ...]`  
 **Parameters**: 2 or more arrays  
 **Returns**: Array of tuples pairing corresponding elements  
 **Length**: Result length equals shortest input array  
-**Examples**: `["zip", {"array": [1, 2]}, {"array": ["a", "b"]}]` → `{"array": [[1, "a"], [2, "b"]]}`
+**Examples**: `["zip", {"array": [1, 2]}, {"array": ["a", "b"]}]` → `[[1, "a"], [2, "b"]]`
 
 ## Utility Operators
 
@@ -1149,6 +1150,7 @@ When using the `--comments` flag, you can include comments in JSON files:
 - nlohmann/json
 - Google Test (for tests)
 - readline (for REPL, optional)
+- python3 with PyYAML (for the documentation targets and the gate's `docs` stage)
 
 ### Build Instructions
 ```bash
@@ -1185,6 +1187,11 @@ cmake --build build --target docs-generate
 # Check operator coverage
 cmake --build build --target docs-coverage
 ```
+
+The same pipeline is a stage of the local gate — `tools/ci.sh docs` — which runs it on the binary
+the build stage produced and also fails when `docs/LANGUAGE_REFERENCE.md` or the generated
+indexes are not what `docs/operators.yaml` generates. That stage needs **python3 with PyYAML**
+(`apt install python3 python3-yaml`) and fails rather than skipping when they are missing.
 
 ### Unicode Support
 

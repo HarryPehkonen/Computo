@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
 Test all YAML examples against Computo engine with multi-input support
+
+The engine binary is taken from the COMPUTO_BINARY environment variable (default
+./build/computo), so a gate that built into another directory (CI_BUILD_DIR) grades
+the binary it just built instead of a stale one.
 """
 
 import yaml
@@ -13,10 +17,14 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 
 class ComputoTester:
-    def __init__(self, computo_binary="./build/computo"):
+    def __init__(self, computo_binary=None):
+        if computo_binary is None:
+            computo_binary = os.environ.get("COMPUTO_BINARY", "./build/computo")
         self.computo_binary = Path(computo_binary)
         if not self.computo_binary.exists():
-            raise FileNotFoundError(f"Computo binary not found: {computo_binary}")
+            raise FileNotFoundError(
+                f"Computo binary not found: {computo_binary} "
+                "(build it, or point COMPUTO_BINARY at the binary to test)")
     
     def test_example(self, expression: Any, inputs: Optional[List[Any]] = None, 
                     expected_result: Optional[Any] = None) -> Dict[str, Any]:
@@ -110,6 +118,7 @@ def test_all_examples(yaml_file: str = "docs/operators.yaml", verbose: bool = Fa
     try:
         data = load_operator_examples(yaml_file)
         tester = ComputoTester()
+        print(f"engine under test: {tester.computo_binary}")
         
         total_tests = 0
         passed_tests = 0

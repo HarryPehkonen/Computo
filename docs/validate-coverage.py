@@ -1,15 +1,27 @@
 #!/usr/bin/env python3
 """
-Validate operator coverage between implementation and documentation
+Validate operator coverage between implementation and documentation.
+
+The engine binary is taken from the COMPUTO_BINARY environment variable (default
+./build/computo), so a gate that built into another directory (CI_BUILD_DIR) grades
+the binary it just built instead of a stale one. The helper script next door is run
+with sys.executable: this machine has no `python` on PATH, only `python3`, and a
+hardcoded interpreter name is a missing-file error waiting to happen.
 """
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 
-def get_implemented_operators(computo_binary="./build/computo"):
+COMPUTO_BINARY_DEFAULT = "./build/computo"
+
+
+def get_implemented_operators(computo_binary=None):
     """Get list of implemented operators from Computo binary"""
+    if computo_binary is None:
+        computo_binary = os.environ.get("COMPUTO_BINARY", COMPUTO_BINARY_DEFAULT)
     try:
         result = subprocess.run([computo_binary, "--list-operators"], 
                               capture_output=True, text=True, check=True)
@@ -21,7 +33,7 @@ def get_documented_operators(yaml_file="docs/operators.yaml"):
     """Get list of documented operators from YAML file"""
     extract_script = Path(__file__).parent / "extract-documented-ops.py"
     try:
-        result = subprocess.run(["python", str(extract_script), yaml_file], 
+        result = subprocess.run([sys.executable, str(extract_script), yaml_file], 
                               capture_output=True, text=True, check=True)
         return json.loads(result.stdout.strip())
     except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
