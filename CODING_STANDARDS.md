@@ -86,6 +86,13 @@ in the adaptation notes at the top of the script.
   stage.
 - clang-format: the `format` stage (the files the branch touches, with the level-checkout
   fallback).
+- Documentation: the `docs` stage — all 66 examples in docs/operators.yaml executed against
+  the binary the `build` stage produced, operator coverage, and docs/LANGUAGE_REFERENCE.md
+  plus the two generated indexes held byte-for-byte to what docs/operators.yaml generates.
+  It needs python3 + PyYAML (`apt install python3 python3-yaml`) and FAILS rather than
+  skipping when they are missing. Not covered by it: README.md's hand-written result
+  examples (prose, not the YAML source) — 41 of those had drifted and were corrected by hand
+  against the CLI on 2026-09-20 (INCIDENTS.md).
 - Dependency on a clean tree: the `pristine` stage builds and tests `git archive HEAD` in a
   temp dir, which is what proves the committed tree is complete.
 

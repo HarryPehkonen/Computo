@@ -19,7 +19,7 @@
 # Two tiers, because a C++ full run is minutes and a commit cannot afford minutes:
 #
 #   fast  (pre-commit)  build tests
-#   full  (pre-push)    --require-clean tree format kitprobes build tests release version asan tsan tidy pristine
+#   full  (pre-push)    --require-clean tree format kitprobes build tests docs release version asan tsan tidy pristine
 #
 # COMPUTO ADAPTATIONS (every deviation from the kit is listed here, with the reason):
 #   * tests / sanitisers: no deviation any more. Until 2026-09-20 the two wall-clock
@@ -63,6 +63,30 @@
 #     Additive, not a narrowing: no existing stage was touched, and the Debug stages keep the
 #     whole warning set (the -Wno-maybe-uninitialized bound in CMakeLists.txt is scoped to
 #     non-Debug configs for exactly that reason).
+#   * docs: ADDED (2026-09-20, card t_4a81d75f). This repo has its own documentation
+#     pipeline - docs/test-examples.py executes all 66 examples in docs/operators.yaml,
+#     docs/validate-coverage.py compares documented with implemented operators,
+#     docs/generate-reference.py builds docs/LANGUAGE_REFERENCE.md and
+#     docs/generate-indexes.py the two published indexes - and until now every one of them
+#     ran ONLY in .github/workflows/docs.yml. Nothing local ran them, which is why nothing
+#     local noticed that 14 documented examples had disagreed with the engine since
+#     2026-02-10, or that the reference the Pages site publishes had been stale for seven
+#     months (INCIDENTS.md, 2026-09-20). The stage grades the binary the build stage
+#     produced ($CI_BUILD_DIR/computo, handed to the scripts as COMPUTO_BINARY) and holds
+#     docs/LANGUAGE_REFERENCE.md and both indexes to what docs/operators.yaml generates -
+#     byte for byte, generated into a temp dir, so the stage never rewrites a tracked file.
+#     Measured: ~2 s for the whole stage (66 subprocess runs plus three generators).
+#     PREREQUISITE, and it FAILS rather than skipping: python3 + PyYAML (Debian/Ubuntu:
+#     apt install python3 python3-yaml). The SKIP the clang stages use for a missing tool is
+#     deliberately not applied here - a documentation stage that quietly does nothing is the
+#     same seven-month hole with a green light next to it, which is the shape this stage
+#     exists to remove. The other half is stated rather than implied: README.md's
+#     hand-written result examples are NOT covered by this stage (they are prose, not the
+#     YAML source this stage reads). 41 of them had drifted - 29 result examples still showed
+#     the pre-2026-02-10 `{"array": [...]}` output wrapper, 8 had stale number formatting and
+#     4 were claims inside fenced blocks, including the `--array=<key>` section - and they
+#     were corrected by hand against the built CLI on 2026-09-20 (`./build/computo --script`
+#     per example, 96/96 matching). Nothing here would catch them drifting again.
 #   * no fuzz stage: the repo has no fuzz target yet.
 #
 # Configuration lives in .ci.env (gitignored, optional); every knob has a default here,
@@ -120,7 +144,7 @@ CI_VERSION_BINARIES=${CI_VERSION_BINARIES:-'$CI_BUILD_DIR/computo'}
 # This assignment is direct (not ${VAR:-...}) on purpose: the kit's line above already
 # set the variable, so the :- form would silently keep the kit's longer list.
 # `tools/ci.sh --list` prints the effective list, which is the only place it is visible.
-CI_DEFAULT_STAGES="tree format kitprobes build tests release version asan tsan tidy pristine"
+CI_DEFAULT_STAGES="tree format kitprobes build tests docs release version asan tsan tidy pristine"
 
 # The optimized configuration (the `release` stage - not in the kit, see the adaptation
 # notes at the top). Its own build dir: `build-release`, which .gitignore's `build-*/`
@@ -163,6 +187,12 @@ Stages:
   build       cmake configure + build, zero warnings (the stage counts them even where
               -Werror is not wired onto a target)
   tests       the test suite (ctest by default), every failure reported
+  docs        the documentation pipeline, on the binary the build stage produced: all 66
+              examples in docs/operators.yaml executed against the engine, operator
+              coverage, and a byte-for-byte check that docs/LANGUAGE_REFERENCE.md and the
+              two generated indexes are what operators.yaml generates. Needs python3 +
+              PyYAML and FAILS (never SKIPs) when they are missing - a docs stage that
+              quietly does nothing is the hole this stage exists to close
   release     the SAME suite in a SECOND, optimized configuration (CI_RELEASE_BUILD_TYPE,
               Release): configure, build, count `warning:` in its own log, run the tests.
               Every other stage builds CI_BUILD_TYPE=Debug and the Pages workflow builds
@@ -422,6 +452,88 @@ stage_tests() {
     fi
     grep -E "tests passed|100% tests passed" "$CI_LOG_DIR/tests.log" | tail -1 | sed 's/^/      /'
     ci_pass tests
+}
+
+# The documentation pipeline, on a real engine. docs/test-examples.py executes all 66
+# examples in docs/operators.yaml, docs/validate-coverage.py asserts documented ==
+# implemented, and the two generators are held to what is committed. Until 2026-09-20 all
+# of it ran ONLY in .github/workflows/docs.yml: nothing local ran it, so nothing local
+# noticed that 14 documented examples had disagreed with the engine since 2026-02-10, or
+# that the reference the Pages site publishes had been stale for seven months
+# (INCIDENTS.md, 2026-09-20).
+#
+# python3 + PyYAML are gate prerequisites now, and a missing one FAILS instead of SKIPping.
+# That is the deliberate reading of kit rule 1 for this stage: the other stages SKIP a
+# missing clang-format/clang-tidy because the check itself may legitimately not exist on a
+# machine, but a documentation stage that quietly does nothing would be the same
+# seven-month hole with a green light next to it.
+stage_docs() {
+    ci_begin "docs (examples, coverage, generated reference + indexes)"
+    if ! command -v python3 >/dev/null 2>&1; then
+        ci_fail docs "python3 is not installed — the documentation pipeline (66 examples, operator coverage, generated reference) cannot run; install python3 (Debian/Ubuntu: apt install python3 python3-yaml)"
+    fi
+    if ! python3 -c 'import yaml' >/dev/null 2>&1; then
+        ci_fail docs "python3 has no PyYAML, which the examples and the coverage check need to read docs/operators.yaml (Debian/Ubuntu: apt install python3-yaml)"
+    fi
+    local binary="$CI_BUILD_DIR/computo"
+    if [ ! -x "$binary" ]; then
+        ci_fail docs "no executable at $binary — this stage grades the binary the build stage produced; run the build stage first, or point CI_BUILD_DIR at the build you mean"
+    fi
+    # The scripts default to ./build/computo. Say which binary to grade instead of letting a
+    # CI_BUILD_DIR override make this stage report on a different engine than the one built.
+    export COMPUTO_BINARY="$binary"
+
+    local tmp
+    tmp=$(mktemp -d "${TMPDIR:-/tmp}/ci-docs-XXXXXX")
+    RUN_TMP_DIRS+=("$tmp")
+    printf '    engine under test: %s\n' "$binary"
+
+    # 1. every example, executed. A failing example is printed WITH its expression, its
+    # expected result and what the engine actually answered - the failure is the evidence here.
+    if ! python3 docs/test-examples.py > "$CI_LOG_DIR/docs-examples.log" 2>&1; then
+        grep -E '^  ✗|^      (Expression|Inputs|Expected|Error):|^Results:' "$CI_LOG_DIR/docs-examples.log" \
+            | head -40 | sed 's/^/      /'
+        ci_fail docs "documented examples disagree with the engine (every failure is listed above)" "$CI_LOG_DIR/docs-examples.log"
+    fi
+    grep -E '^Results:' "$CI_LOG_DIR/docs-examples.log" | sed 's/^/    /'
+
+    # 2. coverage: every implemented operator documented, and no documented one missing.
+    if ! python3 docs/validate-coverage.py > "$CI_LOG_DIR/docs-coverage.log" 2>&1; then
+        tail -n 30 "$CI_LOG_DIR/docs-coverage.log" | sed 's/^/      /'
+        ci_fail docs "operator coverage is incomplete (report above)" "$CI_LOG_DIR/docs-coverage.log"
+    fi
+    grep -E 'Implemented operators|Documented operators|COMPLETE' "$CI_LOG_DIR/docs-coverage.log" | sed 's/^/    /'
+
+    # 3. the generated reference must be what operators.yaml generates, byte for byte: it is
+    # tracked and published, so a stale one is a false statement on the site. Generated to a
+    # temp file - a gate that rewrites a tracked file is a gate nobody can trust.
+    if ! python3 docs/generate-reference.py docs/operators.yaml -o "$tmp/LANGUAGE_REFERENCE.md" \
+        > "$CI_LOG_DIR/docs-generate.log" 2>&1; then
+        ci_fail docs "docs/generate-reference.py failed" "$CI_LOG_DIR/docs-generate.log"
+    fi
+    if ! diff -q docs/LANGUAGE_REFERENCE.md "$tmp/LANGUAGE_REFERENCE.md" >/dev/null; then
+        diff -u docs/LANGUAGE_REFERENCE.md "$tmp/LANGUAGE_REFERENCE.md" | head -40 | sed 's/^/      /'
+        ci_fail docs "docs/LANGUAGE_REFERENCE.md is not what docs/operators.yaml generates — regenerate it (cmake --build $CI_BUILD_DIR --target docs-generate) and review the diff before committing"
+    fi
+    printf '    docs/LANGUAGE_REFERENCE.md is what operators.yaml generates\n'
+
+    # 4. the two published indexes, same rule. docs/generate-indexes.py writes in place, so
+    # the committed copies are put back afterwards: this gate never leaves a modified tree.
+    cp docs/alpha/index.md "$tmp/alpha-index.md" || ci_fail docs "docs/alpha/index.md is missing"
+    cp docs/task/index.md "$tmp/task-index.md" || ci_fail docs "docs/task/index.md is missing"
+    if ! python3 docs/generate-indexes.py > "$CI_LOG_DIR/docs-indexes.log" 2>&1; then
+        ci_fail docs "docs/generate-indexes.py failed" "$CI_LOG_DIR/docs-indexes.log"
+    fi
+    local stale=""
+    diff -q docs/alpha/index.md "$tmp/alpha-index.md" >/dev/null || stale="$stale docs/alpha/index.md"
+    diff -q docs/task/index.md "$tmp/task-index.md" >/dev/null || stale="$stale docs/task/index.md"
+    cp "$tmp/alpha-index.md" docs/alpha/index.md
+    cp "$tmp/task-index.md" docs/task/index.md
+    if [ -n "$stale" ]; then
+        ci_fail docs "generated index file(s) are stale:$stale — regenerate them with python3 docs/generate-indexes.py and commit the result"
+    fi
+    printf '    docs/alpha/index.md and docs/task/index.md are what operators.yaml generates\n'
+    ci_pass docs
 }
 
 # The optimized configuration, in its own build dir. Every other stage - and the kit - builds

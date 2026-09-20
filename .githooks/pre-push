@@ -19,15 +19,18 @@ root=$(git rev-parse --show-toplevel) || exit 1
 
 if [ -x "$root/tools/ci.sh" ]; then
     # COMPUTO: the full tier runs every stage the kit ships, plus this repo's own `release`
-    # stage. tidy joined the list on 2026-09-20, when .clang-tidy stopped analysing the
-    # FetchContent'd JSOM headers and the 66 findings left in this repo's own sources were
+    # and `docs` stages. tidy joined the list on 2026-09-20, when .clang-tidy stopped analysing
+    # the FetchContent'd JSOM headers and the 66 findings left in this repo's own sources were
     # fixed; release joined it the same day, when it turned out that no stage configured an
-    # optimized build at all while the Pages workflow builds -O3 -DNDEBUG (tools/ci.sh has
-    # the measurements). The list mirrors CI_DEFAULT_STAGES in tools/ci.sh; keep the two in
-    # step.
+    # optimized build at all while the Pages workflow builds -O3 -DNDEBUG; docs joined it the
+    # same day too, because the documentation pipeline (66 executed examples, coverage, the
+    # generated reference and indexes) had only ever run in .github/workflows/docs.yml and 14
+    # examples plus the published reference had been wrong since 2026-02-10 (tools/ci.sh and
+    # INCIDENTS.md have the measurements). The list mirrors CI_DEFAULT_STAGES in tools/ci.sh;
+    # keep the two in step.
     exec "$root/tools/ci.sh" \
         --require-clean \
-        tree format kitprobes build tests release version asan tsan tidy pristine
+        tree format kitprobes build tests docs release version asan tsan tidy pristine
 fi
 
 if [ -x "$root/scripts/gate.sh" ]; then

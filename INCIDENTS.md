@@ -14,6 +14,53 @@ arbitrary checks get deleted. The rationale is the load-bearing part.
 
 ---
 
+## 2026-09-20 — the documentation pipeline had no local stage, and the published README's result examples had drifted with it
+
+What broke:        The three tools that grade this repo's documentation ran in exactly one place:
+                   .github/workflows/docs.yml. No stage of tools/ci.sh touched them, so the
+                   2026-02-10 output change (eeb2014c) could disagree with 14 examples - the
+                   entry below documents those - and with the file the Pages site publishes, and
+                   nothing on this machine could see it. The pipeline was also unrunnable here by
+                   another route: `cmake --build build --target docs-coverage` died with
+                   `Error: [Errno 2] No such file or directory: 'python'`, measured 2026-09-20 on
+                   this laptop, because docs/validate-coverage.py called a hardcoded interpreter
+                   name and only `python3` exists here. README.md had drifted the same way and was
+                   covered by no check at all: measured 2026-09-20 against the built CLI, 41 of its
+                   result examples disagreed with the engine - 29 still showed the pre-2026-02-10
+                   `{"array": [...]}` output wrapper, 8 had stale number formatting (`6.0` where
+                   the engine prints `6`), and 4 were claims inside fenced blocks, including the
+                   whole `--array=<key>` section, whose stated default output was wrong and whose
+                   custom-key example showed a shape the CLI never produces.
+Check added:       tools/ci.sh: a `docs` stage - this repo's own, no kit counterpart - in
+                   CI_DEFAULT_STAGES and in .githooks/pre-push. It grades the binary the build
+                   stage produced ($CI_BUILD_DIR/computo, handed to the scripts as COMPUTO_BINARY),
+                   runs all 66 examples and the coverage check, and requires
+                   docs/LANGUAGE_REFERENCE.md and both generated indexes to be byte-identical to
+                   what docs/operators.yaml generates (generated into a temp dir, so the stage
+                   never rewrites a tracked file). python3 + PyYAML are gate prerequisites now and
+                   a missing one FAILS the run rather than SKIPping. docs/validate-coverage.py uses
+                   sys.executable, and both scripts take the engine path from COMPUTO_BINARY.
+                   README.md's 41 wrong results are corrected against the built CLI - 96/96 of its
+                   result-side examples now match it; the sweep that found them is on card
+                   t_4a81d75f, not in the repo.
+Why it must stay:  Two reasons, one per half. The YAML half: those examples ARE the published
+                   reference - docs/generate-reference.py builds docs/LANGUAGE_REFERENCE.md from
+                   them and the Pages job publishes it - so an example that disagrees with the
+                   engine is either a false statement on a public page or a red deploy, and the
+                   only thing that ever noticed was GitHub. Local-only was the whole defect: the
+                   gate is what runs on every push, and a stage that SKIPs when python3 is absent
+                   would restore exactly the same silence with a green light beside it, which is
+                   why kit rule 1 is read here as "fail loudly" rather than "skip quietly". The
+                   README half is deliberately not claimed: that sweep is a script, not a stage,
+                   because its results are prose in a 1200-line file and a parser for them would
+                   fail on future prose. What this entry records instead is that they are
+                   uncovered - and the two further README defects the same audit turned up (a stray
+                   closing fence at line 1210, and the `**Returns**: {"array": [...]}` type lines
+                   that describe the engine's internal wrapper while the CLI prints a bare array at
+                   the top level) are on their own card rather than silently fixed here.
+
+---
+
 ## 2026-09-20 — no optimized build existed on gcc <= 14, and the only place one ran was CI
 
 What broke:        The Pages workflow's `Build Computo` step failed on every push from
