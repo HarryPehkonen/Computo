@@ -381,7 +381,7 @@ This document provides complete specifications for all Computo operators, genera
 ```json
 ["keys", {"a": 1, "b": 2}]
 ```
-*Result:* `{"array": ["a", "b"]}`
+*Result:* `["a", "b"]`
 
 ### `values` - Get object values
 
@@ -393,7 +393,7 @@ This document provides complete specifications for all Computo operators, genera
 ```json
 ["values", {"a": 1, "b": 2}]
 ```
-*Result:* `{"array": [1, 2]}`
+*Result:* `[1, 2]`
 
 ### `objFromPairs` - Create object from key-value pairs
 
@@ -462,7 +462,7 @@ This document provides complete specifications for all Computo operators, genera
 ```json
 ["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]]
 ```
-*Result:* `{"array": [2, 4, 6]}`
+*Result:* `[2, 4, 6]`
 
 ### `filter` - Array filtering with lambda
 
@@ -474,7 +474,7 @@ This document provides complete specifications for all Computo operators, genera
 ```json
 ["filter", {"array": [1, 2, 3, 4]}, ["lambda", ["x"], [">", ["$", "/x"], 2]]]
 ```
-*Result:* `{"array": [3, 4]}`
+*Result:* `[3, 4]`
 
 ### `reduce` - Array reduction with lambda
 
@@ -561,7 +561,7 @@ This document provides complete specifications for all Computo operators, genera
 ```json
 ["cdr", {"array": [1, 2, 3]}]
 ```
-*Result:* `{"array": [2, 3]}`
+*Result:* `[2, 3]`
 
 ### `cons` - Prepend element to array
 
@@ -573,7 +573,7 @@ This document provides complete specifications for all Computo operators, genera
 ```json
 ["cons", 0, {"array": [1, 2]}]
 ```
-*Result:* `{"array": [0, 1, 2]}`
+*Result:* `[0, 1, 2]`
 
 ### `append` - Concatenate arrays
 
@@ -585,13 +585,13 @@ This document provides complete specifications for all Computo operators, genera
 ```json
 ["append", {"array": [1, 2]}, {"array": [3, 4]}]
 ```
-*Result:* `{"array": [1, 2, 3, 4]}`
+*Result:* `[1, 2, 3, 4]`
 
 **Concatenate multiple arrays:**
 ```json
 ["append", {"array": [1]}, {"array": [2, 3]}, {"array": [4]}]
 ```
-*Result:* `{"array": [1, 2, 3, 4]}`
+*Result:* `[1, 2, 3, 4]`
 
 
 ## String Operations Operators
@@ -639,13 +639,13 @@ This document provides complete specifications for all Computo operators, genera
 ```json
 ["sort", {"array": [3, 1, 4]}]
 ```
-*Result:* `{"array": [1, 3, 4]}`
+*Result:* `[1, 3, 4]`
 
 **Descending sort:**
 ```json
 ["sort", {"array": [3, 1, 4]}, "desc"]
 ```
-*Result:* `{"array": [4, 3, 1]}`
+*Result:* `[4, 3, 1]`
 
 ### `reverse` - Reverse array elements
 
@@ -657,7 +657,7 @@ This document provides complete specifications for all Computo operators, genera
 ```json
 ["reverse", {"array": [1, 2, 3]}]
 ```
-*Result:* `{"array": [3, 2, 1]}`
+*Result:* `[3, 2, 1]`
 
 ### `unique` - Remove duplicate elements
 
@@ -669,7 +669,7 @@ This document provides complete specifications for all Computo operators, genera
 ```json
 ["unique", {"array": [1, 2, 2, 3, 3, 3]}]
 ```
-*Result:* `{"array": [1, 2, 3]}`
+*Result:* `[1, 2, 3]`
 
 ### `uniqueSorted` - Remove duplicates from sorted array (optimized)
 
@@ -681,7 +681,7 @@ This document provides complete specifications for all Computo operators, genera
 ```json
 ["uniqueSorted", {"array": [1, 1, 2, 2, 3]}]
 ```
-*Result:* `{"array": [1, 2, 3]}`
+*Result:* `[1, 2, 3]`
 
 ### `zip` - Pair corresponding elements from arrays
 
@@ -693,7 +693,7 @@ This document provides complete specifications for all Computo operators, genera
 ```json
 ["zip", {"array": [1, 2]}, {"array": ["a", "b"]}]
 ```
-*Result:* `{"array": [[1, "a"], [2, "b"]]}`
+*Result:* `[[1, "a"], [2, "b"]]`
 
 
 ## Utilities Operators

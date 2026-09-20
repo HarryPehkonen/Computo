@@ -14,22 +14,23 @@ arbitrary checks get deleted. The rationale is the load-bearing part.
 
 ---
 
-## 2026-09-20 — the Pages deploy was red for seven months and only CI could see it
+## 2026-09-20 — no optimized build existed on gcc <= 14, and the only place one ran was CI
 
-What broke:        `Documentation Validation and Deployment` failed on every push from
-                   2026-02-11 onward, so GitHub Pages — the only production target this repo
-                   has — kept serving the 2026-02-10 build. The failing step is `Build Computo`:
-                   the runner's gcc 13.3 raises `-Werror=maybe-uninitialized` at
-                   /usr/include/c++/13/variant:224 while compiling src/operators/control_flow.cpp.
-                   The diagnostic names `jsom::JsonDocument::storage_`, but the code it objects
-                   to is libstdc++'s variant machinery, inlined from json_document.hpp:81
-                   through `TailCall` and `std::make_unique`. Nothing local reproduced it: the
-                   workflow passes no build type, and JSOM's subproject (FetchContent) defaults
-                   `CMAKE_BUILD_TYPE` to Release, so that build is -O3 -DNDEBUG, while every stage
-                   of tools/ci.sh builds CI_BUILD_TYPE=Debug. Measured 2026-09-20: the same
-                   sources trip at -O2/-O3 and are clean at -O0/-O1 under both gcc 13.3 and gcc
-                   14.2, and `./build.sh` (Release) had been broken on this box the whole time
-                   with no stage in a position to notice.
+What broke:        The Pages workflow's `Build Computo` step failed on every push from
+                   2026-09-08/09 onward (the deploy was already red before that, for the
+                   separate reason in the next entry — the two together are the seven months
+                   the site served the 2026-02-10 build). The runner's gcc 13.3 raises
+                   `-Werror=maybe-uninitialized` at /usr/include/c++/13/variant:224 while
+                   compiling src/operators/control_flow.cpp. The diagnostic names
+                   `jsom::JsonDocument::storage_`, but the code it objects to is libstdc++'s
+                   variant machinery, inlined from json_document.hpp:81 through `TailCall` and
+                   `std::make_unique`. Nothing local reproduced it: the workflow passes no build
+                   type, and JSOM's subproject (FetchContent) defaults `CMAKE_BUILD_TYPE` to
+                   Release, so that build is -O3 -DNDEBUG, while every stage of tools/ci.sh
+                   builds CI_BUILD_TYPE=Debug. Measured 2026-09-20: the same sources trip at
+                   -O2/-O3 and are clean at -O0/-O1 under both gcc 13.3 and gcc 14.2, and
+                   `./build.sh` (Release) had been broken on this box the whole time with no
+                   stage in a position to notice.
 Check added:       CMakeLists.txt: `-Wno-maybe-uninitialized` for Computo's own targets,
                    bounded to GNU < 15 and non-Debug configs, declared next to the `-Werror` it
                    bounds. No stage of tools/ci.sh configures an optimized build, so no *stage*
@@ -48,6 +49,35 @@ Why it must stay:  The scope is what makes an optimized build possible at all on
                    gate stage builds keeps the whole set — the bound is deliberately not
                    "all configs". Same decision and same compiler bound as JSOM's own
                    CMakeLists.txt, which scopes the flag to its jsom_tests target.
+
+## 2026-09-20 — the documented examples had been failing since 2026-02-10, and nothing local ran them
+
+What broke:        Behind the build failure above sat a second and older one: `docs/test-examples.py`
+                   reported "52 passed, 14 failed, 66 total" on every push since 2026-02-11, so
+                   the workflow's `Run Documentation Validation` step exited 1 and `Deploy to
+                   GitHub Pages` was skipped. That, not the compiler, is why the site served the
+                   2026-02-10 build for seven months. Cause: commit eeb2014c (2026-02-10,
+                   "unwrap array wrapper in CLI output and detect .computo file extension") stopped
+                   printing `{"array": [...]}` for array results and updated
+                   tests/test_cli_array_key.cpp and tests/test_cli_integration.cpp — but not the 14
+                   examples in docs/operators.yaml that asserted the wrapper. Every failure has
+                   the same shape: expected `{"array": [3, 4]}`, got `[3, 4]`.
+Check added:       docs/operators.yaml: the 14 `result:` values now say what the engine prints,
+                   and docs/LANGUAGE_REFERENCE.md is regenerated from them (14 lines, nothing
+                   else moved). The test for this class already existed and already runs in CI:
+                   `docs/test-examples.py`, 66/66 green locally after the change. What does not
+                   exist is a *stage* of tools/ci.sh that runs the docs pipeline at all — that is
+                   why seven months passed — and it is follow-up card `t_4a81d75f`, not something
+                   this entry can claim.
+Why it must stay:  The examples ARE the documentation: docs/generate-reference.py builds
+                   docs/LANGUAGE_REFERENCE.md out of them and the Pages job publishes that file,
+                   so an expectation that disagrees with the engine is either a false statement on
+                   the public site or a red deploy — here it was both, for seven months, on a
+                   pipeline whose only failure signal was a red x on GitHub. Editing the
+                   expectations rather than restoring the wrapper is the direction the engine
+                   went deliberately in eeb2014c; `--array=<key>` is the opt-in for getting the
+                   wrapper back in output, and the input-side `{"array": [...]}` convention (how a
+                   literal array is passed as one argument) is untouched.
 
 ---
 

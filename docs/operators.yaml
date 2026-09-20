@@ -226,7 +226,7 @@ operators:
     examples:
       - name: "Object keys"
         expression: '["keys", {"a": 1, "b": 2}]'
-        result: {"array": ["a", "b"]}
+        result: ["a", "b"]
 
   "values":
     description: "Get object values"
@@ -234,7 +234,7 @@ operators:
     examples:
       - name: "Object values"
         expression: '["values", {"a": 1, "b": 2}]'
-        result: {"array": [1, 2]}
+        result: [1, 2]
 
   "objFromPairs":
     description: "Create object from key-value pairs"
@@ -277,7 +277,7 @@ operators:
     examples:
       - name: "Double values"
         expression: '["map", {"array": [1, 2, 3]}, ["lambda", ["x"], ["*", ["$", "/x"], 2]]]'
-        result: {"array": [2, 4, 6]}
+        result: [2, 4, 6]
 
   "filter":
     description: "Array filtering with lambda"
@@ -285,7 +285,7 @@ operators:
     examples:
       - name: "Filter greater than 2"
         expression: '["filter", {"array": [1, 2, 3, 4]}, ["lambda", ["x"], [">", ["$", "/x"], 2]]]'
-        result: {"array": [3, 4]}
+        result: [3, 4]
 
   "reduce":
     description: "Array reduction with lambda"
@@ -341,7 +341,7 @@ operators:
     examples:
       - name: "Rest elements"
         expression: '["cdr", {"array": [1, 2, 3]}]'
-        result: {"array": [2, 3]}
+        result: [2, 3]
 
   "cons":
     description: "Prepend element to array"
@@ -349,7 +349,7 @@ operators:
     examples:
       - name: "Prepend element"
         expression: '["cons", 0, {"array": [1, 2]}]'
-        result: {"array": [0, 1, 2]}
+        result: [0, 1, 2]
 
   "append":
     description: "Concatenate arrays"
@@ -357,10 +357,10 @@ operators:
     examples:
       - name: "Concatenate two arrays"
         expression: '["append", {"array": [1, 2]}, {"array": [3, 4]}]'
-        result: {"array": [1, 2, 3, 4]}
+        result: [1, 2, 3, 4]
       - name: "Concatenate multiple arrays"
         expression: '["append", {"array": [1]}, {"array": [2, 3]}, {"array": [4]}]'
-        result: {"array": [1, 2, 3, 4]}
+        result: [1, 2, 3, 4]
 
   "strConcat":
     description: "String concatenation"
@@ -387,10 +387,10 @@ operators:
     examples:
       - name: "Natural sort"
         expression: '["sort", {"array": [3, 1, 4]}]'
-        result: {"array": [1, 3, 4]}
+        result: [1, 3, 4]
       - name: "Descending sort"
         expression: '["sort", {"array": [3, 1, 4]}, "desc"]'
-        result: {"array": [4, 3, 1]}
+        result: [4, 3, 1]
 
   "reverse":
     description: "Reverse array elements"
@@ -398,7 +398,7 @@ operators:
     examples:
       - name: "Reverse array"
         expression: '["reverse", {"array": [1, 2, 3]}]'
-        result: {"array": [3, 2, 1]}
+        result: [3, 2, 1]
 
   "unique":
     description: "Remove duplicate elements"
@@ -406,7 +406,7 @@ operators:
     examples:
       - name: "Remove duplicates"
         expression: '["unique", {"array": [1, 2, 2, 3, 3, 3]}]'
-        result: {"array": [1, 2, 3]}
+        result: [1, 2, 3]
 
   "uniqueSorted":
     description: "Remove duplicates from sorted array (optimized)"
@@ -414,7 +414,7 @@ operators:
     examples:
       - name: "Basic deduplication"
         expression: '["uniqueSorted", {"array": [1, 1, 2, 2, 3]}]'
-        result: {"array": [1, 2, 3]}
+        result: [1, 2, 3]
 
   "zip":
     description: "Pair corresponding elements from arrays"
@@ -422,7 +422,7 @@ operators:
     examples:
       - name: "Zip two arrays"
         expression: '["zip", {"array": [1, 2]}, {"array": ["a", "b"]}]'
-        result: {"array": [[1, "a"], [2, "b"]]}
+        result: [[1, "a"], [2, "b"]]
 
   "approx":
     description: "Approximate equality for numbers"
