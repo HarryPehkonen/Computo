@@ -377,13 +377,14 @@ foreach(computo_target computo computo_unified test_computo test_memory_safety
         # becomes a build failure. Measured 2026-09-20: gcc 13.3 and gcc 14.2 both trip
         # on src/operators/control_flow.cpp and on test_memory_safety, test_performance
         # and test_thread_safety at -O2/-O3, and both are clean at -O0/-O1 with the same
-        # sources - so this is the compiler, not this repo's code. That is what keeps
-        # the Pages workflow red (it passes no build type, and JSOM's subproject
-        # defaults it to Release, i.e. -O3) while the gate, which builds Debug, was
-        # green. Bound to optimized configs only, because the diagnostic does not exist
-        # in Debug: the gated build keeps the whole warning set. Same decision, same
-        # compiler bound as JSOM's own CMakeLists.txt for jsom_tests; the measurements
-        # and the cost are in INCIDENTS.md (2026-09-20).
+        # sources - so this is the compiler, not this repo's code. The suppression is
+        # what lets an optimized build compile here at all: ./build.sh and the gate's
+        # `release` stage both configure Release (-O3 -DNDEBUG), where -Werror would
+        # turn that false positive into a build failure. Bound to optimized configs
+        # only, because the diagnostic does not exist in Debug: the gated build keeps
+        # the whole warning set. Same decision, same compiler bound as JSOM's own
+        # CMakeLists.txt for jsom_tests; the measurements and the cost are in
+        # INCIDENTS.md (2026-09-20).
         if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
            AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 15)
             target_compile_options(${computo_target} PRIVATE
