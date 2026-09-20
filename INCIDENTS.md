@@ -40,10 +40,17 @@ What broke:        `git commit -F <msg> -- .ai-dev-starter.json` — the pathspe
                    over the network (CMakeLists.txt:77), which is why only it showed this.
 Check added:       tools/ci.sh: `unset GIT_INDEX_FILE` in the prologue, beside `export NO_COLOR=1`,
                    with the mechanism and the measurement in the comment above it — plus a
-                   COMPUTO ADAPTATIONS entry, because the kit's templates/cpp/ci.sh has the same
-                   hole and this line is a pending port back to it (card t_0a9a0018). A pathspec
-                   commit now runs the fast tier to `GATE PASSED`, on this checkout and in a
-                   fresh clone of the fixed HEAD.
+                   COMPUTO ADAPTATIONS entry. The kit carries the same line as of f9c3300
+                   (templates/cpp/ci.sh, card t_0a9a0018), so this is no longer a deviation and no
+                   longer a port back; the kit's probe, carried here as
+                   tools/kit-probes/git-index-file.sh and run by the `kitprobes` stage, holds this
+                   gate to it — 5 checks: the line is in the prologue, sourcing the gate's own
+                   environment block clears an inherited value, the leak reproduces in this
+                   environment, a REAL pathspec commit whose hook then runs a `git status` in a
+                   DIFFERENT repository passes (and the hook testifies it really did inherit the
+                   temporary index), and the same bytes minus the unset line are refused. A
+                   pathspec commit now runs the fast tier to `GATE PASSED`, on this checkout and
+                   in a fresh clone of the fixed HEAD.
 Why it must stay:  GIT_INDEX_FILE is git's bookkeeping for the commit in progress, not this
                    repository: it says nothing about the tree the gate exists to certify, and its
                    value is meaningless in any OTHER repository the gate happens to run a git

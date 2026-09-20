@@ -103,8 +103,11 @@
 #     number on every run rather than skipped quietly, and a floor of 90 graded examples
 #     fails the stage if README's prose ever changes shape enough to shrink the coverage.
 #   * git environment: `unset GIT_INDEX_FILE` in the prologue (2026-09-20, card t_9541aa62).
-#     The kit has no such line, so this is a PENDING PORT BACK to templates/cpp/ci.sh,
-#     tracked as card t_0a9a0018. git exports its TEMPORARY index to the pre-commit hook for
+#     NO LONGER A DEVIATION: the kit carries the same line as of f9c3300 (templates/cpp/ci.sh,
+#     card t_0a9a0018), with probes/git-index-file.sh holding every copy to it, and this copy
+#     runs that probe as tools/kit-probes/git-index-file.sh. The one part of the fix that stays
+#     repo-specific is the comment above the line and this bullet. git exports its TEMPORARY
+#     index to the pre-commit hook for
 #     a pathspec commit, and cmake's FetchContent update step in the `build` stage then ran
 #     `git status` inside build/_deps/jsom-src with THIS repo's index, dying on a blob the
 #     JSOM clone does not have — a pathspec commit failed its own gate at `build` with a
@@ -134,6 +137,12 @@ cd "$REPO_ROOT" || exit 1
 # escapes defeat the greps. The escapes this script prints itself are for the human.
 export NO_COLOR=1
 
+# `unset GIT_INDEX_FILE` below is the KIT'S line, not this repo's own invention: the kit adopted
+# it at f9c3300 (card t_0a9a0018) and holds every copy to it with probes/git-index-file.sh —
+# which this copy carries as tools/kit-probes/git-index-file.sh and runs in its own `kitprobes`
+# stage. The comment block below is the one part of the fix that stays repo-specific; it is this
+# repo's own measurement of the defect and of the safe place to unset.
+#
 # git exports GIT_INDEX_FILE to a hook when the commit is made with a PATHSPEC
 # (`git commit -- <path>`, the form this repo's own notes recommend for a shared tree) — it
 # points at git's TEMPORARY index for the commit in progress, not at this repo's index. Every
