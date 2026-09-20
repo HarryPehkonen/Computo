@@ -1,0 +1,49 @@
+{
+  "kit": "AI-DEV-STARTER",
+  "url": "https://github.com/HarryPehkonen/AI-DEV-STARTER",
+  "revision": "fb387f2044989f76bb2fe234cef39e85ac050328",
+  "recorded_at": "2026-09-20",
+  "record_kind": "retroactive",
+  "record_note": "Wired by hand on 2026-09-19 (commit d2bfae6, 'process: plunk in the two-tier gate (tools/ci.sh + .githooks), arm it, and pin the version to CMakeLists'), before the kit existed as a git repo — so `revision` is the kit's FIRST PUBLISHED commit (its whole history is that one commit), not the exact copy point; do not read it as the tree these files were copied from. No gate stage is declined here: the repo runs all nine the kit ships for C++ (tidy joined the default set on 2026-09-20, commit aff17cf) and the format/test knobs are back at the kit's defaults, so every adapted:true below is a filled-in knob, a repo-local header comment or a per-repo log — not a narrowed stage. NOT part of the copied set, deliberately: (1) the agent contract — there is no kit-derived contract in this repo; CLAUDE.md is its own file (added 2026-02-10, last edited 2026-09-08, both before the kit existed) whose gate section still names hand-typed cmake/ctest commands and never mentions tools/ci.sh, so a sync must NOT plunk templates/CLAUDE.md.template over it (the drafted replacement lives outside the repo at log/kanban-t_7c46709f/claude-md-gate-draft.md; installing it is a human step, and doing so would be a MOVE that this file would then have to record); (2) .gitignore — this repo's own file from 2025 which only received the kit's PLUNK-IN step-3 footprint rules in d2bfae6 (it deliberately does not ignore .ci/ or .ci/tidy-baseline.txt). Rule that keeps this file true: any commit that edits a copied artifact must update that artifact's repo_sha256 in the same commit, and any commit that moves one must update its repo_path too.",
+  "files": [
+    {
+      "repo_path": "tools/ci.sh",
+      "kit_path": "templates/cpp/ci.sh",
+      "repo_sha256": "41542dc4bc34e64bbd099784c32ed83e34af3dab8b4b0b7fd4dc685be2d67dc4",
+      "kit_sha256": "dcccb2066b856ec4bbbe04e98d74c37fffe5372a1486cab47623f403b9f613d1",
+      "adapted": true,
+      "adapted_why": "Same nine stages and the same defaults as the kit (CI_DEFAULT_STAGES is byte-for-byte the kit's value); the divergence is repo-local and additive — a COMPUTO ADAPTATIONS header block recording why the old GTEST_FILTER exclusions, format fallback override and tidy narrowing are gone, a usage() that prints lines 2-22 rather than the derived first blank-line block so that block cannot push the stage list off the screen, a CI_FORMAT_FALLBACK_HEAD knob (the kit always re-checks the last commit when the branch is level with origin/main; here that fallback is switchable, left at the kit's behaviour = 1), CI_VERSION_BINARIES pinned to the CLI binary the version stage must ask, and CI_DEFAULT_STAGES re-stated as a direct assignment so the kit's earlier ${VAR:-...} line cannot silently win."
+    },
+    {
+      "repo_path": ".ci.env.example",
+      "kit_path": "templates/cpp/.ci.env.example",
+      "repo_sha256": "6cea46f9a82305915655809e53c37bf45e1d299be7748f7bac85d0f20541bf6f",
+      "kit_sha256": "777a750755a10d79674d2ff7605130ceed14668416b44c3acefd73d819e43308",
+      "adapted": true,
+      "adapted_why": "The kit's knob list with this repo's values filled in plus a COMPUTO OVERRIDES section at the end: CI_VERSION_BINARIES=\"$CI_BUILD_DIR/computo\" (the kit leaves it unset because every project names its binary differently), CI_TEST_CMD and CI_ASAN_TEST_CMD left at the kit's defaults with the two former GTEST_FILTER narrowings documented as removed-because-fixed, and CI_JOBS=4 kept — the kit's own example value, and the one value in this file that does not mirror tools/ci.sh, which defaults to $(nproc)."
+    },
+    {
+      "repo_path": ".githooks/pre-commit",
+      "kit_path": "templates/hooks/pre-commit",
+      "repo_sha256": "e304ddcb48e216029c8e77402d927695dae4895532f6bf12d1ecb54604b652d8",
+      "kit_sha256": "e304ddcb48e216029c8e77402d927695dae4895532f6bf12d1ecb54604b652d8",
+      "adapted": false
+    },
+    {
+      "repo_path": ".githooks/pre-push",
+      "kit_path": "templates/hooks/pre-push",
+      "repo_sha256": "7f6b9910e1d97a0bab8ab3e72eb0be414116d69045104b438d57305838445e4e",
+      "kit_sha256": "2c82ed7099fc5687795264521be327fdda23e8c02eadd3ac12bd9667186c0d18",
+      "adapted": true,
+      "adapted_why": "Comment-only addition: a COMPUTO block saying that tidy joined the full tier on 2026-09-20 (commit aff17cf) and that the stage list mirrors CI_DEFAULT_STAGES in tools/ci.sh. The exec'd stage list itself is the kit's, and the hook passes no stage names of its own."
+    },
+    {
+      "repo_path": "INCIDENTS.md",
+      "kit_path": "INCIDENTS.md",
+      "repo_sha256": "77c4c563fb4dbc6ba2dbb3d898ffd5b42b7488749228f678a87abdf0ad29b03c",
+      "kit_sha256": "28928d4081780f7fd1432112eba4261e32e5a8985964378285b944f9576d88ff",
+      "adapted": true,
+      "adapted_why": "Per-repo incident log (130 lines here, 159 in the kit): it shares the kit's header rule block and then carries four incidents of this repo's own — the wall-clock throughput threshold, the leak heuristic measured against the sanitizer's quarantine, the linter analysing a fetched dependency with one uncompiled source, and the 31-file format drift — while the kit's six entries (python src-layout, the tidy baseline recipe, the version stage, a repo's own defaults being ignored, sanitizer-hostile tests, the format example) are deliberately NOT copied: this file is history, so a sync must never overwrite it with the kit's."
+    }
+  ]
+}
