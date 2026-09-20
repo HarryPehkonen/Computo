@@ -31,11 +31,26 @@ What broke:        The Pages workflow's `Build Computo` step failed on every pus
                    -O2/-O3 and are clean at -O0/-O1 under both gcc 13.3 and gcc 14.2, and
                    `./build.sh` (Release) had been broken on this box the whole time with no
                    stage in a position to notice.
-Check added:       CMakeLists.txt: `-Wno-maybe-uninitialized` for Computo's own targets,
+Check added:       Two halves, one per copy of the defect.
+                   (1) CMakeLists.txt: `-Wno-maybe-uninitialized` for Computo's own targets,
                    bounded to GNU < 15 and non-Debug configs, declared next to the `-Werror` it
-                   bounds. No stage of tools/ci.sh configures an optimized build, so no *stage*
-                   would have caught this — that missing check is follow-up card `t_45a28893`,
-                   not something this entry can claim.
+                   bounds.
+                   (2) tools/ci.sh: the `release` stage (card `t_45a28893`) — a second build
+                   dir configured at `CI_RELEASE_BUILD_TYPE` (Release), built, held to the same
+                   "no `warning:` anywhere" rule the `build` stage applies to its own log, and
+                   run through the same test command. Until it existed, NO stage of this file
+                   configured an optimized build at all, which is the whole reason the deploy
+                   could be red for weeks behind a green local gate. It is in
+                   `CI_DEFAULT_STAGES` and in `.githooks/pre-push`, so every push builds and
+                   tests both configurations. Measured cost on this box (4 cores, load ~2.5):
+                   cold configure 2.9 s + build 146 s + ctest 0.3 s; ~4.6 s on a one-source
+                   push and 0.3 s with nothing changed, because the build dir is reused, so it
+                   is affordable in the full tier and deliberately NOT in the pre-commit tier.
+                   Proven to have teeth in a throwaway clone, not in this checkout: with the
+                   bound removed — the state the repo was actually in before 83a9040 —
+                   `tools/ci.sh release` fails with the gcc 14.2 `-Werror=maybe-uninitialized`
+                   error while `tools/ci.sh build` still passes. That pair is the blind spot
+                   reproduced: the Debug-only gate cannot see it, the release stage can.
 Why it must stay:  The scope is what makes an optimized build possible at all on gcc <= 14:
                    the runner is gcc 13 and this box is gcc 14, so removing it re-reds the Pages
                    deploy, `./build.sh`, and any consumer building this repo at -O2/-O3, over a
@@ -49,6 +64,13 @@ Why it must stay:  The scope is what makes an optimized build possible at all on
                    gate stage builds keeps the whole set — the bound is deliberately not
                    "all configs". Same decision and same compiler bound as JSOM's own
                    CMakeLists.txt, which scopes the flag to its jsom_tests target.
+                   The `release` stage must stay for the other half of the same reason: a check
+                   that only ever runs on GitHub is a check nobody here can run, and the
+                   configuration CI builds is the one that was broken while every local stage
+                   said green. Deleting the stage puts this repo back in exactly that state —
+                   `./build.sh` and any -O2/-O3 consumer red, no local signal — and the cost of
+                   keeping it (146 s cold, ~5 s per push on a warm dir) is the smallest number
+                   in this file.
 
 ## 2026-09-20 — the documented examples had been failing since 2026-02-10, and nothing local ran them
 

@@ -47,6 +47,8 @@ Reference: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
 - [ ] Zero-warning build (see Tooling status — `-Werror` where wired)
 - [ ] All tests pass
 - [ ] Tests pass under ASan+UBSan
+- [ ] Tests pass in an OPTIMIZED build too — the `release` stage (Debug is not the only config
+      CI builds)
 - [ ] clang-tidy — the `tidy` stage is clean: zero findings, no baseline file
 - [ ] No raw owning pointers / `new` / `reinterpret_cast` introduced
 - [ ] Test written first (RED) for every behavior change or bug fix
@@ -66,6 +68,13 @@ in the adaptation notes at the top of the script.
   inside libstdc++'s variant machinery at -O2/-O3 (it is what kept the Pages deploy red).
   The gate builds Debug, where the diagnostic does not exist, so its warning set is
   unchanged; INCIDENTS.md (2026-09-20) has the measurements and the cost.
+- Optimized builds: the `release` stage — a second build dir at `CI_RELEASE_BUILD_TYPE`
+  (`Release`), the same "no `warning:` anywhere" rule applied to its log, and the same test
+  command run in it. Every other stage builds `CI_BUILD_TYPE=Debug`, and the Pages workflow
+  passes no build type while JSOM's subproject defaults it to Release, so this stage is the
+  only place an optimized build of this repo is checked at all. Measured (4 cores, load ~2.5):
+  146 s cold, ~5 s on a one-source push, because the dir is reused — full tier only, never
+  pre-commit.
 - Tests: `ctest --test-dir build --output-on-failure` (the `tests` stage). Nothing is
   filtered out of it.
 - Sanitizers: the `asan` and `tsan` stages, each in its own build dir. `CMakeLists.txt`

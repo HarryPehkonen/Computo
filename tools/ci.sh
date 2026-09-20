@@ -19,7 +19,7 @@
 # Two tiers, because a C++ full run is minutes and a commit cannot afford minutes:
 #
 #   fast  (pre-commit)  build tests
-#   full  (pre-push)    --require-clean tree format build tests version asan tsan tidy pristine
+#   full  (pre-push)    --require-clean tree format kitprobes build tests release version asan tsan tidy pristine
 #
 # COMPUTO ADAPTATIONS (every deviation from the kit is listed here, with the reason):
 #   * tests / sanitisers: no deviation any more. Until 2026-09-20 the two wall-clock
@@ -50,6 +50,19 @@
 #     sources pre-dated .clang-format, so the level-checkout fallback re-checked files
 #     nobody had edited. Those 31 files were reformatted in one mechanical commit
 #     (a589d2b, 2026-09-20, proven token-identical), so the kit's default is back in force.
+#   * release stage: ADDED (2026-09-20, card t_45a28893). Every kit stage builds
+#     CI_BUILD_TYPE=Debug, and the Pages workflow passes no build type at all while JSOM's
+#     subproject defaults CMAKE_BUILD_TYPE to Release - so the configuration that actually
+#     ran in CI was -O3 -DNDEBUG and NO stage here ever configured one. That is how the
+#     gcc 13/14 -Wmaybe-uninitialized false positive redded the deploy, and how ./build.sh
+#     (Release) stayed broken on this box, with a green local gate the whole time. `release`
+#     configures a second build dir at CI_RELEASE_BUILD_TYPE (Release), builds it, applies
+#     `build`'s "no warning: anywhere" rule to ITS log, and runs the same test command in it.
+#     Measured on this box (4 cores, load ~2.5): cold configure 2.9 s + build 146 s + ctest
+#     0.3 s; a one-source push ~4.6 s and a no-change run 0.3 s, because the dir is reused.
+#     Additive, not a narrowing: no existing stage was touched, and the Debug stages keep the
+#     whole warning set (the -Wno-maybe-uninitialized bound in CMakeLists.txt is scoped to
+#     non-Debug configs for exactly that reason).
 #   * no fuzz stage: the repo has no fuzz target yet.
 #
 # Configuration lives in .ci.env (gitignored, optional); every knob has a default here,
@@ -107,7 +120,13 @@ CI_VERSION_BINARIES=${CI_VERSION_BINARIES:-'$CI_BUILD_DIR/computo'}
 # This assignment is direct (not ${VAR:-...}) on purpose: the kit's line above already
 # set the variable, so the :- form would silently keep the kit's longer list.
 # `tools/ci.sh --list` prints the effective list, which is the only place it is visible.
-CI_DEFAULT_STAGES="tree format kitprobes build tests version asan tsan tidy pristine"
+CI_DEFAULT_STAGES="tree format kitprobes build tests release version asan tsan tidy pristine"
+
+# The optimized configuration (the `release` stage - not in the kit, see the adaptation
+# notes at the top). Its own build dir: `build-release`, which .gitignore's `build-*/`
+# already covers, and which the tree stage audits like the other three.
+CI_RELEASE_BUILD_DIR=${CI_RELEASE_BUILD_DIR:-build-release}
+CI_RELEASE_BUILD_TYPE=${CI_RELEASE_BUILD_TYPE:-Release}
 
 if [ -f .ci.env ]; then
     # shellcheck disable=SC1091
@@ -144,6 +163,10 @@ Stages:
   build       cmake configure + build, zero warnings (the stage counts them even where
               -Werror is not wired onto a target)
   tests       the test suite (ctest by default), every failure reported
+  release     the SAME suite in a SECOND, optimized configuration (CI_RELEASE_BUILD_TYPE,
+              Release): configure, build, count `warning:` in its own log, run the tests.
+              Every other stage builds CI_BUILD_TYPE=Debug and the Pages workflow builds
+              -O3 -DNDEBUG, so without this stage no optimized build is checked here at all
   version     one version number: project(VERSION) in CMakeLists.txt == the header the
               build generates/uses, and the number every binary prints for --version
   asan        separate build dir, ASan+UBSan, same suite
@@ -279,7 +302,7 @@ stage_tree() {
     # The gate creates these; a .gitignore that does not cover them makes the next run
     # fail the moment it writes a log. Create them first: git check-ignore cannot match
     # a directory pattern against a path that does not exist yet.
-    mkdir -p "$CI_BUILD_DIR" "$CI_ASAN_BUILD_DIR" "$CI_TSAN_BUILD_DIR" "$CI_LOG_DIR"
+    mkdir -p "$CI_BUILD_DIR" "$CI_ASAN_BUILD_DIR" "$CI_TSAN_BUILD_DIR" "$CI_RELEASE_BUILD_DIR" "$CI_LOG_DIR"
 
     local untracked
     untracked=$(git ls-files --others --exclude-standard)
@@ -316,7 +339,7 @@ stage_tree() {
     fi
 
     local path missing=0
-    for path in "$CI_BUILD_DIR" "$CI_ASAN_BUILD_DIR" "$CI_TSAN_BUILD_DIR" "$CI_LOG_DIR" ".ci.env"; do
+    for path in "$CI_BUILD_DIR" "$CI_ASAN_BUILD_DIR" "$CI_TSAN_BUILD_DIR" "$CI_RELEASE_BUILD_DIR" "$CI_LOG_DIR" ".ci.env"; do
         if ! git check-ignore -q "$path" 2>/dev/null; then
             printf '    NOT ignored: %s\n' "$path"
             missing=$((missing + 1))
@@ -399,6 +422,45 @@ stage_tests() {
     fi
     grep -E "tests passed|100% tests passed" "$CI_LOG_DIR/tests.log" | tail -1 | sed 's/^/      /'
     ci_pass tests
+}
+
+# The optimized configuration, in its own build dir. Every other stage - and the kit - builds
+# CI_BUILD_TYPE=Debug, while the Pages workflow passes no build type and JSOM's subproject
+# defaults CMAKE_BUILD_TYPE to Release: the configuration that really runs in CI was
+# -O3 -DNDEBUG and nothing here configured one, so the gcc<15 -Wmaybe-uninitialized false
+# positive and a Release build that had been broken on this box were both invisible to a
+# green local gate. Both the warning rule and the test command match the Debug stages on
+# purpose: the point is the SAME code under optimizations, not a differently-graded run.
+stage_release() {
+    ci_begin "release ($CI_RELEASE_BUILD_TYPE: the configuration an optimized build uses)"
+    # No -DCMAKE_EXPORT_COMPILE_COMMANDS here: the compile database is the `build` stage's
+    # (tidy reads $CI_BUILD_DIR), and a second one would only be a decoy.
+    # shellcheck disable=SC2086
+    cmake -S . -B "$CI_RELEASE_BUILD_DIR" -DCMAKE_BUILD_TYPE="$CI_RELEASE_BUILD_TYPE" \
+        ${CI_CMAKE_FLAGS:-} > "$CI_LOG_DIR/release-configure.log" 2>&1 \
+        || ci_fail release "cmake configure failed" "$CI_LOG_DIR/release-configure.log"
+    cmake --build "$CI_RELEASE_BUILD_DIR" -j "$CI_JOBS" > "$CI_LOG_DIR/release-build.log" 2>&1 \
+        || ci_fail release "optimized build failed (-Werror is on: a warning is a build failure)" "$CI_LOG_DIR/release-build.log"
+    # The same rule the `build` stage applies, to this log instead: -Werror only covers the
+    # targets it is wired onto, and an optimization-dependent diagnostic is a warning before
+    # it is an error. This is the check that would have reported the class that redded Pages.
+    local warns
+    warns=$(grep -c 'warning:' "$CI_LOG_DIR/release-build.log" || true)
+    if [ "${warns:-0}" -gt 0 ]; then
+        grep 'warning:' "$CI_LOG_DIR/release-build.log" | head -5 | sed 's/^/      /'
+        ci_fail release "$warns compiler warning(s) in an optimized build" "$CI_LOG_DIR/release-build.log"
+    fi
+    printf '    built with no warnings at %s\n' "$CI_RELEASE_BUILD_TYPE"
+    local saved="$CI_TEST_CMD"
+    # shellcheck disable=SC2086
+    CI_TEST_CMD="$(printf '%s' "$saved" | sed "s|\$CI_BUILD_DIR|$CI_RELEASE_BUILD_DIR|g")"
+    if ! run_tests "$CI_RELEASE_BUILD_DIR" "$CI_LOG_DIR/release-tests.log"; then
+        grep -E "FAILED|Failed|\*\*\*Failed|assert" "$CI_LOG_DIR/release-tests.log" | head -30 | sed 's/^/      /'
+        ci_fail release "test failures in an optimized build (all of them are above; full output in the log)" "$CI_LOG_DIR/release-tests.log"
+    fi
+    CI_TEST_CMD="$saved"
+    grep -E "tests passed|100% tests passed" "$CI_LOG_DIR/release-tests.log" | tail -1 | sed 's/^/      /'
+    ci_pass release
 }
 
 stage_version() {
