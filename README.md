@@ -102,6 +102,12 @@ computo --script script.json --array="@data"
 }
 ```
 
+**Nested arrays keep the wrapper.** The rules above are about the *top-level* result: the engine represents an array as the wrapper object, and the CLI unwraps only the script's final result. An array *produced by an operator* therefore keeps its wrapper wherever it is nested inside another value, under whichever key is active:
+
+- `["obj", "x", ["keys", {"a": 1}]]` → `{"x": {"array": ["a"]}}`
+- `["obj", "x", ["keys", {"a": 1}]]  --array="@data"` → `{"x": {"@data": ["a"]}}`
+- `["obj", "x", {"array": [1, 2]}]` → `{"x": [1, 2]}`  (an array *written literally* in the script is unwrapped wherever it appears, not only at the top level)
+
 ### Simple Example
 
 **Script:**
@@ -724,13 +730,13 @@ All comparison operators support n-ary chaining (e.g., `a > b > c` means `a > b 
 ### `keys` - Object Keys
 **Syntax**: `["keys", <object>]`  
 **Parameters**: Exactly 1 object  
-**Returns**: `{"array": [key1, key2, ...]}`  
+**Returns**: Array of keys, `["key1", "key2", ...]` at the top level (a nested array keeps the wrapper: `{"array": [...]}`, or the `--array` key — see Array Key Customization)  
 **Examples**: `["keys", {"a": 1, "b": 2}]` → `["a", "b"]`
 
 ### `values` - Object Values
 **Syntax**: `["values", <object>]`  
 **Parameters**: Exactly 1 object  
-**Returns**: `{"array": [value1, value2, ...]}`  
+**Returns**: Array of values, `[value1, value2, ...]` at the top level (a nested array keeps the wrapper: `{"array": [...]}`, or the `--array` key — see Array Key Customization)  
 **Examples**: `["values", {"a": 1, "b": 2}]` → `[1, 2]`
 
 ### `objFromPairs` - Object from Key-Value Pairs
@@ -1193,6 +1199,15 @@ the build stage produced and also fails when `docs/LANGUAGE_REFERENCE.md` or the
 indexes are not what `docs/operators.yaml` generates. That stage needs **python3 with PyYAML**
 (`apt install python3 python3-yaml`) and fails rather than skipping when they are missing.
 
+The stage grades this README too. `docs/check-readme-examples.py` runs every example it can read
+unambiguously — the inline bullets that pair a backticked expression with the value it claims,
+including the ones whose expression sits in the fenced block above them — against the same
+binary, and fails when one of them no longer matches what the CLI prints. The lines it cannot
+read (illustrative right-hand sides, shell sessions, C++ snippets, prose) are counted in its
+summary and listed by line number in its own output, so the uncovered gap stays visible instead
+of quietly growing, and the check fails if it can extract fewer than its floor of 90 examples,
+so a prose rewrite cannot reduce it to a check that passes because it graded nothing.
+
 ### Unicode Support
 
 Computo provides comprehensive Unicode support for all string operations through the nlohmann/json library. String operations correctly handle:
@@ -1204,8 +1219,10 @@ Computo provides comprehensive Unicode support for all string operations through
 
 All dependencies are expected to be installed in the system.  They will be found by CMake.
 
+```bash
 # Build Computo normally
 cmake -B build
 cmake --build build
 ```
+
 **Note:** The build system is optimized for fast development. Code formatting and linting are separate targets to avoid slow compilation times. See `BUILD_OPTIMIZATION.md` for details.
