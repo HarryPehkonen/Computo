@@ -51,13 +51,17 @@
 #     nobody had edited. Those 31 files were reformatted in one mechanical commit
 #     (a589d2b, 2026-09-20, proven token-identical), so the kit's default is back in force.
 #   * release stage: ADDED (2026-09-20, card t_45a28893). Every kit stage builds
-#     CI_BUILD_TYPE=Debug, and the Pages workflow passes no build type at all while JSOM's
-#     subproject defaults CMAKE_BUILD_TYPE to Release - so the configuration that actually
-#     ran in CI was -O3 -DNDEBUG and NO stage here ever configured one. That is how the
-#     gcc 13/14 -Wmaybe-uninitialized false positive redded the deploy, and how ./build.sh
-#     (Release) stayed broken on this box, with a green local gate the whole time. `release`
-#     configures a second build dir at CI_RELEASE_BUILD_TYPE (Release), builds it, applies
-#     `build`'s "no warning: anywhere" rule to ITS log, and runs the same test command in it.
+#     CI_BUILD_TYPE=Debug, and no stage here configured an optimized build at all, while both
+#     optimized configurations this repo is actually built in - ./build.sh (Release) and a
+#     consumer that builds it optimized (jsonTools passes CI_BUILD_TYPE=Release) - need one,
+#     so no local stage could see the configuration those two use: the gcc 13/14
+#     -Wmaybe-uninitialized false positive redded the deploy, and ./build.sh (Release) stayed
+#     broken on this box, with a green local gate the whole time. What CI builds is no
+#     substitute for the stage: the Pages workflow passes no build type at all, so it
+#     configures at CMake's -O0 (no -O flag in its compile lines, no -DNDEBUG), where a
+#     diagnostic that needs optimizations cannot fire at all. `release` configures a second
+#     build dir at CI_RELEASE_BUILD_TYPE (Release), builds it, applies `build`'s
+#     "no warning: anywhere" rule to ITS log, and runs the same test command in it.
 #     Measured on this box (4 cores, load ~2.5): cold configure 2.9 s + build 146 s + ctest
 #     0.3 s; a one-source push ~4.6 s and a no-change run 0.3 s, because the dir is reused.
 #     Additive, not a narrowing: no existing stage was touched, and the Debug stages keep the
@@ -208,8 +212,9 @@ Stages:
               quietly does nothing is the hole this stage exists to close
   release     the SAME suite in a SECOND, optimized configuration (CI_RELEASE_BUILD_TYPE,
               Release): configure, build, count `warning:` in its own log, run the tests.
-              Every other stage builds CI_BUILD_TYPE=Debug and the Pages workflow builds
-              -O3 -DNDEBUG, so without this stage no optimized build is checked here at all
+              Every other stage builds CI_BUILD_TYPE=Debug and nothing else here configures
+              an optimized build, so without this stage the configuration ./build.sh and an
+              optimized consumer use is checked nowhere in this repo
   version     one version number: project(VERSION) in CMakeLists.txt == the header the
               build generates/uses, and the number every binary prints for --version
   asan        separate build dir, ASan+UBSan, same suite
@@ -566,11 +571,13 @@ stage_docs() {
 }
 
 # The optimized configuration, in its own build dir. Every other stage - and the kit - builds
-# CI_BUILD_TYPE=Debug, while the Pages workflow passes no build type and JSOM's subproject
-# defaults CMAKE_BUILD_TYPE to Release: the configuration that really runs in CI was
-# -O3 -DNDEBUG and nothing here configured one, so the gcc<15 -Wmaybe-uninitialized false
-# positive and a Release build that had been broken on this box were both invisible to a
-# green local gate. Both the warning rule and the test command match the Debug stages on
+# CI_BUILD_TYPE=Debug, and nothing here configured an optimized one, while both optimized
+# configurations this repo is actually built in - ./build.sh (Release) and a consumer that
+# builds it optimized (jsonTools passes CI_BUILD_TYPE=Release) - use one: the gcc<15
+# -Wmaybe-uninitialized false positive and a Release build that had been broken on this box
+# were both invisible to a green local gate. The Pages workflow is no substitute: it passes
+# no build type, so it configures at CMake's -O0, where a diagnostic that needs optimizations
+# cannot fire. Both the warning rule and the test command match the Debug stages on
 # purpose: the point is the SAME code under optimizations, not a differently-graded run.
 stage_release() {
     ci_begin "release ($CI_RELEASE_BUILD_TYPE: the configuration an optimized build uses)"

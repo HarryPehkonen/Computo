@@ -70,9 +70,10 @@ in the adaptation notes at the top of the script.
   unchanged; INCIDENTS.md (2026-09-20) has the measurements and the cost.
 - Optimized builds: the `release` stage — a second build dir at `CI_RELEASE_BUILD_TYPE`
   (`Release`), the same "no `warning:` anywhere" rule applied to its log, and the same test
-  command run in it. Every other stage builds `CI_BUILD_TYPE=Debug`, and the Pages workflow
-  passes no build type while JSOM's subproject defaults it to Release, so this stage is the
-  only place an optimized build of this repo is checked at all. Measured (4 cores, load ~2.5):
+  command run in it. Every other stage builds `CI_BUILD_TYPE=Debug`, and no other stage here
+  configures an optimized build, so it is the only place the two optimized configurations
+  this repo is built in — `./build.sh` (`Release`) and an optimized consumer (`jsonTools`
+  passes `CI_BUILD_TYPE=Release`) — are checked at all. Measured (4 cores, load ~2.5):
   146 s cold, ~5 s on a one-source push, because the dir is reused — full tier only, never
   pre-commit.
 - Tests: `ctest --test-dir build --output-on-failure` (the `tests` stage). Nothing is

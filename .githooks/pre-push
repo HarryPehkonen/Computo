@@ -21,8 +21,9 @@ if [ -x "$root/tools/ci.sh" ]; then
     # COMPUTO: the full tier runs every stage the kit ships, plus this repo's own `release`
     # and `docs` stages. tidy joined the list on 2026-09-20, when .clang-tidy stopped analysing
     # the FetchContent'd JSOM headers and the 66 findings left in this repo's own sources were
-    # fixed; release joined it the same day, when it turned out that no stage configured an
-    # optimized build at all while the Pages workflow builds -O3 -DNDEBUG; docs joined it the
+    # fixed; release joined it the same day, when it turned out that no stage here configured
+    # an optimized build at all, while the optimized configurations this repo is built in -
+    # ./build.sh (Release) and an optimized consumer, jsonTools - both use one; docs joined the
     # same day too, because the documentation pipeline (66 executed examples, coverage, the
     # generated reference and indexes) had only ever run in .github/workflows/docs.yml and 14
     # examples plus the published reference had been wrong since 2026-02-10 (tools/ci.sh and

@@ -161,9 +161,10 @@ Check added:       Two halves, one per copy of the defect.
                    error while `tools/ci.sh build` still passes. That pair is the blind spot
                    reproduced: the Debug-only gate cannot see it, the release stage can.
 Why it must stay:  The scope is what makes an optimized build possible at all on gcc <= 14:
-                   the runner is gcc 13 and this box is gcc 14, so removing it re-reds the Pages
-                   deploy, `./build.sh`, and any consumer building this repo at -O2/-O3, over a
-                   compiler bug — the gcc#101905 false-positive family, fixed in gcc 15+, which
+                   this box is gcc 14, so removing it re-breaks `./build.sh` (Release) and any
+                   consumer building this repo at -O2/-O3 (`jsonTools` passes
+                   `CI_BUILD_TYPE=Release`) over a compiler bug — the gcc#101905
+                   false-positive family, fixed in gcc 15+, which
                    is why the bound is `< 15` and disappears by itself on a newer compiler —
                    rather than over a defect in this repo's code. What it costs, stated rather
                    than implied: gcc reports the simple uninitialized-read diagnostics under
@@ -174,12 +175,14 @@ Why it must stay:  The scope is what makes an optimized build possible at all on
                    "all configs". Same decision and same compiler bound as JSOM's own
                    CMakeLists.txt, which scopes the flag to its jsom_tests target.
                    The `release` stage must stay for the other half of the same reason: a check
-                   that only ever runs on GitHub is a check nobody here can run, and the
-                   configuration CI builds is the one that was broken while every local stage
-                   said green. Deleting the stage puts this repo back in exactly that state —
-                   `./build.sh` and any -O2/-O3 consumer red, no local signal — and the cost of
-                   keeping it (146 s cold, ~5 s per push on a warm dir) is the smallest number
-                   in this file.
+                   that only ever runs on GitHub is a check nobody here can run, and this repo's
+                   optimized builds were the ones broken while every local stage said green.
+                   Deleting the stage puts this repo back in exactly that state — `./build.sh`
+                   and any -O2/-O3 consumer red, no local signal — and the cost of keeping it
+                   (146 s cold, ~5 s per push on a warm dir) is the smallest number in this
+                   file. What the stage is NOT justified by is the Pages workflow itself: that
+                   build passes no build type, so it configures at CMake's -O0, where a
+                   diagnostic that needs optimizations cannot fire at all.
 
 ## 2026-09-20 — the documented examples had been failing since 2026-02-10, and nothing local ran them
 
