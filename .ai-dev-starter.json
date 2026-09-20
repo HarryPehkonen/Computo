@@ -40,7 +40,7 @@
     {
       "repo_path": "INCIDENTS.md",
       "kit_path": "INCIDENTS.md",
-      "repo_sha256": "bd171f7e3d1cda97f34d7e652e017e550f85b1bfb3568e2fa188c98ccc6c5049",
+      "repo_sha256": "7336b257a9d0aa514bb1b264671e9f46e5e69202f43e9c63f05c24a1285d99f1",
       "kit_sha256": "aef9beb070e319176ef135eed5317ec8caab4bb0192a68a452c9d6841ebd4c45",
       "adapted": true,
       "adapted_why": "Per-repo incident log (130 lines here, 159 in the kit): it shares the kit's header rule block and then carries four incidents of this repo's own — the wall-clock throughput threshold, the leak heuristic measured against the sanitizer's quarantine, the linter analysing a fetched dependency with one uncompiled source, and the 31-file format drift — while the kit's six entries (python src-layout, the tidy baseline recipe, the version stage, a repo's own defaults being ignored, sanitizer-hostile tests, the format example) are deliberately NOT copied: this file is history, so a sync must never overwrite it with the kit's."
