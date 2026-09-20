@@ -21,14 +21,13 @@
 #   full  (pre-push)    --require-clean tree format build tests version asan tsan tidy pristine
 #
 # COMPUTO ADAPTATIONS (every deviation from the kit is listed here, with the reason):
-#   * tests / asan: two pre-existing wall-clock cases are filtered out of
-#     test_thread_safety via GTEST_FILTER (test_thread_safety.cpp:904 and :708, both
-#     EXPECT_GT(ops_per_second, 10000.0) on a 4-core box: :904 fails on an idle machine
-#     roughly two runs in three, :708 fails whenever the machine is busy). Under ASan
-#     two more are filtered out of test_memory_safety (test_memory_safety.cpp:91, an
-#     RSS-growth leak heuristic that a sanitizer's free() quarantine defeats). All four
-#     are pre-existing at HEAD; everything else in both binaries still runs. See the
-#     defaults below and .ci.env.example.
+#   * tests / sanitisers: no deviation any more. Until 2026-09-20 the two wall-clock
+#     throughput assertions in test_thread_safety (:904, :708) and the two RSS-based leak
+#     heuristics in test_memory_safety were excluded with GTEST_FILTER because they could
+#     not pass on this machine. They are fixed in the tests themselves now (a liveness
+#     ceiling with measured headroom, and a sanitizer-aware measurement), so the filter -
+#     and CI_ASAN_TEST_CMD with it - are gone, and every case runs in every build.
+#     INCIDENTS.md carries the measurements.
 #   * tidy: NOT in the stage list, because it cannot pass at HEAD (three pre-existing
 #     blockers, measured not guessed):
 #       - 5178 of its 5601 findings come from the FetchContent'd JSOM headers, because
@@ -46,11 +45,11 @@
 #         what happens to that file (it is not compiled today, so it is not tested).
 #     Any one of those is a repo decision, not a gate decision. `tools/ci.sh tidy` prints
 #     all three.
-#   * format: CI_FORMAT_FALLBACK_HEAD=0. When the branch is level with origin/main the
-#     kit re-checks the last commit; 31 of Computo's 54 committed sources pre-date
-#     this gate and do not conform to .clang-format, so that fallback turns the push
-#     gate red for files nobody edited. With 0, only files this branch touches are
-#     checked — which is what the gate is for.
+#   * format: no deviation any more. The stage is branch-scoped (kit rule 6); the
+#     CI_FORMAT_FALLBACK_HEAD=0 override existed only because 31 of Computo's 54 committed
+#     sources pre-dated .clang-format, so the level-checkout fallback re-checked files
+#     nobody had edited. Those 31 files were reformatted in one mechanical commit
+#     (a589d2b, 2026-09-20, proven token-identical), so the kit's default is back in force.
 #   * no fuzz stage: the repo has no fuzz target yet.
 #
 # Configuration lives in .ci.env (gitignored, optional); every knob has a default here,
@@ -93,30 +92,21 @@ CI_SOURCE_GLOBS=${CI_SOURCE_GLOBS:-"'*.cpp' '*.cc' '*.cxx' '*.hpp' '*.hh' '*.h'"
 CI_VERSION_HEADER=${CI_VERSION_HEADER:-"$CI_BUILD_DIR/generated/version.hpp"}
 # The test runner. ctest is the portable default; override with a single test binary if
 # your project does not register tests with add_test().
+CI_TEST_CMD=${CI_TEST_CMD:-"ctest --test-dir \$CI_BUILD_DIR --output-on-failure -j \$CI_JOBS"}
 CI_FORMAT_FALLBACK_HEAD=${CI_FORMAT_FALLBACK_HEAD:-1}   # 0 = do not re-check the last commit when level with origin/main
 
 # ---- Computo's own defaults (rationale in the adaptation notes at the top) ----
-# One ctest run over every suite. GTEST_FILTER (an environment variable every gtest
-# binary reads) drops the two wall-clock benchmark cases inside test_thread_safety --
-# test_thread_safety.cpp:904 (EXPECT_GT(ops_per_second, 10000.0), "Single-threaded
-# performance too low") and :708 (same threshold, "Performance regression detected").
-# Both are absolute-throughput assertions on a 4-core box: :904 fails on an idle machine
-# about two runs in three, and :708 fails whenever the machine is busy (measured 6890
-# ops/s while a build ran, 80343 ops/s idle). Everything else in that binary still runs.
-# The $CI_BUILD_DIR rewrite that asan/tsan/pristine apply works on this string.
-CI_TEST_CMD=${CI_TEST_CMD:-'GTEST_FILTER=-ThreadSafetyTest.PerformanceUnderThreadLoad:ThreadSafetyTest.HighConcurrencyStressTest ctest --test-dir $CI_BUILD_DIR --output-on-failure -j $CI_JOBS'}
-# The same command for the ASan/UBSan run, plus the two cases that measure the process's
-# RSS growth before/after a test and fail under a sanitizer because freed memory stays in
-# the allocator's quarantine: test_memory_safety.cpp:91, "Potential memory leak detected:
-# NNNN KB memory increase after test completion". They pass in the normal build, and they
-# run there; under ASan the measurement, not the code, is wrong.
-CI_ASAN_TEST_CMD=${CI_ASAN_TEST_CMD:-'GTEST_FILTER=-ThreadSafetyTest.PerformanceUnderThreadLoad:ThreadSafetyTest.HighConcurrencyStressTest:MemorySafetyTest.LargeArrayMapOperation:MemorySafetyTest.LargeArrayFilterOperation ctest --test-dir $CI_BUILD_DIR --output-on-failure -j $CI_JOBS'}
-CI_FORMAT_FALLBACK_HEAD=${CI_FORMAT_FALLBACK_HEAD:-0}
+# NOTHING is filtered out of the test run. Until 2026-09-20 this file passed
+# `GTEST_FILTER=-ThreadSafetyTest.PerformanceUnderThreadLoad:...:MemorySafetyTest.*` to
+# ctest here, for two wall-clock throughput assertions and two RSS-based leak heuristics
+# that could not pass on this machine. Both classes are now fixed in the tests themselves
+# (a liveness ceiling and a sanitizer-aware measurement - see INCIDENTS.md), so the filter
+# is gone and CI_ASAN_TEST_CMD is unset: every sanitizer stage runs the same command in its
+# own build dir, which is the kit's default behaviour.
 CI_VERSION_BINARIES=${CI_VERSION_BINARIES:-'$CI_BUILD_DIR/computo'}
 # This assignment is direct (not ${VAR:-...}) on purpose: the kit's line above already
-# set the variable, so the :- form would silently keep the kit's longer list. tidy is
-# NOT in it; three measured blockers, all pre-existing, are written up in .ci.env.example
-# and in the adaptation notes at the top of this file. `tools/ci.sh tidy` still runs it.
+# set the variable, so the :- form would silently keep the kit's longer list.
+# `tools/ci.sh --list` prints the effective list, which is the only place it is visible.
 CI_DEFAULT_STAGES="tree format build tests version asan tsan pristine"
 
 if [ -f .ci.env ]; then

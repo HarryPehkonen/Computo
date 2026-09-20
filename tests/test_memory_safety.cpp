@@ -13,6 +13,26 @@
 
 using json = jsom::JsonDocument;
 
+// --- Leak detection under a sanitizer -----------------------------------------------
+// TearDown() below measures the process's RSS before and after each test and fails on a
+// growth over 10 MB. That heuristic is invalid in an AddressSanitizer build: ASan's
+// allocator keeps freed memory in its quarantine (deliberately - the quarantine is what
+// makes use-after-free detectable), so RSS grows by design. Measured here:
+// LargeArrayMapOperation +179064 KB and LargeArrayFilterOperation +147152 KB, and both are
+// clean under LeakSanitizer, which is the exact leak check the ASan gate runs
+// (tools/ci.sh's asan stage sets ASAN_OPTIONS=detect_leaks=1). LeakSanitizer is strictly
+// stronger than an RSS heuristic, so under ASan the heuristic steps aside and the
+// sanitizer owns leak detection; in a normal build it still runs and still fails the test.
+// The alternative - shrinking ASan's quarantine - would trade away real use-after-free
+// detection to keep a weaker check alive.
+#if defined(__SANITIZE_ADDRESS__)
+#define COMPUTO_ASAN_BUILD 1
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define COMPUTO_ASAN_BUILD 1
+#endif
+#endif
+
 // Memory usage monitoring utilities
 class MemoryMonitor {
 private:
@@ -79,6 +99,9 @@ protected:
     }
 
     void TearDown() override {
+        // Under a sanitizer this heuristic is not a leak check - see the note at the top of
+        // this file - and LeakSanitizer replaces it.
+#if !defined(COMPUTO_ASAN_BUILD)
         // Check for significant memory leaks
         memory_monitor_.update_peak_memory();
         size_t memory_increase = memory_monitor_.get_memory_increase_kb();
@@ -91,6 +114,7 @@ protected:
             ADD_FAILURE() << "Potential memory leak detected: " << memory_increase
                           << " KB memory increase after test completion";
         }
+#endif
     }
 
     // Helper to create large JSON arrays
