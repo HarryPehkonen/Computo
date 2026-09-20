@@ -382,5 +382,5 @@ TEST_F(DebugIntegrationTest, BreakOnNestedPlusOperator) {
 
     EXPECT_TRUE(breakpoint_hit);
     // Should break on the nested + operator first (inner expression evaluated first)
-    EXPECT_TRUE(break_location.find("/") == 0); // Should start with "/"
+    EXPECT_TRUE(break_location.find('/') == 0); // Should start with "/"
 }

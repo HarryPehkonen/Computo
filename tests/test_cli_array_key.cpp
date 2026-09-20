@@ -65,10 +65,10 @@ TEST_F(CLIArrayKeyTest, DefaultArrayKeyViaCLI) {
     std::string output = exec_command(cmd);
 
     // Output is unwrapped: [2, 4, 6] not {"array": [...]}
-    EXPECT_NE(output.find("["), std::string::npos);
-    EXPECT_NE(output.find("2"), std::string::npos);
-    EXPECT_NE(output.find("4"), std::string::npos);
-    EXPECT_NE(output.find("6"), std::string::npos);
+    EXPECT_NE(output.find('['), std::string::npos);
+    EXPECT_NE(output.find('2'), std::string::npos);
+    EXPECT_NE(output.find('4'), std::string::npos);
+    EXPECT_NE(output.find('6'), std::string::npos);
 }
 
 TEST_F(CLIArrayKeyTest, CustomArrayKeyViaCLI) {
@@ -77,10 +77,10 @@ TEST_F(CLIArrayKeyTest, CustomArrayKeyViaCLI) {
     std::string output = exec_command(cmd);
 
     // Output is unwrapped: [2, 4, 6] - array key is internal
-    EXPECT_NE(output.find("["), std::string::npos);
-    EXPECT_NE(output.find("2"), std::string::npos);
-    EXPECT_NE(output.find("4"), std::string::npos);
-    EXPECT_NE(output.find("6"), std::string::npos);
+    EXPECT_NE(output.find('['), std::string::npos);
+    EXPECT_NE(output.find('2'), std::string::npos);
+    EXPECT_NE(output.find('4'), std::string::npos);
+    EXPECT_NE(output.find('6'), std::string::npos);
 }
 
 TEST_F(CLIArrayKeyTest, HelpShowsArrayOption) {

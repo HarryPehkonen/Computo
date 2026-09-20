@@ -63,7 +63,7 @@ public:
         results_.push_back(std::move(result));
     }
 
-    void add_exception(std::exception_ptr ex) {
+    void add_exception(const std::exception_ptr& ex) {
         std::lock_guard<std::mutex> lock(mutex_);
         exceptions_.push_back(ex);
     }
@@ -242,9 +242,9 @@ TEST_F(ThreadSafetyTest, ConcurrentScriptExecutionDifferentInputs) {
                 try {
                     std::rethrow_exception(exceptions[i]);
                 } catch (const std::exception& e) {
-                    std::cout << "Exception " << i << ": " << e.what() << std::endl;
+                    std::cout << "Exception " << i << ": " << e.what() << '\n';
                 } catch (...) {
-                    std::cout << "Exception " << i << ": unknown exception" << std::endl;
+                    std::cout << "Exception " << i << ": unknown exception" << '\n';
                 }
             }
         }
@@ -266,7 +266,7 @@ TEST_F(ThreadSafetyTest, ConcurrentScriptExecutionDifferentInputs) {
 
 // Test 2: Same Script Different Threads Stress Test
 TEST_F(ThreadSafetyTest, SameScriptMultipleThreadsStress) {
-    auto test_func = [this](size_t thread_count) {
+    auto test_func = [](size_t thread_count) {
         thread_safety_utils::ThreadSafeResultCollector<json> collector;
         thread_safety_utils::ThreadBarrier barrier(thread_count);
         std::atomic<int> iteration_counter{0};
@@ -315,7 +315,7 @@ TEST_F(ThreadSafetyTest, SameScriptMultipleThreadsStress) {
 
 // Test 3: ExecutionContext Thread-Local Safety and Isolation
 TEST_F(ThreadSafetyTest, ExecutionContextThreadLocalSafety) {
-    auto test_func = [this](size_t thread_count) {
+    auto test_func = [](size_t thread_count) {
         thread_safety_utils::ThreadSafeResultCollector<json> collector;
         thread_safety_utils::ThreadBarrier barrier(thread_count);
 
@@ -372,7 +372,7 @@ TEST_F(ThreadSafetyTest, ExecutionContextThreadLocalSafety) {
 
 // Test 4: DebugContext Thread Safety (This will likely fail - DebugContext is not thread-safe)
 TEST_F(ThreadSafetyTest, DebugContextThreadSafety) {
-    auto test_func = [this](size_t thread_count) {
+    auto test_func = [](size_t thread_count) {
         // Create separate DebugContext for each thread to avoid sharing
         std::vector<std::unique_ptr<computo::DebugContext>> debug_contexts;
         for (size_t i = 0; i < thread_count; ++i) {
@@ -431,7 +431,7 @@ TEST_F(ThreadSafetyTest, DebugContextThreadSafety) {
 
 // Test 5: Operator Thread Safety - Test All Operator Categories
 TEST_F(ThreadSafetyTest, AllOperatorThreadSafety) {
-    auto test_func = [this](size_t thread_count) {
+    auto test_func = [](size_t thread_count) {
         struct OperatorTest {
             std::string name;
             json script;
@@ -477,7 +477,7 @@ TEST_F(ThreadSafetyTest, AllOperatorThreadSafety) {
         threads.reserve(thread_count);
 
         for (size_t i = 0; i < thread_count; ++i) {
-            threads.emplace_back([&, i]() {
+            threads.emplace_back([&]() {
                 try {
                     barrier.wait();
 
@@ -519,7 +519,7 @@ TEST_F(ThreadSafetyTest, AllOperatorThreadSafety) {
 
 // Test 6: Memory Allocation Safety Under Concurrency
 TEST_F(ThreadSafetyTest, MemoryAllocationSafety) {
-    auto test_func = [this](size_t thread_count) {
+    auto test_func = [](size_t thread_count) {
         thread_safety_utils::ThreadSafeResultCollector<size_t> collector;
         thread_safety_utils::ThreadBarrier barrier(thread_count);
 
@@ -574,7 +574,7 @@ TEST_F(ThreadSafetyTest, MemoryAllocationSafety) {
 
 // Test 7: Variable Scope Isolation Between Threads
 TEST_F(ThreadSafetyTest, VariableScopeIsolation) {
-    auto test_func = [this](size_t thread_count) {
+    auto test_func = [](size_t thread_count) {
         thread_safety_utils::ThreadSafeResultCollector<json> collector;
         thread_safety_utils::ThreadBarrier barrier(thread_count);
 
@@ -715,10 +715,10 @@ TEST_F(ThreadSafetyTest, HighConcurrencyStressTest) {
     // `benchmark` target, `ctest -L performance`).
     constexpr double MAX_STRESS_RUN_MS = 30000.0;
     double duration_ms = timer.get_duration_ms();
-    double ops_per_second = (total_operations.load() * 1000.0) / duration_ms;
+    double ops_per_second = (static_cast<double>(total_operations.load()) * 1000.0) / duration_ms;
 
     std::cout << "Stress test performance: " << ops_per_second << " operations/second ("
-              << duration_ms << "ms total)" << std::endl;
+              << duration_ms << "ms total)" << '\n';
 
     EXPECT_LT(duration_ms, MAX_STRESS_RUN_MS)
         << "3200 operations across 32 threads took " << duration_ms
@@ -727,7 +727,7 @@ TEST_F(ThreadSafetyTest, HighConcurrencyStressTest) {
 
 // Test 9: Exception Handling Thread Safety
 TEST_F(ThreadSafetyTest, ExceptionHandlingThreadSafety) {
-    auto test_func = [this](size_t thread_count) {
+    auto test_func = [](size_t thread_count) {
         thread_safety_utils::ThreadSafeResultCollector<std::string> collector;
         thread_safety_utils::ThreadBarrier barrier(thread_count);
 
@@ -743,7 +743,7 @@ TEST_F(ThreadSafetyTest, ExceptionHandlingThreadSafety) {
         threads.reserve(thread_count);
 
         for (size_t i = 0; i < thread_count; ++i) {
-            threads.emplace_back([&, i]() {
+            threads.emplace_back([&]() {
                 try {
                     barrier.wait();
 
@@ -846,7 +846,7 @@ TEST_F(ThreadSafetyTest, RaceConditionDetection) {
     // The detector should never see more than a few simultaneous accesses
     // if proper synchronization is in place
     int max_simultaneous = detector.get_max_simultaneous();
-    std::cout << "Maximum simultaneous registry accesses: " << max_simultaneous << std::endl;
+    std::cout << "Maximum simultaneous registry accesses: " << max_simultaneous << '\n';
 
     // This is more of an informational test - the registry should handle concurrent access
     EXPECT_GT(max_simultaneous, 0) << "Race condition detector not working";
@@ -903,18 +903,18 @@ TEST_F(ThreadSafetyTest, PerformanceUnderThreadLoad) {
         overall_timer.stop();
 
         double total_duration_ms = overall_timer.get_duration_ms();
-        double total_operations = thread_count * PERF_ITERATIONS;
+        double total_operations = static_cast<double>(thread_count * PERF_ITERATIONS);
         double ops_per_second = (total_operations * 1000.0) / total_duration_ms;
 
         auto latencies = latency_collector.get_results();
-        double avg_latency
-            = std::accumulate(latencies.begin(), latencies.end(), 0.0) / latencies.size();
+        double avg_latency = std::accumulate(latencies.begin(), latencies.end(), 0.0)
+                             / static_cast<double>(latencies.size());
 
         results.push_back({thread_count, ops_per_second, avg_latency});
 
         std::cout << "Threads: " << thread_count << ", Ops/sec: " << std::fixed
                   << std::setprecision(0) << ops_per_second
-                  << ", Avg latency: " << std::setprecision(3) << avg_latency << "ms" << std::endl;
+                  << ", Avg latency: " << std::setprecision(3) << avg_latency << "ms" << '\n';
     }
 
     // Regression detector, not a benchmark: an absolute wall-clock throughput assertion

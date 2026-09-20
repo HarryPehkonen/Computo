@@ -59,7 +59,7 @@ static auto unwrap_for_output(const jsom::JsonDocument& result, const std::strin
 
 // --- REPL Command Structure ---
 
-enum class ReplCommandType {
+enum class ReplCommandType : std::uint8_t {
     UNKNOWN,
     HELP,
     VARS,
@@ -320,7 +320,7 @@ void handle_break_command(const ReplCommand& cmd, ReplState& state) {
         std::cout << "Examples: break +, break map, break /users\n";
     } else {
         const auto& target = cmd.args[0];
-        if (target.find("/") == 0) {
+        if (target.find('/') == 0) {
             state.debug_context.set_variable_breakpoint(target);
             std::cout << "Set variable breakpoint: " << target << "\n";
         } else {
@@ -336,7 +336,7 @@ void handle_nobreak_command(const ReplCommand& cmd, ReplState& state) {
         std::cout << "All breakpoints removed\n";
     } else {
         const auto& target = cmd.args[0];
-        if (target.find("/") == 0) {
+        if (target.find('/') == 0) {
             state.debug_context.remove_variable_breakpoint(target);
             std::cout << "Removed variable breakpoint: " << target << "\n";
         } else {

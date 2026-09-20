@@ -27,16 +27,16 @@ protected:
 
     // Helper to print results for debugging
     void debug_result(const std::string& test_name, const json& result) {
-        std::cout << "=== " << test_name << " ===" << std::endl;
-        std::cout << "Result: " << result.to_json() << std::endl;
+        std::cout << "=== " << test_name << " ===" << '\n';
+        std::cout << "Result: " << result.to_json() << '\n';
         if (result.is_object() && result.contains("array")) {
             std::cout << "Array contents: ";
             for (const auto& item : result["array"]) {
                 std::cout << "\"" << item.as<std::string>() << "\" ";
             }
-            std::cout << std::endl;
+            std::cout << '\n';
         }
-        std::cout << std::endl;
+        std::cout << '\n';
     }
 
     json input_data;
@@ -117,8 +117,7 @@ TEST_F(UnicodeCompatibilityTest, SortUnicodeStrings) {
     // This may not match linguistic sorting but is predictable
     EXPECT_TRUE(result.is_object() && result.contains("array"));
     EXPECT_EQ(result["array"].size(), 5);
-    std::cout << "Note: Sort uses lexicographic byte ordering, not linguistic ordering"
-              << std::endl;
+    std::cout << "Note: Sort uses lexicographic byte ordering, not linguistic ordering" << '\n';
 }
 
 TEST_F(UnicodeCompatibilityTest, SortEmoji) {
@@ -128,7 +127,7 @@ TEST_F(UnicodeCompatibilityTest, SortEmoji) {
 
     EXPECT_TRUE(result.is_object() && result.contains("array"));
     EXPECT_EQ(result["array"].size(), 4);
-    std::cout << "Note: Emoji sorting by UTF-8 byte values" << std::endl;
+    std::cout << "Note: Emoji sorting by UTF-8 byte values" << '\n';
 }
 
 TEST_F(UnicodeCompatibilityTest, SortMixedScripts) {
@@ -139,7 +138,7 @@ TEST_F(UnicodeCompatibilityTest, SortMixedScripts) {
 
     EXPECT_TRUE(result.is_object() && result.contains("array"));
     EXPECT_EQ(result["array"].size(), 5);
-    std::cout << "Note: Mixed scripts sorted by UTF-8 byte values" << std::endl;
+    std::cout << "Note: Mixed scripts sorted by UTF-8 byte values" << '\n';
 }
 
 // === Empty and Edge Cases ===
@@ -161,14 +160,13 @@ TEST_F(UnicodeCompatibilityTest, StrConcatEmpty) {
 // === Documentation Test ===
 
 TEST_F(UnicodeCompatibilityTest, DocumentCurrentBehavior) {
-    std::cout << "=== Unicode Compatibility Summary ===" << std::endl;
-    std::cout << "✓ join: Handles Unicode strings correctly as byte sequences" << std::endl;
-    std::cout << "✓ strConcat: Concatenates Unicode strings correctly" << std::endl;
-    std::cout << "✓ sort: Lexicographic ordering by UTF-8 byte values (not linguistic)"
-              << std::endl;
-    std::cout << "✗ split: Operator removed (no character boundary detection)" << std::endl;
-    std::cout << "✗ trim: Operator removed (no Unicode whitespace detection)" << std::endl;
-    std::cout << "✗ upper/lower: Operators removed (no Unicode case conversion)" << std::endl;
-    std::cout << "Note: Unicode data flows through system correctly as UTF-8" << std::endl;
-    std::cout << "=======================================" << std::endl;
+    std::cout << "=== Unicode Compatibility Summary ===" << '\n';
+    std::cout << "✓ join: Handles Unicode strings correctly as byte sequences" << '\n';
+    std::cout << "✓ strConcat: Concatenates Unicode strings correctly" << '\n';
+    std::cout << "✓ sort: Lexicographic ordering by UTF-8 byte values (not linguistic)" << '\n';
+    std::cout << "✗ split: Operator removed (no character boundary detection)" << '\n';
+    std::cout << "✗ trim: Operator removed (no Unicode whitespace detection)" << '\n';
+    std::cout << "✗ upper/lower: Operators removed (no Unicode case conversion)" << '\n';
+    std::cout << "Note: Unicode data flows through system correctly as UTF-8" << '\n';
+    std::cout << "=======================================" << '\n';
 }

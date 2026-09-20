@@ -1,12 +1,13 @@
 #include "sugar_writer.hpp"
 #include <cmath>
+#include <cstdint>
 #include <set>
 #include <sstream>
 
 namespace computo {
 
 // Precedence levels (higher = tighter binding)
-enum class Prec : int {
+enum class Prec : std::uint8_t {
     None = 0,
     LetIfLambda = 1, // let...in, if...then...else, (x) => body
     Or = 2,

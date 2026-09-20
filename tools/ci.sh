@@ -28,23 +28,22 @@
 #     ceiling with measured headroom, and a sanitizer-aware measurement), so the filter -
 #     and CI_ASAN_TEST_CMD with it - are gone, and every case runs in every build.
 #     INCIDENTS.md carries the measurements.
-#   * tidy: NOT in the stage list, because it cannot pass at HEAD (three pre-existing
-#     blockers, measured not guessed):
-#       - 5178 of its 5601 findings come from the FetchContent'd JSOM headers, because
-#         .clang-tidy's HeaderFilterRegex '^.*/(src|include)/.*\.(hpp|cpp)$' matches
-#         build/_deps/jsom-src/include/... A dependency's headers are being analysed as
-#         if they were first-party (115 distinct findings, re-reported once per
-#         translation unit); one line of .clang-tidy fixes it.
-#       - 423 findings are in Computo's own sources, across 25 files (92 in
-#         tests/test_performance.cpp, 82 in src/sugar_parser.cpp, 64 in
-#         tests/test_thread_safety.cpp, 50 in src/sugar_writer.cpp, ...). Tolerating
-#         them is what .ci/tidy-baseline.txt is for; that is a 423-line file to agree to.
-#       - tests/test_json_pointer.cpp is not referenced by any target in CMakeLists.txt,
-#         so it has no compile_commands.json entry and the stage refuses to certify a
-#         partial analysis ("1 of 45 sources are missing"). Wiring tidy means deciding
-#         what happens to that file (it is not compiled today, so it is not tested).
-#     Any one of those is a repo decision, not a gate decision. `tools/ci.sh tidy` prints
-#     all three.
+#   * tidy: WIRED (2026-09-20) and clean at HEAD - zero findings, no baseline file. It was
+#     out of the list for three measured reasons, all now fixed rather than tolerated:
+#       - HeaderFilterRegex matched the FetchContent'd JSOM headers under build/_deps,
+#         producing 5178 of 5601 findings (115 distinct, re-reported once per translation
+#         unit) in code this repo cannot change. The pattern is positive and repo-scoped
+#         now. The old one was too narrow in the same breath: it never matched tests/*.hpp.
+#       - 423 findings in Computo's own sources. Curating the check set to the value-only
+#         families JSOM and jsonTools use left 66 real ones, and those are FIXED: stream
+#         flushes, single-character find()s, enum base types, narrowing conversions, dead
+#         branches, one documented empty-catch knob, a missing vector reserve. No baseline
+#         file exists - tolerating findings is not how this stage stays green.
+#       - tests/test_json_pointer.cpp named no CMake target, so it was never compiled or
+#         run, and the coverage check refused to certify a partial analysis ("1 of 45
+#         sources are missing"). It is in test_computo now and its 7 cases run.
+#     The stage keeps its teeth: zero findings is required, and a source missing from
+#     compile_commands.json still fails the run.
 #   * format: no deviation any more. The stage is branch-scoped (kit rule 6); the
 #     CI_FORMAT_FALLBACK_HEAD=0 override existed only because 31 of Computo's 54 committed
 #     sources pre-dated .clang-format, so the level-checkout fallback re-checked files
@@ -107,7 +106,7 @@ CI_VERSION_BINARIES=${CI_VERSION_BINARIES:-'$CI_BUILD_DIR/computo'}
 # This assignment is direct (not ${VAR:-...}) on purpose: the kit's line above already
 # set the variable, so the :- form would silently keep the kit's longer list.
 # `tools/ci.sh --list` prints the effective list, which is the only place it is visible.
-CI_DEFAULT_STAGES="tree format build tests version asan tsan pristine"
+CI_DEFAULT_STAGES="tree format build tests version asan tsan tidy pristine"
 
 if [ -f .ci.env ]; then
     # shellcheck disable=SC1091

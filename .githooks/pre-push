@@ -18,13 +18,13 @@ set -uo pipefail
 root=$(git rev-parse --show-toplevel) || exit 1
 
 if [ -x "$root/tools/ci.sh" ]; then
-    # COMPUTO: tidy is not in the list -- see the adaptation notes at the top of
-    # tools/ci.sh (a dependency's headers flood it, 221 inherited findings, and one
-    # source file is not in any target). Everything else the kit ships runs. The list
-    # mirrors CI_DEFAULT_STAGES in tools/ci.sh; keep the two in step.
+    # COMPUTO: the full tier runs every stage the kit ships. tidy joined the list on
+    # 2026-09-20, when .clang-tidy stopped analysing the FetchContent'd JSOM headers and
+    # the 66 findings left in this repo's own sources were fixed (see INCIDENTS.md).
+    # The list mirrors CI_DEFAULT_STAGES in tools/ci.sh; keep the two in step.
     exec "$root/tools/ci.sh" \
         --require-clean \
-        tree format build tests version asan tsan pristine
+        tree format build tests version asan tsan tidy pristine
 fi
 
 if [ -x "$root/scripts/gate.sh" ]; then

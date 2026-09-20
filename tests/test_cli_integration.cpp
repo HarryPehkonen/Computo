@@ -228,7 +228,7 @@ TEST_F(CLIIntegrationTest, REPLSimpleExpression) {
 #endif
 
     EXPECT_EQ(result.exit_code, 0);
-    EXPECT_TRUE(result.stdout_output.find("6") != std::string::npos);
+    EXPECT_TRUE(result.stdout_output.find('6') != std::string::npos);
 }
 
 // Test REPL help command
@@ -282,7 +282,7 @@ TEST_F(CLIIntegrationTest, REPLDebugCommands) {
 
     EXPECT_EQ(result.exit_code, 0);
     // Should show breakpoint was set and then removed
-    EXPECT_TRUE(result.stdout_output.find("+") != std::string::npos);
+    EXPECT_TRUE(result.stdout_output.find('+') != std::string::npos);
 }
 
 // Test JSON comment support

@@ -1,5 +1,6 @@
 #include "sugar_parser.hpp"
 #include <cctype>
+#include <cstdint>
 #include <limits>
 #include <set>
 #include <vector>
@@ -10,7 +11,7 @@ namespace computo {
 // Token types
 // ============================================================================
 
-enum class TokenType {
+enum class TokenType : std::uint8_t {
     // Literals
     Number,
     String,
@@ -425,9 +426,8 @@ static auto infix_precedence(TokenType type) -> int {
         return 6;
     case TokenType::Star:
     case TokenType::Percent:
+    case TokenType::Slash: // division too - validate_slash_spacing decides ` / ` vs `/`
         return 7;
-    case TokenType::Slash:
-        return 7; // division (only when space_before)
     default:
         return 0;
     }
@@ -464,11 +464,6 @@ static auto token_to_op_name(TokenType type) -> std::string {
     default:
         return "";
     }
-}
-
-static auto is_comparison_op(TokenType type) -> bool {
-    return type == TokenType::Greater || type == TokenType::Less || type == TokenType::GreaterEq
-           || type == TokenType::LessEq || type == TokenType::EqualEq || type == TokenType::BangEq;
 }
 
 // Check if slash has valid spacing: either both sides or neither
@@ -634,16 +629,14 @@ private:
             // Right operand: bind tighter (left-associative)
             auto right = parse_expression(prec + 1);
 
-            // Variadic flattening: if same operator appears consecutively,
-            // extend the array instead of nesting
+            // Variadic flattening: if the same operator appears consecutively, extend the
+            // array instead of nesting. One branch covers comparison chaining too
+            // (a > b > c becomes [">", a, b, c]): the second condition used to repeat
+            // every conjunct of this one after checking is_comparison_op(op_type), so it
+            // was unreachable and clang-tidy reported the duplicated body
+            // (bugprone-branch-clone). Its two helpers went with it.
             if (left.is_array() && !left.empty() && left[0].is_string()
                 && left[0].as<std::string>() == op_name) {
-                left.push_back(std::move(right));
-            }
-            // For comparison chaining: a > b > c -> [">", a, b, c]
-            else if (is_comparison_op(op_type) && left.is_array() && !left.empty()
-                     && left[0].is_string() && is_comparison_op_name(left[0].as<std::string>())
-                     && left[0].as<std::string>() == op_name) {
                 left.push_back(std::move(right));
             } else {
                 auto node = jsom::JsonDocument::make_array();
@@ -655,11 +648,6 @@ private:
         }
 
         return left;
-    }
-
-    static auto is_comparison_op_name(const std::string& name) -> bool {
-        return name == ">" || name == "<" || name == ">=" || name == "<=" || name == "=="
-               || name == "!=";
     }
 
     // ---------------------------------------------------------------
@@ -888,10 +876,7 @@ private:
 
     void parse_object_entry(jsom::JsonDocument& obj) {
         std::string key;
-        if (current_.type == TokenType::Identifier) {
-            key = current_.text;
-            advance();
-        } else if (current_.type == TokenType::String) {
+        if (current_.type == TokenType::Identifier || current_.type == TokenType::String) {
             key = current_.text;
             advance();
         } else {

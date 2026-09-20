@@ -47,18 +47,33 @@ Reference: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
 - [ ] Zero-warning build (see Tooling status — `-Werror` where wired)
 - [ ] All tests pass
 - [ ] Tests pass under ASan+UBSan
-- [ ] clang-tidy — no NEW findings vs baseline (where tidy is configured)
+- [ ] clang-tidy — the `tidy` stage is clean: zero findings, no baseline file
 - [ ] No raw owning pointers / `new` / `reinterpret_cast` introduced
 - [ ] Test written first (RED) for every behavior change or bug fix
 
-## Tooling status (this repo, as of 2026-09-08)
+## Tooling status (this repo, as of 2026-09-20)
 
-- Warnings: compile flags on project targets (see CMakeLists.txt). `-Werror`
-  pending a verified zero-warning baseline (JSOM-style per-target wiring).
-- Sanitizers (already built in): `cmake -B build -DENABLE_ASAN=ON -DENABLE_UBSAN=ON
-  && cmake --build build -j$(nproc)` then `ctest --test-dir build`.
-- clang-tidy: `cd build && make lint` (ENABLE_CLANG_TIDY) / `make quality`.
-- Tests: `ctest --test-dir build --output-on-failure`.
+**The gate is `tools/ci.sh`** — one script, three callers: run it by hand, and the two git
+hooks call it (`.githooks/pre-commit` = the fast tier, `.githooks/pre-push` = the full tier).
+Run `./tools/ci.sh` before declaring a change done; `./tools/ci.sh --list` prints the stages.
+The reasons each stage exists, with the measurements behind them, are in `INCIDENTS.md` and
+in the adaptation notes at the top of the script.
+
+- Warnings: `-Wall -Wextra -Wpedantic -Werror` on Computo's own targets (CMakeLists.txt).
+  The `build` stage additionally fails on any `warning:` a target without `-Werror` emitted.
+- Tests: `ctest --test-dir build --output-on-failure` (the `tests` stage). Nothing is
+  filtered out of it.
+- Sanitizers: the `asan` and `tsan` stages, each in its own build dir. `CMakeLists.txt`
+  still carries `ENABLE_ASAN` / `ENABLE_UBSAN` / `ENABLE_TSAN` switches for one-off local
+  builds; the stages are what the gate runs.
+- clang-tidy: the `tidy` stage — **zero findings required, no baseline file**. The curated
+  value-only check set and the repo-scoped `HeaderFilterRegex` live in `.clang-tidy`.
+  `make lint` is the older CMake target and analyses only part of the tree, so prefer the
+  stage.
+- clang-format: the `format` stage (the files the branch touches, with the level-checkout
+  fallback).
+- Dependency on a clean tree: the `pristine` stage builds and tests `git archive HEAD` in a
+  temp dir, which is what proves the committed tree is complete.
 
 ## Upstream reference
 

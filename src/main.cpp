@@ -7,6 +7,7 @@
 #include <computo.hpp>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -27,6 +28,25 @@ static auto read_file_text(const std::string& filename) -> std::string {
     return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 }
 
+// Parse the text as JSON, or return nullopt when it is not JSON at all.
+//
+// "Not JSON" is a format verdict here, not an error: the caller falls through to the sugar
+// parser for exactly those files. So the catch returns the verdict instead of being empty -
+// an empty catch would trip bugprone-empty-catch, and that check earns its keep by staying
+// armed for the case where an error really is swallowed. jsom's parser signals malformed
+// text with std::runtime_error, so std::exception is what has to be caught here.
+static auto try_parse_json(const std::string& content, bool enable_comments)
+    -> std::optional<jsom::JsonDocument> {
+    try {
+        if (enable_comments) {
+            return jsom::parse_document(content, jsom::ParsePresets::Comments);
+        }
+        return jsom::parse_document(content);
+    } catch (const std::exception&) {
+        return std::nullopt;
+    }
+}
+
 // Auto-detect format and load script based on extension or content
 static auto load_script_file(const std::string& filename, bool enable_comments,
                              const std::string& array_key) -> jsom::JsonDocument {
@@ -36,14 +56,8 @@ static auto load_script_file(const std::string& filename, bool enable_comments,
     bool force_sugar = filename.size() >= 8 && filename.substr(filename.size() - 8) == ".computo";
 
     if (!force_sugar) {
-        // Try JSON parse first
-        try {
-            if (enable_comments) {
-                return jsom::parse_document(content, jsom::ParsePresets::Comments);
-            }
-            return jsom::parse_document(content);
-        } catch (const std::exception&) {
-            // JSON parse failed, try sugar syntax
+        if (auto parsed_json = try_parse_json(content, enable_comments)) {
+            return *parsed_json;
         }
     }
 

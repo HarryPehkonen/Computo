@@ -49,7 +49,8 @@ public:
     }
 
     double get_duration_ms() const {
-        return duration_cast<nanoseconds>(end_time_ - start_time_).count() / 1e6;
+        return static_cast<double>(duration_cast<nanoseconds>(end_time_ - start_time_).count())
+               / 1e6;
     }
 
     std::size_t get_memory_delta_kb() const {
@@ -90,7 +91,8 @@ public:
     static constexpr std::size_t WARMUP_ITERATIONS = 10;
 
     BenchmarkResult run_benchmark(const std::string& test_name, const std::string& operation,
-                                  std::function<void()> benchmark_func, std::size_t data_size = 1,
+                                  const std::function<void()>& benchmark_func,
+                                  std::size_t data_size = 1,
                                   std::size_t iterations = DEFAULT_ITERATIONS) {
         // Warmup
         for (std::size_t i = 0; i < WARMUP_ITERATIONS; ++i) {
@@ -120,12 +122,15 @@ public:
         result.test_name = test_name;
         result.operation = operation;
         result.data_size = data_size;
-        result.avg_time_ms = std::accumulate(times.begin(), times.end(), 0.0) / times.size();
+        result.avg_time_ms
+            = std::accumulate(times.begin(), times.end(), 0.0) / static_cast<double>(times.size());
         result.min_time_ms = times.front();
         result.max_time_ms = times.back();
         result.p50_time_ms = times[times.size() / 2];
-        result.p95_time_ms = times[static_cast<std::size_t>(times.size() * 0.95)];
-        result.p99_time_ms = times[static_cast<std::size_t>(times.size() * 0.99)];
+        result.p95_time_ms
+            = times[static_cast<std::size_t>(static_cast<double>(times.size()) * 0.95)];
+        result.p99_time_ms
+            = times[static_cast<std::size_t>(static_cast<double>(times.size()) * 0.99)];
         result.operations_per_second
             = result.avg_time_ms > 0 ? static_cast<std::size_t>(1000.0 / result.avg_time_ms) : 0;
         result.memory_peak_kb = *std::max_element(memory_usage.begin(), memory_usage.end());
@@ -537,10 +542,13 @@ TEST_F(PerformanceBenchmarkTest, ControlFlowBenchmark) {
 // --- Nested Operations Benchmarks ---
 
 TEST_F(PerformanceBenchmarkTest, NestedOperationsBenchmark) {
-    // Deep nesting
+    // Deep nesting. Built with insert/append instead of `a + b + c`: the concatenating
+    // form allocates a temporary string per iteration (clang-tidy,
+    // performance-inefficient-string-concatenation), and these loops run 50 and 20 times.
     std::string deep_nested = "42";
     for (int i = 0; i < 50; ++i) {
-        deep_nested = "[\"if\", true, " + deep_nested + ", 0]";
+        deep_nested.insert(0, "[\"if\", true, ");
+        deep_nested.append(", 0]");
     }
 
     suite_->run_benchmark(
@@ -692,7 +700,8 @@ TEST_F(PerformanceBenchmarkTest, TailCallOptimizationBenchmark) {
         [this]() {
             std::string deep_expr = "42";
             for (int i = 0; i < 20; ++i) {
-                deep_expr = "[\"if\", true, " + deep_expr + ", 0]";
+                deep_expr.insert(0, "[\"if\", true, ");
+                deep_expr.append(", 0]");
             }
             execute_script(deep_expr);
         },
@@ -941,7 +950,7 @@ TEST_F(PerformanceBenchmarkTest, DebugOverheadBenchmark) {
     // With debugging enabled (but no breakpoints)
     suite_->run_benchmark(
         "Debug_Overhead", "debug_enabled",
-        [this, test_data]() {
+        [test_data]() {
             computo::DebugContext debug_ctx;
             debug_ctx.set_debug_enabled(true);
             debug_ctx.set_trace_enabled(true);

@@ -477,6 +477,7 @@ TEST_F(SharedUtilitiesTest, SuggestSimilarNamesSorting) {
 
     // Check that lower distances come first, then alphabetically
     std::vector<int> distances;
+    distances.reserve(suggestions.size());
     for (const auto& suggestion : suggestions) {
         distances.push_back(calculate_levenshtein_distance("app", suggestion));
     }
