@@ -87,12 +87,15 @@ in the adaptation notes at the top of the script.
 - clang-format: the `format` stage (the files the branch touches, with the level-checkout
   fallback).
 - Documentation: the `docs` stage — all 66 examples in docs/operators.yaml executed against
-  the binary the `build` stage produced, operator coverage, and docs/LANGUAGE_REFERENCE.md
-  plus the two generated indexes held byte-for-byte to what docs/operators.yaml generates.
+  the binary the `build` stage produced, README.md's own result examples graded by
+  `docs/check-readme-examples.py` against the same binary (99 of them when that check landed
+  on 2026-09-20; it FAILS if it can extract fewer than 90, so a prose rewrite cannot quietly
+  reduce the coverage), operator coverage, and docs/LANGUAGE_REFERENCE.md plus the two
+  generated indexes held byte-for-byte to what docs/operators.yaml generates.
   It needs python3 + PyYAML (`apt install python3 python3-yaml`) and FAILS rather than
-  skipping when they are missing. Not covered by it: README.md's hand-written result
-  examples (prose, not the YAML source) — 41 of those had drifted and were corrected by hand
-  against the CLI on 2026-09-20 (INCIDENTS.md).
+  skipping when they are missing. The README examples the script cannot read unambiguously
+  are counted in its summary and listed by line number in its output; the 41 that had drifted
+  before this check existed are in INCIDENTS.md (2026-09-20).
 - Dependency on a clean tree: the `pristine` stage builds and tests `git archive HEAD` in a
   temp dir, which is what proves the committed tree is complete.
 

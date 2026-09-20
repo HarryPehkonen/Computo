@@ -75,18 +75,29 @@
 #     produced ($CI_BUILD_DIR/computo, handed to the scripts as COMPUTO_BINARY) and holds
 #     docs/LANGUAGE_REFERENCE.md and both indexes to what docs/operators.yaml generates -
 #     byte for byte, generated into a temp dir, so the stage never rewrites a tracked file.
-#     Measured: ~2 s for the whole stage (66 subprocess runs plus three generators).
+#     Measured: ~1-2 s for the whole stage - 66 YAML examples and ~100 README examples, each
+#     one a subprocess run against the engine, plus three generators. The README half is
+#     0.26 s of that on its own.
 #     PREREQUISITE, and it FAILS rather than skipping: python3 + PyYAML (Debian/Ubuntu:
 #     apt install python3 python3-yaml). The SKIP the clang stages use for a missing tool is
 #     deliberately not applied here - a documentation stage that quietly does nothing is the
 #     same seven-month hole with a green light next to it, which is the shape this stage
-#     exists to remove. The other half is stated rather than implied: README.md's
-#     hand-written result examples are NOT covered by this stage (they are prose, not the
-#     YAML source this stage reads). 41 of them had drifted - 29 result examples still showed
-#     the pre-2026-02-10 `{"array": [...]}` output wrapper, 8 had stale number formatting and
-#     4 were claims inside fenced blocks, including the `--array=<key>` section - and they
-#     were corrected by hand against the built CLI on 2026-09-20 (`./build/computo --script`
-#     per example, 96/96 matching). Nothing here would catch them drifting again.
+#     exists to remove. The other half is README.md's hand-written result examples: 41 of
+#     them had drifted (29 still showed the pre-2026-02-10 `{"array": [...]}` output
+#     wrapper, 8 had stale number formatting, 4 were claims inside fenced blocks including
+#     the `--array=<key>` section) and they were corrected by hand against the built CLI on
+#     2026-09-20 (`./build/computo --script` per example, 96/96 matching) while remaining
+#     uncovered. **2026-09-20, card t_a609b673:** that is closed - the stage now runs
+#     docs/check-readme-examples.py (step 2), the sweep promoted from being a throwaway on
+#     card t_4a81d75f into a repo script. It grades the two in-line forms of README example
+#     it can read unambiguously - arrow examples (`- `["+", 1, 2, 3]` → `6``) and "Result:"
+#     examples, including the fenced-block form whose expression sits in the ```json block
+#     above it - against the same $CI_BUILD_DIR/computo, and named the array section's own
+#     claims in the same breath (see INCIDENTS.md). 99 examples graded, 0 mismatched when
+#     it landed; the 11 result-ish lines it cannot parse (illustrative right-hand sides like
+#     "→ sorted array", shell sessions inside bash blocks, C++ snippets) are listed by line
+#     number on every run rather than skipped quietly, and a floor of 90 graded examples
+#     fails the stage if README's prose ever changes shape enough to shrink the coverage.
 #   * no fuzz stage: the repo has no fuzz target yet.
 #
 # Configuration lives in .ci.env (gitignored, optional); every knob has a default here,
@@ -188,10 +199,12 @@ Stages:
               -Werror is not wired onto a target)
   tests       the test suite (ctest by default), every failure reported
   docs        the documentation pipeline, on the binary the build stage produced: all 66
-              examples in docs/operators.yaml executed against the engine, operator
-              coverage, and a byte-for-byte check that docs/LANGUAGE_REFERENCE.md and the
-              two generated indexes are what operators.yaml generates. Needs python3 +
-              PyYAML and FAILS (never SKIPs) when they are missing - a docs stage that
+              examples in docs/operators.yaml executed against the engine, README.md's own
+              result examples (docs/check-readme-examples.py - it FAILS if it can extract
+              fewer than 90 of them, so a prose rewrite cannot quietly shrink the check),
+              operator coverage, and a byte-for-byte check that docs/LANGUAGE_REFERENCE.md
+              and the two generated indexes are what operators.yaml generates. Needs python3
+              + PyYAML and FAILS (never SKIPs) when they are missing - a docs stage that
               quietly does nothing is the hole this stage exists to close
   release     the SAME suite in a SECOND, optimized configuration (CI_RELEASE_BUILD_TYPE,
               Release): configure, build, count `warning:` in its own log, run the tests.
@@ -455,7 +468,8 @@ stage_tests() {
 }
 
 # The documentation pipeline, on a real engine. docs/test-examples.py executes all 66
-# examples in docs/operators.yaml, docs/validate-coverage.py asserts documented ==
+# examples in docs/operators.yaml, docs/check-readme-examples.py does the same job for
+# README.md's own prose examples, docs/validate-coverage.py asserts documented ==
 # implemented, and the two generators are held to what is committed. Until 2026-09-20 all
 # of it ran ONLY in .github/workflows/docs.yml: nothing local ran it, so nothing local
 # noticed that 14 documented examples had disagreed with the engine since 2026-02-10, or
@@ -497,14 +511,29 @@ stage_docs() {
     fi
     grep -E '^Results:' "$CI_LOG_DIR/docs-examples.log" | sed 's/^/    /'
 
-    # 2. coverage: every implemented operator documented, and no documented one missing.
+    # 2. README.md's OWN result examples, same engine. They are hand-written prose in a
+    #    1300-line file, not the YAML docs/test-examples.py reads, so they had no check at
+    #    all: when the engine's array output changed on 2026-02-10, 41 of them went on
+    #    stating results the CLI no longer printed and only a human reading the page could
+    #    see it. docs/check-readme-examples.py grades the two in-line forms it can read
+    #    unambiguously (arrow examples and "Result:" examples), prints every line it could
+    #    NOT read by number, and fails if extraction ever covers fewer than its floor - so
+    #    a prose rewrite cannot quietly reduce this check to nothing (INCIDENTS.md).
+    if ! python3 docs/check-readme-examples.py > "$CI_LOG_DIR/docs-readme.log" 2>&1; then
+        grep -E '^  ✗|^      |^README examples:' "$CI_LOG_DIR/docs-readme.log" \
+            | head -40 | sed 's/^/      /'
+        ci_fail docs "README.md's result examples disagree with the engine, or the extraction floor was missed (above)" "$CI_LOG_DIR/docs-readme.log"
+    fi
+    grep -E '^README examples:' "$CI_LOG_DIR/docs-readme.log" | sed 's/^/    /'
+
+    # 3. coverage: every implemented operator documented, and no documented one missing.
     if ! python3 docs/validate-coverage.py > "$CI_LOG_DIR/docs-coverage.log" 2>&1; then
         tail -n 30 "$CI_LOG_DIR/docs-coverage.log" | sed 's/^/      /'
         ci_fail docs "operator coverage is incomplete (report above)" "$CI_LOG_DIR/docs-coverage.log"
     fi
     grep -E 'Implemented operators|Documented operators|COMPLETE' "$CI_LOG_DIR/docs-coverage.log" | sed 's/^/    /'
 
-    # 3. the generated reference must be what operators.yaml generates, byte for byte: it is
+    # 4. the generated reference must be what operators.yaml generates, byte for byte: it is
     # tracked and published, so a stale one is a false statement on the site. Generated to a
     # temp file - a gate that rewrites a tracked file is a gate nobody can trust.
     if ! python3 docs/generate-reference.py docs/operators.yaml -o "$tmp/LANGUAGE_REFERENCE.md" \
@@ -517,7 +546,7 @@ stage_docs() {
     fi
     printf '    docs/LANGUAGE_REFERENCE.md is what operators.yaml generates\n'
 
-    # 4. the two published indexes, same rule. docs/generate-indexes.py writes in place, so
+    # 5. the two published indexes, same rule. docs/generate-indexes.py writes in place, so
     # the committed copies are put back afterwards: this gate never leaves a modified tree.
     cp docs/alpha/index.md "$tmp/alpha-index.md" || ci_fail docs "docs/alpha/index.md is missing"
     cp docs/task/index.md "$tmp/task-index.md" || ci_fail docs "docs/task/index.md is missing"

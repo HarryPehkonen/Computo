@@ -14,6 +14,68 @@ arbitrary checks get deleted. The rationale is the load-bearing part.
 
 ---
 
+## 2026-09-20 — the README's own result examples were graded by nothing, and the published page rendered a code block over its closing paragraph
+
+What broke:        Three defects in the same file, found by the audit card t_4a81d75f and fixed here.
+                   (1) README.md carried an UNBALANCED code fence: 71 fence lines for 35 complete
+                   blocks, the stray closing fence at 1210 belonging to no opener. Rendered (markdown-it,
+                   CommonMark - the same fenced-block rules the Pages site's kramdown applies), the
+                   `**Note:** The build system is optimized for fast development...` paragraph came out
+                   INSIDE a code block, because the fence that had been the terminator of the block above
+                   it became the OPENER of a new one and swallowed the text that followed. The count was
+                   71 in `git show 8d70455^:README.md` too, so it predated the docs-stage work; it was
+                   nobody's regression, and only a reader of the published page could ever have seen it.
+                   (2) Since 2026-02-10 the engine's array output changed and 41 hand-written result
+                   examples went on stating what it used to print. The stage added on 2026-09-20
+                   (the entry below) corrected all 41 - but it grades docs/operators.yaml, and README's
+                   examples are prose, so nothing graded them. The card that fixed them stated that in
+                   its own entry: "what this entry records instead is that they are uncovered".
+                   (3) Two type lines in the operator reference described the ENGINE's value rather than
+                   the reader's result: `**Returns**: {"array": [key1, key2, ...]}` for `keys` and
+                   `{"array": [value1, value2, ...]}` for `values`, while the CLI unwraps the top level
+                   and prints a bare array. Measured with the built CLI 2026-09-20:
+                   `["keys", {"a": 1, "b": 2}]` -> `["a", "b"]`; nested, the wrapper is real -
+                   `["obj", "x", ["keys", {"a": 1}]]` -> `{"x": {"array": ["a"]}}`, and under
+                   `--array="@data"` -> `{"x": {"@data": ["a"]}}`, because the wrapper follows the key;
+                   an array WRITTEN LITERALLY in the script is unwrapped wherever it appears
+                   (`["obj", "x", {"array": [1, 2]}]` -> `{"x": [1, 2]}`). The `--array=<key>` section
+                   documented only the top-level half of that rule.
+Check added:       (1) The block is opened (` ```bash ` before the build commands) and the stray fence is
+                   gone: 72 fence lines, 36 balanced blocks, and the rendering above puts the Note back
+                   in a `<p>`. (2) docs/check-readme-examples.py, run by the `docs` stage as its step 2
+                   on the same $CI_BUILD_DIR/computo: it grades every result example it can read
+                   unambiguously - arrow bullets (`- `["+", 1, 2, 3]` -> `6``) and bullets that state
+                   their result, including the fenced-block form whose expression sits in the ```json
+                   block above them, and an expression may carry its own ` --array=<key>` - and fails
+                   on any disagreement, on any example the engine will not run, and if it can extract
+                   fewer than 90 examples (99 when it landed, 0 mismatched, 0.26 s). The lines it cannot
+                   read are counted in its summary and listed by number: 11 of them today (illustrative
+                   right-hand sides like "-> sorted array", shell sessions, a C++ snippet, prose), and
+                   those are named rather than dropped so the uncovered gap cannot grow quietly.
+                   (3) The two Returns lines now state the printed shape and name the nested case, and
+                   the `--array=<key>` section carries the nesting rule as three graded bullets, so the
+                   claims this card added are graded by the check this card added.
+Why it must stay:  The floor is the load-bearing part, and it is the answer to the objection that kept
+                   this closed for a day: a parser for prose is a false-failure machine. The two forms
+                   above are unambiguous by construction, so a wrong example is a TRUE failure - that is
+                   exactly what the 41 drifts were - and the only real risk left is the opposite one, a
+                   parser that stops matching and reports success while grading nothing. A floor on the
+                   number of extracted examples turns that silent failure into a red run, which is the
+                   same reasoning kit rule 1 gets elsewhere in this gate ("fail loudly" over "skip
+                   quietly"). The alternative of moving README's examples into docs/operators.yaml and
+                   quoting the generated reference was REJECTED: those 99 examples are a teaching
+                   narrative (section by section, with inputs defined above them, `--array` claims, and
+                   prose results like "-> Dynamic key"), not a per-operator table, and rewriting the
+                   file's most-read page into quoted boilerplate would cost the README far more than the
+                   drift did. Recording the gap as permanent was also rejected - this repo's own rule is
+                   that a fix is not done until a check exists that would have caught it, and the 41
+                   drifts are proof that the check is not hypothetical. The Pages workflow does NOT run
+                   this check, deliberately: the `docs` stage runs on every push and in a clean
+                   checkout, and the deploy keeps validating the YAML half and the generated docs it
+                   publishes; a second copy behind a service would be a slower gate for the same fact.
+
+---
+
 ## 2026-09-20 — the documentation pipeline had no local stage, and the published README's result examples had drifted with it
 
 What broke:        The three tools that grade this repo's documentation ran in exactly one place:
