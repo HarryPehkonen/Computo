@@ -90,16 +90,29 @@ All C++ work in this repo MUST follow `CODING_STANDARDS.md` — modern C++17 in
 the spirit of the C++ Core Guidelines (Type/Bounds/Lifetime profiles),
 exceptions allowed for error handling. Binding for every agent run.
 
-Gates before any change is done:
+Gates before any change is done — THE gate is `tools/ci.sh`: one script, three callers
+(by hand, `.githooks/pre-commit` for the fast tier `build tests`, `.githooks/pre-push`
+for the full tier, armed once per clone with `git config core.hooksPath .githooks`).
+Run `./tools/ci.sh --require-clean` and see `GATE PASSED` before declaring anything
+done; `./tools/ci.sh --list` prints the stages, and INCIDENTS.md says why each exists,
+with the measurements.
 
-1. Zero-warning build (project targets; `-Werror` wiring per Tooling status in
-   CODING_STANDARDS.md).
-2. `ctest --test-dir build --output-on-failure` — all tests pass; TDD (failing
-   test first) for every behavior change or bug fix.
-3. Sanitizer gate: `cmake -B build -DENABLE_ASAN=ON -DENABLE_UBSAN=ON && cmake
-   --build build -j$(nproc)` then `ctest --test-dir build` — clean under
-   ASan+UBSan.
-4. Never introduce raw owning pointers, `new`/`delete`, or
+1. `build` — zero warnings; `-Werror` is wired on the project targets.
+2. `tests` — `ctest --test-dir build --output-on-failure`; nothing is filtered out;
+   TDD (failing test first) for every behavior change or bug fix.
+3. `asan` and `tsan` — ASan+UBSan and ThreadSanitizer, each in its own build dir.
+4. `tidy` and `format` — clang-tidy with ZERO findings and no baseline file
+   (`.clang-tidy`), clang-format on the files the branch touches.
+5. `pristine` — `git archive HEAD` into a temp dir, then configure, build, test: proves
+   the COMMITTED tree is complete.
+6. Never introduce raw owning pointers, `new`/`delete`, or
    `reinterpret_cast`/C-style casts.
-5. If a build fails on a pre-existing warning, fix the warning (small, targeted
-   change) rather than weakening the flags.
+7. If a build fails on a pre-existing warning, fix the warning (small, targeted change)
+   rather than weakening the flags.
+
+Those seven are not the whole gate: it also runs `tree`, `version` and `kitprobes`,
+plus two stages this repo added and the kit does not have — `release` (the same suite
+in an optimized `-O3 -DNDEBUG` configuration) and `docs` (the documented examples,
+operator coverage and the generated reference; it FAILS rather than skips when
+python3/PyYAML are missing). Tooling status — the commands, and where each stage's
+evidence lives — is in CODING_STANDARDS.md.
