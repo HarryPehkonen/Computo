@@ -29,9 +29,7 @@ if [ -x "$root/tools/ci.sh" ]; then
     # examples plus the published reference had been wrong since 2026-02-10 (tools/ci.sh and
     # INCIDENTS.md have the measurements). The list mirrors CI_DEFAULT_STAGES in tools/ci.sh;
     # keep the two in step.
-    exec "$root/tools/ci.sh" \
-        --require-clean \
-        tree format kitprobes build tests docs release version asan tsan tidy pristine
+    exec "$root/tools/ci.sh" --require-clean full
 fi
 
 if [ -x "$root/scripts/gate.sh" ]; then

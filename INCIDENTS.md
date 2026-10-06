@@ -14,6 +14,24 @@ arbitrary checks get deleted. The rationale is the load-bearing part.
 
 ---
 
+## 2026-10-06 — the default stage list was two stages behind the push hook
+
+What broke:        `CI_DEFAULT_STAGES` listed ten stages; the hand-written list in `.githooks/pre-push`
+                   listed twelve. `docs` and `release` were only ever run by a push, so a hand run of
+                   the gate — the thing a contributor runs before pushing, and the thing this repo's
+                   own comment told the reader to keep in step — was a weaker gate than the push.
+Check added:       Both lists are now one: tools/ci.sh declares CI_FAST_STAGES and CI_FULL_STAGES,
+                   CI_DEFAULT_STAGES IS the full tier (twelve stages, `docs` and `release` included),
+                   and both hooks NAME a tier instead of repeating one. tools/kit-probes/
+                   hook-tiers-agree.sh runs in the `kitprobes` stage and fails if any of that stops
+                   being true.
+Why it must stay:  The two lists drifted because a comment asked a human to keep them in step, and a
+                   comment cannot fail. With the hook naming a tier there is nothing left to keep in
+                   step; if the hook's list ever comes back, the probe is what notices.
+                   (The pre-existing comment that asked for the manual sync was removed with the list.)
+
+---
+
 ## 2026-09-20 — a pathspec commit failed its own pre-commit gate at `build`, naming a dependency update
 
 What broke:        `git commit -F <msg> -- .ai-dev-starter.json` — the pathspec form, the one this
