@@ -8,7 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # --- Version header (the artifact-identity invariant) ---
 # project(Computo VERSION ...) on line 2 is the ONE place the version is written. This
-# generates the second copy the code compiles against; tools/ci.sh's `version` stage
+# generates the second copy the code compiles against; scripts/gate.sh's `version` stage
 # fails when the two disagree, and when `computo --version` reports something else.
 configure_file(cmake/version.hpp.in "${CMAKE_BINARY_DIR}/generated/version.hpp" @ONLY)
 

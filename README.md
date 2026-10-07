@@ -1194,7 +1194,7 @@ cmake --build build --target docs-generate
 cmake --build build --target docs-coverage
 ```
 
-The same pipeline is a stage of the local gate — `tools/ci.sh docs` — which runs it on the binary
+The same pipeline is a stage of the local gate — `scripts/gate.sh docs` — which runs it on the binary
 the build stage produced and also fails when `docs/LANGUAGE_REFERENCE.md` or the generated
 indexes are not what `docs/operators.yaml` generates. That stage needs **python3 with PyYAML**
 (`apt install python3 python3-yaml`) and fails rather than skipping when they are missing.

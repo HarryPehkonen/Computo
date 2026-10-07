@@ -90,11 +90,11 @@ All C++ work in this repo MUST follow `CODING_STANDARDS.md` — modern C++17 in
 the spirit of the C++ Core Guidelines (Type/Bounds/Lifetime profiles),
 exceptions allowed for error handling. Binding for every agent run.
 
-Gates before any change is done — THE gate is `tools/ci.sh`: one script, three callers
+Gates before any change is done — THE gate is `scripts/gate.sh`: one script, three callers
 (by hand, `.githooks/pre-commit` for the fast tier `build tests`, `.githooks/pre-push`
 for the full tier, armed once per clone with `git config core.hooksPath .githooks`).
-Run `./tools/ci.sh --require-clean` and see `GATE PASSED` before declaring anything
-done; `./tools/ci.sh --list` prints the stages, and INCIDENTS.md says why each exists,
+Run `./CI_REQUIRE_CLEAN=1 scripts/gate.sh` and see `GATE PASSED` before declaring anything
+done; `./kit-ci --list` prints the stages, and INCIDENTS.md says why each exists,
 with the measurements.
 
 1. `build` — zero warnings; `-Werror` is wired on the project targets.

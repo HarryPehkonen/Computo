@@ -55,9 +55,9 @@ Reference: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
 
 ## Tooling status (this repo, as of 2026-09-20)
 
-**The gate is `tools/ci.sh`** — one script, three callers: run it by hand, and the two git
+**The gate is `scripts/gate.sh`** — one script, three callers: run it by hand, and the two git
 hooks call it (`.githooks/pre-commit` = the fast tier, `.githooks/pre-push` = the full tier).
-Run `./tools/ci.sh` before declaring a change done; `./tools/ci.sh --list` prints the stages.
+Run `./scripts/gate.sh` before declaring a change done; `./kit-ci --list` prints the stages.
 The reasons each stage exists, with the measurements behind them, are in `INCIDENTS.md` and
 in the adaptation notes at the top of the script.
 
