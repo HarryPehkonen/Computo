@@ -83,9 +83,18 @@ FetchContent_Declare(
 set(JSOM_INSTALL OFF CACHE BOOL "Computo packages never ship JSOM's artifacts" FORCE)
 FetchContent_MakeAvailable(JSOM)
 find_package(GTest REQUIRED)
+option(COMPUTO_REQUIRE_READLINE
+    "Fail the configure when readline is missing (packaging builds set this ON)" OFF)
 find_library(READLINE_LIB readline)
 if(READLINE_LIB)
     message(STATUS "readline found: ${READLINE_LIB}")
+elseif(COMPUTO_REQUIRE_READLINE)
+    message(FATAL_ERROR
+        "readline not found and COMPUTO_REQUIRE_READLINE=ON — install libreadline-dev "
+        "(Debian) or readline-devel (Fedora). Without it a package build silently ships "
+        "the basic-input REPL and the deb's Depends matches a feature set it does not "
+        "contain; the packaged REPL must be deterministic, so the package build fails "
+        "loudly instead.")
 else()
     message(WARNING "readline not found - REPL will use basic input")
 endif()
@@ -358,10 +367,27 @@ else()
 endif()
 
 # --- Install Configuration ---
-# GNUInstallDirs, never a hardcoded lib/bin: Debian multiarch wants lib/<arch>
-# (CMAKE_INSTALL_LIBDIR full variant), Fedora wants lib64. The same variables pick
-# bindir/includedir/mandir for every destination below.
+# GNUInstallDirs, never a hardcoded lib/bin: Debian multiarch wants lib/<arch>,
+# Fedora wants lib64. The same variables pick bindir/includedir/mandir for every
+# destination below.
 include(GNUInstallDirs)
+
+# GNUInstallDirs computes the Debian multiarch default (lib/<tuple>) only when the
+# configure prefix is ALREADY /usr (its test: CMAKE_INSTALL_PREFIX MATCHES "^/usr/?$",
+# GNUInstallDirs.cmake on this host). A plain configure here uses /usr/local, and CPack
+# only moves the install ROOT to /usr at packaging time (CPACK_PACKAGING_INSTALL_PREFIX)
+# — by then the libdir is long since baked, so the first deb shipped
+# /usr/lib/libcomputo.a (card t_110e96eb). Reapply the rule for any prefix: on Debian,
+# lib/<CMAKE_LIBRARY_ARCHITECTURE> is the layout for every system location. Fedora has
+# no /etc/debian_version and no CMAKE_LIBRARY_ARCHITECTURE, so it keeps GNUInstallDirs'
+# own lib64 default — untouched. Only the computed default ("lib") is rewritten: an
+# explicit -DCMAKE_INSTALL_LIBDIR=... from the caller always wins.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING
+        AND EXISTS "/etc/debian_version" AND CMAKE_LIBRARY_ARCHITECTURE
+        AND CMAKE_INSTALL_LIBDIR STREQUAL "lib")
+    set(CMAKE_INSTALL_LIBDIR "lib/${CMAKE_LIBRARY_ARCHITECTURE}" CACHE PATH
+        "Object code libraries (lib/<multiarch tuple> on Debian)" FORCE)
+endif()
 
 install(TARGETS computo_unified
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -385,6 +411,7 @@ message(STATUS "Version: ${CMAKE_PROJECT_VERSION}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "C++ standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "Install prefix: ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "Install libdir: ${CMAKE_INSTALL_LIBDIR}")
 
 
 # --- CODING_STANDARDS.md: warnings as errors for Computo's own targets ---
