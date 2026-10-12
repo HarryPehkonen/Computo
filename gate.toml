@@ -27,7 +27,7 @@ stages = ["*"]
 # ---------------------------------------------------------------- the stages
 # Declaration order IS the run order for tier.full, and it is the order the old
 # CI_FULL_STAGES used:
-#   tree format build tests docs release version asan tsan tidy pristine
+#   tree format build tests docs release package version asan tsan tidy pristine
 # (`kitprobes` sat in that list too; it did NOT survive the conversion - a probe checks
 # a FILE, and the file it checked (tools/ci.sh) is gone. The closing note in this file
 # says how each guarantee it stood for got its new home.)
@@ -52,6 +52,10 @@ cmd = "scripts/docs.sh"
 [stage.release]
 cmd = "scripts/release.sh"
 timeout = 0     # a cold compile on a slow machine is not a failure
+
+[stage.package]
+cmd = "scripts/package.sh"
+timeout = 0     # a fresh configure+build for the packages is not a failure
 
 [stage.version]
 cmd = "scripts/version.sh"

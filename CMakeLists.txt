@@ -74,6 +74,13 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/HarryPehkonen/JSOM.git
     GIT_TAG main
 )
+# JSOM's own install rules (its CLI target) are OFF when JSOM is not the top-level
+# project, but the default is a cache default — a stale cache or a future upstream
+# change could flip it. If JSOM's artifacts ever install, CPack ships them as
+# Computo's own: exactly how FSMgine files leaked into CodeBundler's first .deb.
+# Forced OFF here, and scripts/package.sh (gate stage `package`) greps every package
+# for jsom paths, so the guard has teeth instead of being a comment.
+set(JSOM_INSTALL OFF CACHE BOOL "Computo packages never ship JSOM's artifacts" FORCE)
 FetchContent_MakeAvailable(JSOM)
 find_package(GTest REQUIRED)
 find_library(READLINE_LIB readline)
@@ -351,9 +358,26 @@ else()
 endif()
 
 # --- Install Configuration ---
-install(TARGETS computo DESTINATION lib)
-install(DIRECTORY include/ DESTINATION include)
-install(TARGETS computo_unified DESTINATION bin)
+# GNUInstallDirs, never a hardcoded lib/bin: Debian multiarch wants lib/<arch>
+# (CMAKE_INSTALL_LIBDIR full variant), Fedora wants lib64. The same variables pick
+# bindir/includedir/mandir for every destination below.
+include(GNUInstallDirs)
+
+install(TARGETS computo_unified
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    COMPONENT computo)
+install(TARGETS computo
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    COMPONENT devel)
+install(FILES include/computo.hpp
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    COMPONENT devel)
+install(FILES docs/computo.1
+    DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
+    COMPONENT computo)
+
+# --- CPack (DEB + RPM) — must be the LAST thing: it consumes the install rules above ---
+include(cmake/CPack.cmake)
 
 # --- Project Information ---
 message(STATUS "=== Computo Configuration ===")

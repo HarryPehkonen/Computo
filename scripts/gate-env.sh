@@ -82,7 +82,7 @@ CI_KEEP_TMP=${CI_KEEP_TMP:-0}                   # 1 = keep the pristine temp dir
 # 2026-10-06. `full` IS the default list, so a hand run and a push run the same stages and only
 # --require-clean differs.
 CI_FAST_STAGES=${CI_FAST_STAGES:-"format build tests"}
-CI_FULL_STAGES=${CI_FULL_STAGES:-"tree format kitprobes build tests docs release version asan tsan tidy pristine"}
+CI_FULL_STAGES=${CI_FULL_STAGES:-"tree format kitprobes build tests docs release package version asan tsan tidy pristine"}
 CI_DEFAULT_STAGES=${CI_DEFAULT_STAGES:-$CI_FULL_STAGES}
 CI_TIDY_BASELINE=${CI_TIDY_BASELINE:-.ci/tidy-baseline.txt}
 CI_BUILD_TYPE=${CI_BUILD_TYPE:-Debug}
@@ -109,7 +109,7 @@ CI_VERSION_BINARIES=${CI_VERSION_BINARIES:-'$CI_BUILD_DIR/computo'}
 # This assignment is direct (not ${VAR:-...}) on purpose: the kit's line above already
 # set the variable, so the :- form would silently keep the kit's longer list.
 # `tools/ci.sh --list` prints the effective list, which is the only place it is visible.
-CI_DEFAULT_STAGES="tree format kitprobes build tests docs release version asan tsan tidy pristine"
+CI_DEFAULT_STAGES="tree format kitprobes build tests docs release package version asan tsan tidy pristine"
 
 # The optimized configuration (the `release` stage - not in the kit, see the adaptation
 # notes at the top). Its own build dir: `build-release`, which .gitignore's `build-*/`

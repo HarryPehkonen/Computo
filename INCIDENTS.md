@@ -458,6 +458,24 @@ Why it must stay:  Format-on-touch only works if the tree is already formatted -
 
 ---
 
+## 2026-10-12 — grep -q under pipefail failed a package check whose match was present
+
+What broke:        The new `package` stage failed with "CLI package does not ship
+                   /usr/bin/computo" while `dpkg-deb -c` listed exactly that file. The
+                   pipeline was `dpkg-deb -c ... | grep -qE ...` under `set -o pipefail`
+                   (gate-env.sh): grep -q exits at the first match, dpkg-deb's tar gets
+                   SIGPIPE, the pipeline's exit status is dpkg-deb's failure, and the
+                   assertion inverted — a passing check reports a failure.
+Check added:       scripts/package.sh's has_entry() helper uses plain `grep` (it drains
+                   the pipe) with `>/dev/null`, with the reason in a comment at the
+                   helper. The same fix went on the RPM jsom-leak grep.
+Why it must stay:  The stage is the guard against dependency leaks in the packages (the
+                   CodeBundler failure mode). A guard that fails-green — or worse, here,
+                   fails on the SUCCESS path — trains the operator to rerun until green
+                   and to ignore the stage's verdict, which is how a real leak ships.
+
+---
+
 <!--
 Copy this file into a repo root as INCIDENTS.md and keep this example as the shape
 reference (or delete it once you have two real entries). Then, forever after: the commit

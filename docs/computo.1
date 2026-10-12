@@ -1,0 +1,85 @@
+.\" Manual page for computo.
+.\" Generated wording matches computo --help; keep the two in step.
+.TH COMPUTO 1 "2026-10-12" "Computo 1.0.0" "User Commands"
+.SH NAME
+computo \- JSON data transformation engine (script execution and REPL)
+.SH SYNOPSIS
+.B computo
+\fB\-\-script\fR \fISCRIPT\fR [\fIOPTIONS\fR] [\fIINPUT_FILES\fR...]
+.br
+.B computo
+\fB\-\-repl\fR [\fIOPTIONS\fR] [\fIINPUT_FILES\fR...]
+.SH DESCRIPTION
+.B computo
+is the unified CLI for the Computo engine, a safe, sandboxed, thread\-safe
+JSON\-native data transformation language with a Lisp\-like syntax expressed in
+JSON. Scripts can be written in either
+.B JSON syntax
+(the native format) or
+.B sugar syntax
+(a human\-friendly alternative with infix operators, arrow lambdas, and path
+access); the CLI auto\-detects the format and can convert between the two.
+.SH MODES
+.TP
+.BR \-\-script " " \fIfile\fR
+Execute the script from \fIfile\fR (auto\-detects JSON or sugar syntax).
+.TP
+.BR \-\-repl
+Start the interactive REPL.
+.SH CONVERSION
+.TP
+.BR \-\-tocomputo " " \fIfile\fR
+Convert a JSON script to sugar syntax (.computo).
+.TP
+.BR \-\-tojson " " \fIfile\fR
+Convert a sugar syntax (.computo) script to JSON.
+.SH OPTIONS
+.TP
+.B \-\-comments
+Enable JSON comment parsing.
+.TP
+.B \-\-debug
+Enable debugging features (REPL only).
+.TP
+.BR \-\-array =\fIkey\fR
+Use a custom array wrapper key (default: "array").
+.TP
+.BR \-\-format " " \fIfile\fR
+Reformat the script with semantic indentation.
+.TP
+.BR \-\-highlight " " \fIfile\fR
+Display the script with syntax highlighting.
+.TP
+.B \-\-color
+Force colored output (with \-\-highlight).
+.TP
+.B \-\-no\-color
+Disable colored output (with \-\-highlight).
+.TP
+.B \-\-list\-operators
+Output a JSON array of all available operators.
+.TP
+.BR \-\-help ", " \-h
+Show the help message.
+.TP
+.BR \-\-version ", " \-v
+Show version information.
+.SH EXAMPLES
+.PP
+.nf
+computo \-\-script transform.json data.json
+computo \-\-script script.computo data.json
+computo \-\-tocomputo transform.json
+computo \-\-tojson script.computo
+computo \-\-script transform.json data.json \-\-array="@data"
+computo \-\-repl \-\-comments users.json orders.json
+computo \-\-repl \-\-debug
+computo \-\-format script.json
+computo \-\-highlight script.computo
+.fi
+.SH SEE ALSO
+The full language reference and the libcomputo API documentation live in the
+project README and at the Computo documentation site (see the repository
+HarryPehkonen/Computo).
+.SH AUTHOR
+Harri Pehkonen <harry.pehkonen@gmail.com>
