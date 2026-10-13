@@ -421,23 +421,28 @@ foreach(computo_target computo computo_unified test_computo test_memory_safety
     if(TARGET ${computo_target})
         target_compile_options(${computo_target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
-        # gcc < 15: -Wmaybe-uninitialized false-positives on std::variant move/assign
-        # internals in optimized (-O2/-O3 -DNDEBUG) builds (gcc#101905 family; fixed in
-        # gcc 15+). The diagnostic names jsom::JsonDocument's storage_, but the code it
-        # objects to is libstdc++'s variant machinery, and with -Werror a compiler bug
-        # becomes a build failure. Measured 2026-09-20: gcc 13.3 and gcc 14.2 both trip
-        # on src/operators/control_flow.cpp and on test_memory_safety, test_performance
-        # and test_thread_safety at -O2/-O3, and both are clean at -O0/-O1 with the same
-        # sources - so this is the compiler, not this repo's code. The suppression is
-        # what lets an optimized build compile here at all: ./build.sh and the gate's
-        # `release` stage both configure Release (-O3 -DNDEBUG), where -Werror would
-        # turn that false positive into a build failure. Bound to optimized configs
-        # only, because the diagnostic does not exist in Debug: the gated build keeps
-        # the whole warning set. Same decision, same compiler bound as JSOM's own
+        # gcc < 17: -Wmaybe-uninitialized false-positives on std::variant move/assign
+        # internals in optimized (-O2/-O3 -DNDEBUG) builds (gcc#101905 family). The
+        # original bound was VERSION_LESS 15 on the assumption gcc 15 fixed it; it
+        # reappeared in the libstdc++ 16 headers. Measured 2026-09-20: gcc 13.3 and
+        # gcc 14.2 both trip on src/operators/control_flow.cpp and on
+        # test_memory_safety, test_performance and test_thread_safety at -O2/-O3, and
+        # both are clean at -O0/-O1 with the same sources - so this is the compiler,
+        # not this repo's code. Measured 2026-10-12 on the Nobara laptop (gcc 16.2.1,
+        # libstdc++ 16): the same class of false positive returns, now reported from
+        # /usr/include/c++/16/variant:230 and bits/basic_string.h:238 (the diagnostic
+        # moved from the source line to the libstdc++ header). A plain
+        # -Wno-maybe-uninitialized at -O3 -DNDEBUG compiles clean with gcc 16, so no
+        # include-level suppression is needed - the flag still covers it. With -Werror
+        # a compiler bug becomes a build failure: ./build.sh and the gate's `release`
+        # stage both configure Release (-O3 -DNDEBUG), where -Werror would turn that
+        # false positive into a build failure. Bound to optimized configs only,
+        # because the diagnostic does not exist in Debug: the gated build keeps the
+        # whole warning set. Same decision, same compiler bound as JSOM's own
         # CMakeLists.txt for jsom_tests; the measurements and the cost are in
         # INCIDENTS.md (2026-09-20).
         if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
-           AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 15)
+           AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 17)
             target_compile_options(${computo_target} PRIVATE
                 $<$<NOT:$<CONFIG:Debug>>:-Wno-maybe-uninitialized>)
         endif()
