@@ -331,20 +331,59 @@ state=$(gh api "repos/$REPO_SLUG/pages" --jq '"\(.build_type) \(.source.branch) 
 [ "$state" = "legacy gh-pages /" ] || die "GitHub Pages reports '$state', not 'legacy gh-pages /'"
 info "GitHub Pages: build_type=legacy, source=gh-pages /  (read back, not assumed)"
 
+# A legacy build is requested EXPLICITLY, and the reason is measured rather than assumed. A
+# legacy Pages build is triggered by a push to the tracked branch — and this script pushed
+# gh-pages BEFORE the source was switched (first publish), or pushed nothing at all because the
+# content was byte-identical (re-publish). Measured 2026-10-16: after the switch, `pages/builds`
+# was empty and the site went on serving the previous WORKFLOW ARTIFACT — the README.md it
+# answered was the pre-change one, with the etag and Last-Modified of the old deploy — until a
+# build was requested. Without this call a publish can report success while the site says
+# something else, which is the one outcome a publish action may not have.
+published=$(git rev-parse refs/heads/gh-pages)
+gh api "repos/$REPO_SLUG/pages/builds" -X POST >/dev/null \
+    || die "could not ask GitHub Pages for a build (legacy builds; needs repo scope)"
+status=""; commit=""; err=""
+i=0
+while [ "$i" -lt 18 ]; do
+    line=$(gh api "repos/$REPO_SLUG/pages/builds/latest" \
+        --jq '"\(.status) \(.commit) \(.error.message // "-")"') \
+        || die "could not read the Pages build status"
+    read -r status commit err <<< "$line"
+    case "$status" in
+        built)   [ "$commit" = "$published" ] && break ;;
+        errored) die "the GitHub Pages build errored: $err (https://github.com/$REPO_SLUG/actions)" ;;
+    esac
+    i=$((i + 1))
+    sleep 10
+done
+[ "$status" = "built" ] && [ "$commit" = "$published" ] \
+    || die "the GitHub Pages build for ${published:0:7} did not finish within 3 minutes (last: status=$status commit=$commit $err)"
+info "GitHub Pages build: built, commit ${published:0:7} — the tip this run published"
+
 # ------------------------------------------------------------------ 6. the live site
 head_ "the live site"
-# Both are graded, because the browser fetches both: index.html is the page, and
-# LANGUAGE_REFERENCE.md is fetched BY it — the file that would 404 without .nojekyll. A new
-# branch build takes a few seconds to appear, hence the retries.
+# Three things are graded, because the browser needs all three: index.html is the page,
+# LANGUAGE_REFERENCE.md is fetched BY it (the file that would 404 without .nojekyll), and
+# README.md is also in the repo — so its SERVED BYTES can be compared with the published copy.
+# A 200 alone is not "the site serves what was published": Pages keeps serving the previous
+# deploy (cache-control: max-age=600, and the origin itself) until the build above lands, which
+# is exactly how the first run of this script reported success over a stale site. Hence the
+# retries and the byte comparison.
 index_code=000
 ref_code=000
+stale="yes"
 for _ in $(seq 1 12); do
     index_code=$(curl -s -o /dev/null -w '%{http_code}' "$SITE_URL") || index_code=000
     ref_code=$(curl -s -o /dev/null -w '%{http_code}' "${SITE_URL}LANGUAGE_REFERENCE.md") || ref_code=000
-    [ "$index_code" = "200" ] && [ "$ref_code" = "200" ] && break
+    if [ "$index_code" = "200" ] && [ "$ref_code" = "200" ]; then
+        curl -s "$SITE_URL/README.md" -o "$tmp_root/served-README.md" 2>/dev/null
+        cmp -s "$tmp_root/served-README.md" README.md && { stale=""; break; }
+    fi
     sleep 10
 done
 [ "$index_code" = "200" ] || die "$SITE_URL answered $index_code (index.html)"
 [ "$ref_code" = "200" ] \
     || die "${SITE_URL}LANGUAGE_REFERENCE.md answered $ref_code — that file is fetched BY index.html (is .nojekyll in the published root?)"
-info "$SITE_URL serves: index.html and LANGUAGE_REFERENCE.md both 200 as of $(date -u +%FT%TZ)"
+[ -z "$stale" ] \
+    || die "$SITE_URL answers 200 but serves a DIFFERENT README.md than the one published — Pages is still serving the previous deploy (up to 10 minutes: cache-control max-age=600); re-run this script if the build above was for an older commit"
+info "$SITE_URL serves: index.html and LANGUAGE_REFERENCE.md both 200, README.md byte-identical to the published copy, as of $(date -u +%FT%TZ)"

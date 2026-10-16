@@ -70,6 +70,21 @@ What the port found — each one is a check now, not a note:
                      the comparison is against the real remote) together with the regeneration it
                      performs at publish time, which refuses to continue if that changed a tracked
                      file.
+                   * A SILENT NO-OP DEPLOY. A legacy Pages build is triggered by a PUSH to the
+                     tracked branch, and this script pushes gh-pages BEFORE switching the source
+                     (first publish) — or pushes nothing at all when the content is identical
+                     (re-publish). Measured 2026-10-16, on this card's own first publish: after the
+                     switch `pages/builds` was EMPTY, and the site went on answering the previous
+                     WORKFLOW ARTIFACT — the pre-change README.md, with the old deploy's etag and
+                     Last-Modified — while every check the script then made (a 200 on the page, a
+                     200 on the fetched reference) reported success. The site only caught up once a
+                     build was requested by hand, and then the served README.md became
+                     byte-identical to the published one.
+                     Check: the script REQUESTS the build (`POST <repo>/pages/builds`), polls
+                     `pages/builds/latest` until its `commit` is the gh-pages tip this run published
+                     (3-minute budget; `errored` is a failure), and its last step compares the
+                     SERVED README.md byte for byte with the tree's — the 200s alone would have
+                     passed over a stale site.
                    * A HARDCODED TOTAL. The workflow's badge said "/46 operators" — a number
                      somebody has to remember to bump. The script counts both sides instead (the
                      binary's `--list-operators` and `docs/operators.yaml`), so the badge is green
