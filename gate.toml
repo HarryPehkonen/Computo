@@ -14,9 +14,26 @@
 [gate]
 repo = "computo"
 
-# pre-commit: seconds, not minutes (the old CI_FAST_STAGES, unchanged).
+# pre-commit: seconds, not minutes (the old CI_FAST_STAGES, plus `docs` — see below).
+#
+# The order written here IS the run order (`resolved_stages()` in the engine: a tier runs the
+# stages in the order the list gives them, then any stage declaring `tier = "<name>"`).
+#
+# `docs` joined on 2026-10-16 (card t_79c842b6). It grades the binary the `build` stage has just
+# produced — therefore after it, never before — and it costs about 1.0 s on a warm tree
+# (measured on this machine with the build present: the stage runs the 66 documented examples,
+# the README examples, the coverage check and two byte-comparisons against regenerated output).
+# That is inside the seconds budget, and it is what makes documentation drift a commit-time
+# failure on this machine instead of a runner's verdict after the push:
+# .github/workflows/docs.yml, which used to be the only place these checks ran, is deleted.
+# If the stage ever grows past a few seconds on a cold tree, the measurement above is the reason
+# it was moved here, and a new measurement is the reason to move it back to [tier.full].
+#
+# gate.toml is the ONLY home of this list. The CI_FAST_STAGES / CI_FULL_STAGES variables in
+# scripts/gate-env.sh are vestigial since the gate became this file: they are still defined
+# (nothing was removed) and nothing reads them for a run — kit-ci parses this file.
 [tier.fast]
-stages = ["format", "build", "tests"]
+stages = ["format", "build", "tests", "docs"]
 
 # pre-push: every stage. The old hook passed `--require-clean full`; kit-ci has no
 # per-run flags, so the hook sets CI_REQUIRE_CLEAN=1 in the environment instead and

@@ -15,6 +15,102 @@ arbitrary checks get deleted. The rationale is the load-bearing part.
 ---
 
 
+## 2026-10-16 — the documentation was validated and published only by a GitHub workflow (wiring record, not a breakage)
+
+What changed:      `.github/workflows/docs.yml` is DELETED. It had been the only place the
+                   documentation was validated (its `validate` job) and the only publisher (its
+                   `deploy` job, through actions/upload-pages-artifact + actions/deploy-pages).
+                   Two consequences, both of which this card removes: documentation drift — a
+                   stale `docs/LANGUAGE_REFERENCE.md`, a documented example the engine no longer
+                   answers, a README example that drifted — could only be found AFTER the push,
+                   on a runner, by reading a run; and the site could not be published from the
+                   machine that builds the engine.
+                   * VALIDATION is the gate's `docs` stage, and it joined gate.toml's
+                     `[tier.fast]`: the pre-commit hook runs it, so drift fails the COMMIT. The
+                     order in that list is the run order (`resolved_stages()`), and it matters —
+                     `docs` grades the binary `build` produced, so it is written after `build`,
+                     never before. Measured on this machine: `docs` 1.0 s with the build present,
+                     the whole fast tier 6.2 s for its four stages
+                     (`gate-evidence/t_79c842b6/fast-tier-1.txt`). The teeth were re-measured
+                     rather than assumed: one stale line appended to `docs/LANGUAGE_REFERENCE.md`
+                     makes the fast tier report `GATE FAILED — 3 passed, 1 failed (docs)`, naming
+                     the stage and printing the diff
+                     (`gate-evidence/t_79c842b6/fast-tier-teeth.txt`).
+                   * PUBLISHING is `scripts/docs-publish.sh`: a publish action in the shape of the
+                     kit's release.sh publish — not a gate stage, no new kit-ci verb, and nothing
+                     in gate.toml runs it. It regenerates the reference and the indexes, builds the
+                     site content (the index.html heredoc the workflow carried, moved byte for
+                     byte — verified against `ea30600:.github/workflows/docs.yml` before the
+                     deletion, `gate-evidence/t_79c842b6/index-html-port-verified.txt`), commits it
+                     as a subtree commit on the `gh-pages` branch (orphan on its first commit)
+                     through a temporary worktree, pushes, then puts GitHub Pages on that branch
+                     (`build_type=legacy`, `source=gh-pages /`) and READS THE SETTING BACK, and
+                     finally fetches the live site. Same URL as before.
+
+What the port found — each one is a check now, not a note:
+                   * JEKYLL. A branch-served Pages site goes through Jekyll unless the published
+                     root says otherwise, and Jekyll CONVERTS markdown instead of serving it —
+                     while index.html fetches `LANGUAGE_REFERENCE.md`, `alpha/index.md` and
+                     `task/index.md` as plain files, so those three tabs would 404 while every
+                     status page stayed green. The deleted workflow's artifact deploy never ran
+                     Jekyll, which is why the hazard did not exist before this move.
+                     Check: the script writes `.nojekyll` into the published root, and its last
+                     step fetches `${SITE_URL}LANGUAGE_REFERENCE.md`, with retries, and fails the
+                     publish if it does not answer 200 — the FETCHED file, not just the page,
+                     because that page is what fetches it.
+                   * THE PUBLISH PUSH MUST NOT RUN THE C++ GATE. The pre-push hook runs this
+                     repo's full gate whatever refs are being pushed. The gh-pages commit happens
+                     in a temporary worktree containing no `scripts/` at all, so from there the
+                     hook cannot even find the gate (a failed push), and from main's root it would
+                     run asan, tsan, package and pristine because a badge JSON changed. The push
+                     therefore passes `--no-verify`, deliberately, with the reason in the script's
+                     own header. What protects the published page instead is the script's guard set
+                     (a dirty tree, a HEAD that is not main, and an origin/main AHEAD of HEAD are
+                     refused — release.sh publish's guards, minus its tag checks, plus a fetch so
+                     the comparison is against the real remote) together with the regeneration it
+                     performs at publish time, which refuses to continue if that changed a tracked
+                     file.
+                   * A HARDCODED TOTAL. The workflow's badge said "/46 operators" — a number
+                     somebody has to remember to bump. The script counts both sides instead (the
+                     binary's `--list-operators` and `docs/operators.yaml`), so the badge is green
+                     exactly when the two counts AGREE, and red the day they do not.
+                   * A BADGE POINTING AT THE DELETED WORKFLOW. README.md's "Documentation Status"
+                     badge WAS that workflow's badge.svg URL: left alone it 404s, in the file whose
+                     own result examples the `docs` stage grades. It is now the shields.io endpoint
+                     of the coverage badge this script publishes — a badge that reads something the
+                     repo actually computes.
+
+Check moved:       Nothing that was checked is dropped, and nothing is checked only by the
+                   workflow any more. The validate job's steps map as follows: docs-coverage and
+                   docs-validate were already steps of the `docs` stage (from 2026-09-20); the job's
+                   `cmake --build build` is the gate's `build` stage; its upload of
+                   LANGUAGE_REFERENCE.md + implemented/documented-operators.json is gone because the
+                   stage FAILS on the condition those artifacts existed to investigate. The deploy
+                   job's `docs-generate` + `generate-indexes.py` are step 2 of the publish script,
+                   its "Create GitHub Pages site" step is step 3 (byte-for-byte, verified above),
+                   and actions/configure-pages + upload-pages-artifact + deploy-pages are replaced
+                   by a branch push plus the Pages API PUT and GET.
+
+Why it must stay:  Three separate things break if any one of these is undone:
+                   - deleting docs.yml WITHOUT the tier change would leave the documentation
+                     validated nowhere: the deleted job was the only caller of those checks. The
+                     commit-time stage is what replaces it, so a later "the fast tier is too slow,
+                     drop docs" has to keep a commit-time documentation check somewhere — and the
+                     1.0 s measurement is the number to argue with, not an impression.
+                   - deleting it WITHOUT the publish script would leave the site frozen at the last
+                     workflow run: on a published page that is a false statement, not a missing
+                     feature.
+                   - the `.nojekyll` marker plus the live fetch of the FETCHED file is the only
+                     thing standing between "the deploy succeeded" and "the site's own reference
+                     tab 404s", a failure no status page reports.
+
+Not done here:     `CLAUDE.md` is owned by Claude Code, so its gate paragraph — whose fast-tier
+                   list this card invalidated, next to a `kitprobes` mention that has been stale
+                   since the 2026-10-06 conversion — is PROPOSED, not applied, in
+                   `CLAUDE_PROPOSED.md`.
+
+---
+
 ## 2026-10-06 — the gate is no longer a 1054-line bash script (wiring record, not a breakage)
 
 What changed:      `tools/ci.sh` is deleted. The gate is now `gate.toml` — the policy: 11 stages

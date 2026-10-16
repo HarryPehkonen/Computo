@@ -196,22 +196,36 @@ python docs/generate-reference.py -o docs/LANGUAGE_REFERENCE.md
       result: "prefix suffix"
 ```
 
-## CI/CD Integration
+## Where These Checks Run
 
-### Recommended Workflow
-```yaml
-# .github/workflows/docs.yml
-- name: Validate Documentation
-  run: |
-    cmake --build build
-    ./docs/validate-all.sh
-    
-- name: Update Documentation
-  run: |
-    python docs/generate-reference.py -o docs/LANGUAGE_REFERENCE.md
-    git add docs/LANGUAGE_REFERENCE.md
-    git commit -m "Update generated documentation"
+All of it is local — there is no CI service, no runner and no account in this loop.
+
+### Validation, at every commit
+The gate's `docs` stage (`scripts/docs.sh`, declared in `gate.toml` and part of the fast tier,
+so the pre-commit hook runs it):
+
+```bash
+./CI_REQUIRE_CLEAN=1 scripts/gate.sh          # the whole gate; GATE PASSED is the verdict
+scripts/gate.sh --tier fast                   # just the commit-time stages, docs included
 ```
+
+It runs every example in `docs/operators.yaml` against the built binary, grades README.md's own
+result examples, checks operator coverage both ways, and compares
+`docs/LANGUAGE_REFERENCE.md` and the two generated indexes byte for byte against what the
+generators produce — a stage that rewrites a tracked file would be a gate nobody could trust, so
+it generates elsewhere and diffs. `docs/validate-all.sh` is the older, narrower wrapper of two
+of those steps; the stage is the one that has to pass.
+
+### Publishing the site
+```bash
+scripts/docs-publish.sh
+```
+
+Regenerates the reference and the indexes, builds the site content, commits it to the `gh-pages`
+branch, points GitHub Pages at that branch and reads the setting back — then fetches the live URL
+to prove it serves. It refuses a dirty tree, a HEAD that is not `main`, and an `origin/main` that
+is ahead of HEAD. Run it after the commit that changes the documentation (and after pushing main,
+if you want the published page to match what the world can already read).
 
 ### Make Targets
 ```makefile

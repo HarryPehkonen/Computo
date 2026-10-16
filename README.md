@@ -1,7 +1,7 @@
 # Computo
 
 [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://HarryPehkonen.github.io/Computo)
-[![Documentation Status](https://github.com/HarryPehkonen/Computo/workflows/Documentation%20Validation%20and%20Deployment/badge.svg)](https://github.com/HarryPehkonen/Computo/actions/workflows/docs.yml)
+[![Documentation Status](https://img.shields.io/endpoint?url=https%3A%2F%2Fharrypehkonen.github.io%2FComputo%2Fcoverage-badge.json)](https://HarryPehkonen.github.io/Computo)
 
 A safe, sandboxed, thread-safe JSON-native data transformation engine with a Lisp-like language syntax expressed in JSON.
 
