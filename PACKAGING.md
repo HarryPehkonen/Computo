@@ -58,6 +58,43 @@ dpkg-deb -c build/pkgs/computo_*.deb
 rpm -qlp build/pkgs/computo-*.x86_64.rpm
 ```
 
+## armhf, and the two things it needs
+
+Build it on `laserjet` — the fleet's only ARMv6 box, one core, 426 MB of RAM, 159 MB free, so
+add a 2 GB swapfile first. On the box Raspbian's gcc targets ARMv6 by default and
+`dpkg-shlibdeps` derives `Depends` natively; cross-compiling on `hermes` would need explicit
+`-march=armv6` flags (Debian's armhf baseline is ARMv7) plus a foreign-arch sysroot. Every
+binary in the published armhf debs carries `Tag_CPU_arch: v6`.
+
+Two ARMv6-specific requirements, both measured there on 2026-11-23:
+
+* **`-DCMAKE_CXX_STANDARD_LIBRARIES=-latomic` is required.** ARMv6 has no 64-bit atomic
+  load/store instructions (they arrive with ARMv6K/ARMv7's `ldrexd`/`strexd`), so 64-bit
+  `std::atomic` operations become calls into libatomic: without it, `test_thread_safety`
+  fails to link with `undefined reference to '__atomic_store_8'` and
+  `'__atomic_load_8'`. The CLI and `libcomputo.a` build either way — it is the test binaries
+  that need it.
+* **There is no tests-off switch, and CPack's `preinstall` builds every target.** The four
+  test binaries are built unconditionally (`-DBUILD_TESTING=OFF` does not stop them), so the
+  armhf package build spent **2 h 08 min** on one core producing binaries the package never
+  ships. `-DFETCHCONTENT_SOURCE_DIR_JSOM=…` pins a known JSOM revision instead of the moving
+  `main` ref the tree asks for, but it also configures JSOM in full, so JSOM's own probes are
+  built too and the cost roughly doubles.
+
+```bash
+rsync -a --exclude=.git --exclude='build*' ~/hermes-workspace/Computo/ laserjet:~/armhf-src/Computo/
+rsync -a --exclude=.git --exclude='build*' ~/hermes-workspace/JSOM/    laserjet:~/armhf-src/JSOM/
+ssh laserjet 'cd ~/armhf-src/Computo && \
+  cmake -S . -B build-pkg -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+        -DCOMPUTO_REQUIRE_READLINE=ON -DFETCHCONTENT_SOURCE_DIR_JSOM=$HOME/armhf-src/JSOM \
+        -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib/$(cc -dumpmachine) \
+        -DCMAKE_CXX_STANDARD_LIBRARIES=-latomic && \
+  cmake --build build-pkg -j1 && cpack -G DEB --config build-pkg/CPackConfig.cmake -B build-pkg/pkgs'
+```
+
+The gate is not run for an armhf release; the artifact is verified by installing it on the
+print server (`computo --version`, and `libreadline8t64` present in its `Depends`).
+
 ## The dependency-leak guard
 
 JSOM is FetchContent'd in-tree, so its install rules could ship JSOM's
